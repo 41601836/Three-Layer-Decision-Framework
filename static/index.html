@@ -1,0 +1,1859 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StockAI Funnel — 三层漏斗智能选股系统</title>
+    <meta name="description" content="StockAI Funnel A股量化分析系统控制台，三层漏斗架构，本地 Ollama 驱动">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        /* ═══════════════════════════════════════════════════
+           DESIGN TOKENS
+        ═══════════════════════════════════════════════════ */
+        :root {
+            --bg-base:        #060b14;
+            --bg-surface:     #0d1526;
+            --bg-elevated:    #111d35;
+            --bg-hover:       #162040;
+
+            --glass-bg:       rgba(13, 21, 38, 0.7);
+            --glass-border:   rgba(255, 255, 255, 0.07);
+            --glass-shine:    rgba(255, 255, 255, 0.03);
+
+            --emerald-400:    #34d399;
+            --emerald-500:    #10b981;
+            --emerald-600:    #059669;
+            --emerald-glow:   rgba(16, 185, 129, 0.25);
+
+            --blue-400:       #60a5fa;
+            --blue-500:       #3b82f6;
+            --blue-600:       #2563eb;
+            --blue-glow:      rgba(59, 130, 246, 0.25);
+
+            --violet-400:     #a78bfa;
+            --violet-500:     #8b5cf6;
+            --violet-glow:    rgba(139, 92, 246, 0.25);
+
+            --amber-400:      #fbbf24;
+            --amber-500:      #f59e0b;
+            --amber-glow:     rgba(245, 158, 11, 0.25);
+
+            --red-400:        #f87171;
+            --red-500:        #ef4444;
+            --red-glow:       rgba(239, 68, 68, 0.25);
+
+            --text-primary:   #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted:     #475569;
+            --text-accent:    var(--emerald-400);
+
+            --nav-width:      72px;
+            --header-h:       64px;
+            --radius-sm:      8px;
+            --radius-md:      12px;
+            --radius-lg:      18px;
+            --radius-xl:      24px;
+
+            --transition-fast:   0.15s cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-normal: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-slow:   0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* ═══════════════════════════════════════════════════
+           RESET & BASE
+        ═══════════════════════════════════════════════════ */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background-color: var(--bg-base);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            overflow-x: hidden;
+        }
+
+        /* Ambient light orbs */
+        body::before, body::after {
+            content: '';
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(120px);
+            pointer-events: none;
+            z-index: 0;
+        }
+        body::before {
+            width: 600px; height: 600px;
+            background: radial-gradient(circle, rgba(16, 185, 129, 0.07) 0%, transparent 70%);
+            top: -200px; left: -100px;
+        }
+        body::after {
+            width: 500px; height: 500px;
+            background: radial-gradient(circle, rgba(59, 130, 246, 0.07) 0%, transparent 70%);
+            bottom: -150px; right: -50px;
+        }
+
+        /* ═══════════════════════════════════════════════════
+           SIDEBAR NAV
+        ═══════════════════════════════════════════════════ */
+        .sidebar {
+            position: fixed;
+            left: 0; top: 0; bottom: 0;
+            width: var(--nav-width);
+            background: var(--bg-surface);
+            border-right: 1px solid var(--glass-border);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px 0;
+            z-index: 100;
+            gap: 8px;
+        }
+
+        .sidebar-logo {
+            width: 40px; height: 40px;
+            background: linear-gradient(135deg, var(--emerald-500), var(--blue-500));
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            margin-bottom: 24px;
+            box-shadow: 0 0 20px var(--emerald-glow);
+            flex-shrink: 0;
+        }
+
+        .nav-item {
+            width: 44px; height: 44px;
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            position: relative;
+            transition: all var(--transition-normal);
+            color: var(--text-muted);
+            border: 1px solid transparent;
+            background: none;
+            font-size: 18px;
+        }
+
+        .nav-item:hover, .nav-item.active {
+            background: var(--bg-elevated);
+            color: var(--text-primary);
+            border-color: var(--glass-border);
+        }
+
+        .nav-item.active {
+            color: var(--emerald-400);
+            box-shadow: 0 0 12px var(--emerald-glow);
+        }
+
+        .nav-item .nav-tooltip {
+            position: absolute;
+            left: calc(100% + 12px);
+            background: var(--bg-elevated);
+            border: 1px solid var(--glass-border);
+            padding: 6px 12px;
+            border-radius: var(--radius-sm);
+            font-size: 0.75rem;
+            white-space: nowrap;
+            pointer-events: none;
+            opacity: 0;
+            transform: translateX(-4px);
+            transition: all var(--transition-fast);
+        }
+
+        .nav-item:hover .nav-tooltip {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .nav-divider {
+            width: 32px;
+            height: 1px;
+            background: var(--glass-border);
+            margin: 4px 0;
+        }
+
+        /* ═══════════════════════════════════════════════════
+           MAIN LAYOUT
+        ═══════════════════════════════════════════════════ */
+        .main {
+            margin-left: var(--nav-width);
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* ═══════════════════════════════════════════════════
+           TOPBAR
+        ═══════════════════════════════════════════════════ */
+        .topbar {
+            height: var(--header-h);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 28px;
+            border-bottom: 1px solid var(--glass-border);
+            background: rgba(6, 11, 20, 0.8);
+            backdrop-filter: blur(16px);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+
+        .topbar-left {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .topbar-title {
+            font-size: 1rem;
+            font-weight: 700;
+            background: linear-gradient(90deg, var(--emerald-400), var(--blue-400));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -0.3px;
+        }
+
+        .topbar-sub {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .topbar-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .system-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 14px;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 100px;
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+        }
+
+        .pulse-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: var(--emerald-500);
+            box-shadow: 0 0 0 0 var(--emerald-glow);
+            animation: pulse-ring 2s infinite;
+            flex-shrink: 0;
+        }
+
+        .time-display {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.82rem;
+            color: var(--text-secondary);
+            padding: 6px 14px;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 100px;
+        }
+
+        /* ═══════════════════════════════════════════════════
+           CONTENT AREA
+        ═══════════════════════════════════════════════════ */
+        .content {
+            padding: 28px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            flex: 1;
+        }
+
+        /* ═══════════════════════════════════════════════════
+           SECTION TABS
+        ═══════════════════════════════════════════════════ */
+        .tab-bar {
+            display: flex;
+            gap: 4px;
+            background: var(--bg-surface);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-md);
+            padding: 4px;
+            width: fit-content;
+        }
+
+        .tab-btn {
+            padding: 7px 18px;
+            border-radius: var(--radius-sm);
+            font-size: 0.82rem;
+            font-weight: 500;
+            cursor: pointer;
+            border: none;
+            background: none;
+            color: var(--text-muted);
+            transition: all var(--transition-fast);
+            font-family: inherit;
+        }
+
+        .tab-btn.active {
+            background: var(--bg-elevated);
+            color: var(--text-primary);
+        }
+
+        .tab-btn:hover:not(.active) {
+            color: var(--text-secondary);
+        }
+
+        /* ═══════════════════════════════════════════════════
+           METRIC CARDS ROW
+        ═══════════════════════════════════════════════════ */
+        .metrics-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+        }
+
+        .metric-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-lg);
+            padding: 20px 22px;
+            position: relative;
+            overflow: hidden;
+            transition: all var(--transition-normal);
+        }
+
+        .metric-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--glass-shine), transparent);
+        }
+
+        .metric-card:hover {
+            border-color: rgba(255,255,255,0.12);
+            transform: translateY(-2px);
+            box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+        }
+
+        .metric-label {
+            font-size: 0.72rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .metric-value {
+            font-size: 1.9rem;
+            font-weight: 700;
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--text-primary);
+            line-height: 1;
+            margin-bottom: 6px;
+        }
+
+        .metric-sub {
+            font-size: 0.73rem;
+            color: var(--text-muted);
+        }
+
+        .metric-icon {
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 32px;
+            opacity: 0.12;
+        }
+
+        .metric-accent-line {
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            height: 3px;
+            border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+        }
+
+        /* ═══════════════════════════════════════════════════
+           MAIN GRID
+        ═══════════════════════════════════════════════════ */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 20px;
+        }
+
+        .main-grid .span-2 {
+            grid-column: span 2;
+        }
+
+        /* ═══════════════════════════════════════════════════
+           GLASS CARD
+        ═══════════════════════════════════════════════════ */
+        .card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            position: relative;
+            overflow: hidden;
+            transition: border-color var(--transition-normal);
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent);
+        }
+
+        .card:hover {
+            border-color: rgba(255,255,255,0.1);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 22px;
+        }
+
+        .card-title {
+            font-size: 0.88rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+
+        .card-title-icon {
+            width: 28px; height: 28px;
+            border-radius: 7px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+
+        .icon-emerald { background: rgba(16,185,129,0.15); }
+        .icon-blue    { background: rgba(59,130,246,0.15); }
+        .icon-violet  { background: rgba(139,92,246,0.15); }
+        .icon-amber   { background: rgba(245,158,11,0.15); }
+        .icon-red     { background: rgba(239,68,68,0.15); }
+
+        .card-badge {
+            font-size: 0.7rem;
+            font-weight: 600;
+            padding: 3px 10px;
+            border-radius: 100px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .badge-live { background: rgba(16,185,129,0.15); color: var(--emerald-400); }
+        .badge-idle { background: rgba(71,85,105,0.2); color: var(--text-muted); }
+        .badge-running { background: rgba(59,130,246,0.15); color: var(--blue-400); }
+
+        /* ═══════════════════════════════════════════════════
+           STATUS ROWS
+        ═══════════════════════════════════════════════════ */
+        .status-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+        }
+
+        .status-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+        }
+
+        .status-row:last-child { border-bottom: none; }
+
+        .status-label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.82rem;
+            color: var(--text-secondary);
+        }
+
+        .indicator {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .indicator.active {
+            background: var(--emerald-500);
+            box-shadow: 0 0 0 0 var(--emerald-glow);
+            animation: pulse-ring 2s infinite;
+        }
+
+        .indicator.inactive { background: var(--text-muted); }
+        .indicator.warning { background: var(--amber-500); }
+
+        .status-val {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: var(--blue-400);
+        }
+
+        /* ═══════════════════════════════════════════════════
+           FORM ELEMENTS
+        ═══════════════════════════════════════════════════ */
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-label {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 0.78rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+
+        .form-label span {
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            text-transform: none;
+            letter-spacing: 0;
+        }
+
+        input[type="text"],
+        input[type="password"],
+        select,
+        textarea {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--glass-border);
+            color: var(--text-primary);
+            padding: 10px 14px;
+            border-radius: var(--radius-sm);
+            font-family: 'Inter', sans-serif;
+            font-size: 0.85rem;
+            transition: all var(--transition-fast);
+            outline: none;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            border-color: var(--blue-500);
+            background: rgba(0, 0, 0, 0.4);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        select option {
+            background: var(--bg-elevated);
+        }
+
+        /* Range slider */
+        .range-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        input[type="range"] {
+            flex: 1;
+            -webkit-appearance: none;
+            background: transparent;
+            height: 4px;
+        }
+
+        input[type="range"]::-webkit-slider-runnable-track {
+            background: rgba(255,255,255,0.08);
+            height: 4px;
+            border-radius: 2px;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px; height: 16px;
+            border-radius: 50%;
+            background: var(--emerald-500);
+            margin-top: -6px;
+            cursor: pointer;
+            box-shadow: 0 0 8px var(--emerald-glow);
+            transition: transform var(--transition-fast);
+        }
+
+        input[type="range"]:hover::-webkit-slider-thumb {
+            transform: scale(1.2);
+        }
+
+        .range-val {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            color: var(--emerald-400);
+            min-width: 28px;
+            text-align: right;
+        }
+
+        /* ═══════════════════════════════════════════════════
+           BUTTONS
+        ═══════════════════════════════════════════════════ */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 10px 18px;
+            border-radius: var(--radius-sm);
+            font-weight: 600;
+            font-size: 0.82rem;
+            cursor: pointer;
+            border: none;
+            color: white;
+            transition: all var(--transition-fast);
+            font-family: 'Inter', sans-serif;
+            position: relative;
+            overflow: hidden;
+            white-space: nowrap;
+        }
+
+        .btn::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: rgba(255,255,255,0);
+            transition: background var(--transition-fast);
+        }
+
+        .btn:hover::after { background: rgba(255,255,255,0.08); }
+        .btn:active::after { background: rgba(255,255,255,0.15); }
+
+        .btn:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+        }
+
+        .btn-full { width: 100%; }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--emerald-600), var(--emerald-500));
+            box-shadow: 0 4px 16px rgba(16,185,129,0.25);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            box-shadow: 0 6px 24px rgba(16,185,129,0.4);
+            transform: translateY(-1px);
+        }
+
+        .btn-blue {
+            background: linear-gradient(135deg, var(--blue-600), var(--blue-500));
+            box-shadow: 0 4px 16px rgba(59,130,246,0.25);
+        }
+
+        .btn-blue:hover:not(:disabled) {
+            box-shadow: 0 6px 24px rgba(59,130,246,0.4);
+            transform: translateY(-1px);
+        }
+
+        .btn-violet {
+            background: linear-gradient(135deg, #7c3aed, var(--violet-500));
+            box-shadow: 0 4px 16px rgba(139,92,246,0.25);
+        }
+
+        .btn-violet:hover:not(:disabled) {
+            box-shadow: 0 6px 24px rgba(139,92,246,0.4);
+            transform: translateY(-1px);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #dc2626, var(--red-500));
+            box-shadow: 0 4px 16px rgba(239,68,68,0.25);
+        }
+
+        .btn-danger:hover:not(:disabled) {
+            box-shadow: 0 6px 24px rgba(239,68,68,0.4);
+            transform: translateY(-1px);
+        }
+
+        .btn-ghost {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--glass-border);
+            color: var(--text-secondary);
+        }
+
+        .btn-ghost:hover:not(:disabled) {
+            background: rgba(255,255,255,0.08);
+            color: var(--text-primary);
+        }
+
+        .btn-sm {
+            padding: 7px 14px;
+            font-size: 0.78rem;
+        }
+
+        /* Button group */
+        .btn-group {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-group .btn { flex: 1; }
+
+        /* ═══════════════════════════════════════════════════
+           FUNNEL PIPELINE VISUALIZATION
+        ═══════════════════════════════════════════════════ */
+        .funnel-viz {
+            display: flex;
+            align-items: center;
+            gap: 0;
+            margin: 20px 0;
+            padding: 16px;
+            background: rgba(0,0,0,0.2);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--glass-border);
+            overflow: hidden;
+        }
+
+        .funnel-stage {
+            flex: 1;
+            text-align: center;
+            padding: 12px 8px;
+            position: relative;
+        }
+
+        .funnel-stage::after {
+            content: '→';
+            position: absolute;
+            right: -8px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 16px;
+            z-index: 1;
+        }
+
+        .funnel-stage:last-child::after { display: none; }
+
+        .funnel-num {
+            font-size: 1.5rem;
+            font-weight: 800;
+            font-family: 'JetBrains Mono', monospace;
+            line-height: 1;
+            margin-bottom: 4px;
+        }
+
+        .funnel-label {
+            font-size: 0.68rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+
+        .funnel-bar {
+            height: 3px;
+            border-radius: 2px;
+            margin-top: 8px;
+            transition: width var(--transition-slow);
+        }
+
+        /* ═══════════════════════════════════════════════════
+           SCHEDULER TOGGLE
+        ═══════════════════════════════════════════════════ */
+        .scheduler-toggle {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 16px;
+            background: rgba(0,0,0,0.2);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--glass-border);
+            margin-bottom: 16px;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 44px; height: 24px;
+            flex-shrink: 0;
+        }
+
+        .toggle-switch input { display: none; }
+
+        .toggle-track {
+            position: absolute;
+            inset: 0;
+            background: rgba(255,255,255,0.1);
+            border-radius: 100px;
+            cursor: pointer;
+            transition: background var(--transition-normal);
+            border: 1px solid var(--glass-border);
+        }
+
+        .toggle-track::after {
+            content: '';
+            position: absolute;
+            left: 3px; top: 50%;
+            transform: translateY(-50%);
+            width: 16px; height: 16px;
+            background: var(--text-muted);
+            border-radius: 50%;
+            transition: all var(--transition-normal);
+        }
+
+        .toggle-switch input:checked ~ .toggle-track {
+            background: rgba(16,185,129,0.25);
+            border-color: var(--emerald-500);
+        }
+
+        .toggle-switch input:checked ~ .toggle-track::after {
+            left: calc(100% - 19px);
+            background: var(--emerald-500);
+            box-shadow: 0 0 8px var(--emerald-glow);
+        }
+
+        .toggle-info {
+            flex: 1;
+        }
+
+        .toggle-title {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .toggle-desc {
+            font-size: 0.73rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        /* ═══════════════════════════════════════════════════
+           SCHEDULE TIMELINE
+        ═══════════════════════════════════════════════════ */
+        .timeline {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+        }
+
+        .timeline-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+            font-size: 0.8rem;
+        }
+
+        .timeline-item:last-child { border-bottom: none; }
+
+        .timeline-time {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            color: var(--emerald-400);
+            font-weight: 600;
+            min-width: 48px;
+        }
+
+        .timeline-dot {
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: var(--emerald-500);
+            flex-shrink: 0;
+            box-shadow: 0 0 6px var(--emerald-glow);
+        }
+
+        .timeline-desc {
+            color: var(--text-secondary);
+            font-size: 0.78rem;
+        }
+
+        /* ═══════════════════════════════════════════════════
+           DATA SYNC CARD
+        ═══════════════════════════════════════════════════ */
+        .mode-selector {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .mode-option {
+            padding: 12px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--glass-border);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            background: rgba(0,0,0,0.2);
+        }
+
+        .mode-option:hover {
+            border-color: var(--blue-500);
+            background: rgba(59,130,246,0.05);
+        }
+
+        .mode-option.selected {
+            border-color: var(--blue-500);
+            background: rgba(59,130,246,0.1);
+        }
+
+        .mode-option input[type="radio"] { display: none; }
+
+        .mode-title {
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 3px;
+        }
+
+        .mode-desc {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+        }
+
+        /* ═══════════════════════════════════════════════════
+           TERMINAL / LOGS
+        ═══════════════════════════════════════════════════ */
+        .terminal-wrap {
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            border: 1px solid var(--glass-border);
+        }
+
+        .terminal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            background: rgba(0,0,0,0.4);
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .terminal-dots {
+            display: flex;
+            gap: 6px;
+        }
+
+        .term-dot {
+            width: 10px; height: 10px;
+            border-radius: 50%;
+        }
+
+        .term-dot-r { background: #ff5f57; }
+        .term-dot-y { background: #ffbd2e; }
+        .term-dot-g { background: #28c840; }
+
+        .terminal-label {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.73rem;
+            color: var(--text-muted);
+        }
+
+        .terminal-body {
+            background: #030712;
+            padding: 16px;
+            height: 220px;
+            overflow-y: auto;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            line-height: 1.7;
+            white-space: pre-wrap;
+            word-break: break-all;
+            color: #7dd3a0;
+        }
+
+        .terminal-body::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .terminal-body::-webkit-scrollbar-track { background: transparent; }
+        .terminal-body::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.1);
+            border-radius: 2px;
+        }
+
+        /* ═══════════════════════════════════════════════════
+           STRATEGY PANEL
+        ═══════════════════════════════════════════════════ */
+        .strategy-section {
+            margin-top: 0;
+        }
+
+        .strategy-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .strategy-market-pill {
+            display: flex;
+            gap: 6px;
+        }
+
+        .market-pill {
+            flex: 1;
+            padding: 9px 8px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--glass-border);
+            cursor: pointer;
+            text-align: center;
+            font-size: 0.75rem;
+            font-weight: 600;
+            transition: all var(--transition-fast);
+            background: rgba(0,0,0,0.2);
+            color: var(--text-muted);
+        }
+
+        .market-pill:hover {
+            border-color: rgba(255,255,255,0.15);
+            color: var(--text-primary);
+        }
+
+        .market-pill.bull.selected { border-color: var(--emerald-500); background: rgba(16,185,129,0.12); color: var(--emerald-400); }
+        .market-pill.bear.selected { border-color: var(--red-500);     background: rgba(239,68,68,0.12);  color: var(--red-400); }
+        .market-pill.neutral.selected { border-color: var(--blue-500); background: rgba(59,130,246,0.12); color: var(--blue-400); }
+
+        /* ═══════════════════════════════════════════════════
+           INPUT WITH BUTTON INLINE
+        ═══════════════════════════════════════════════════ */
+        .input-with-btn {
+            display: flex;
+            gap: 8px;
+        }
+
+        .input-with-btn input {
+            flex: 1;
+        }
+
+        /* ═══════════════════════════════════════════════════
+           TOAST NOTIFICATIONS
+        ═══════════════════════════════════════════════════ */
+        #toast-container {
+            position: fixed;
+            bottom: 28px;
+            right: 28px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            pointer-events: none;
+        }
+
+        .toast {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 18px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-md);
+            box-shadow: 0 16px 40px rgba(0,0,0,0.4);
+            transform: translateX(120%);
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            pointer-events: auto;
+            max-width: 320px;
+        }
+
+        .toast.show {
+            transform: translateX(0);
+            opacity: 1;
+        }
+
+        .toast-icon {
+            width: 28px; height: 28px;
+            border-radius: 7px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            flex-shrink: 0;
+        }
+
+        .toast-success .toast-icon { background: rgba(16,185,129,0.2); }
+        .toast-error   .toast-icon { background: rgba(239,68,68,0.2); }
+        .toast-info    .toast-icon { background: rgba(59,130,246,0.2); }
+
+        .toast-text {
+            font-size: 0.82rem;
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        .toast-close {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 2px;
+            font-size: 14px;
+            margin-left: auto;
+            transition: color var(--transition-fast);
+        }
+
+        .toast-close:hover { color: var(--text-primary); }
+
+        /* ═══════════════════════════════════════════════════
+           DIVIDER
+        ═══════════════════════════════════════════════════ */
+        .divider {
+            height: 1px;
+            background: var(--glass-border);
+            margin: 18px 0;
+        }
+
+        /* ═══════════════════════════════════════════════════
+           ANIMATIONS
+        ═══════════════════════════════════════════════════ */
+        @keyframes pulse-ring {
+            0%   { box-shadow: 0 0 0 0 rgba(16,185,129,0.5); }
+            70%  { box-shadow: 0 0 0 6px rgba(16,185,129,0); }
+            100% { box-shadow: 0 0 0 0 rgba(16,185,129,0); }
+        }
+
+        @keyframes shimmer {
+            0%   { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(12px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .fade-in {
+            animation: fadeInUp 0.4s ease both;
+        }
+
+        /* Staggered children animation */
+        .metrics-row > *:nth-child(1) { animation: fadeInUp 0.4s 0.05s ease both; }
+        .metrics-row > *:nth-child(2) { animation: fadeInUp 0.4s 0.10s ease both; }
+        .metrics-row > *:nth-child(3) { animation: fadeInUp 0.4s 0.15s ease both; }
+        .metrics-row > *:nth-child(4) { animation: fadeInUp 0.4s 0.20s ease both; }
+
+        /* Number count-up placeholder shimmer */
+        .loading-shimmer {
+            background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.04) 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            border-radius: 4px;
+        }
+
+        /* ═══════════════════════════════════════════════════
+           SECTION SEPARATOR LABEL
+        ═══════════════════════════════════════════════════ */
+        .section-label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-muted);
+        }
+
+        .section-label::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--glass-border);
+        }
+
+        /* ═══════════════════════════════════════════════════
+           SCROLLBAR GLOBAL
+        ═══════════════════════════════════════════════════ */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.08);
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.15); }
+
+        /* ═══════════════════════════════════════════════════
+           BOTTOM ROW
+        ═══════════════════════════════════════════════════ */
+        .bottom-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════
+     SIDEBAR
+═══════════════════════════════════════ -->
+<nav class="sidebar" aria-label="主导航">
+    <div class="sidebar-logo" aria-hidden="true">📈</div>
+
+    <button class="nav-item active" id="nav-dashboard" onclick="switchView('dashboard')" title="总览">
+        <span>⬡</span>
+        <span class="nav-tooltip">系统总览</span>
+    </button>
+
+    <button class="nav-item" id="nav-control" onclick="switchView('control')" title="控制">
+        <span>⚙</span>
+        <span class="nav-tooltip">运行控制</span>
+    </button>
+
+    <button class="nav-item" id="nav-data" onclick="switchView('data')" title="数据">
+        <span>⬒</span>
+        <span class="nav-tooltip">数据同步</span>
+    </button>
+
+    <div class="nav-divider"></div>
+
+    <button class="nav-item" id="nav-config" onclick="switchView('config')" title="配置">
+        <span>⬡</span>
+        <span class="nav-tooltip">系统配置</span>
+    </button>
+</nav>
+
+<!-- ═══════════════════════════════════════
+     MAIN CONTENT
+═══════════════════════════════════════ -->
+<div class="main">
+
+    <!-- TOPBAR -->
+    <header class="topbar">
+        <div class="topbar-left">
+            <div class="topbar-title">StockAI Funnel · 三层漏斗智能选股</div>
+            <div class="topbar-sub">qwen2.5:7b-instruct-q4_K_M @ localhost:11434</div>
+        </div>
+        <div class="topbar-right">
+            <div class="system-badge">
+                <span class="pulse-dot" id="sys-pulse"></span>
+                <span id="sys-status-text">系统在线</span>
+            </div>
+            <div class="time-display" id="clock">--:--:--</div>
+        </div>
+    </header>
+
+    <!-- CONTENT -->
+    <div class="content">
+
+        <!-- ═══ 漏斗管道可视化 ═══ -->
+        <div class="funnel-viz" id="funnel-viz">
+            <div class="funnel-stage">
+                <div class="funnel-num" style="color: var(--emerald-400)">
+                    <span id="fv-total">—</span>
+                </div>
+                <div class="funnel-label">全市场股票</div>
+                <div class="funnel-bar" style="background: var(--emerald-500); width: 100%;"></div>
+            </div>
+            <div class="funnel-stage">
+                <div class="funnel-num" style="color: var(--blue-400)">
+                    <span id="fv-filtered">50</span>
+                </div>
+                <div class="funnel-label">第一层候选</div>
+                <div class="funnel-bar" style="background: var(--blue-500); width: 75%;"></div>
+            </div>
+            <div class="funnel-stage">
+                <div class="funnel-num" style="color: var(--violet-400)">
+                    <span id="fv-ai">≤5</span>
+                </div>
+                <div class="funnel-label">AI 深度分析</div>
+                <div class="funnel-bar" style="background: var(--violet-500); width: 45%;"></div>
+            </div>
+            <div class="funnel-stage">
+                <div class="funnel-num" style="color: var(--amber-400)">
+                    <span id="fv-push">今日推送</span>
+                </div>
+                <div class="funnel-label">飞书推送</div>
+                <div class="funnel-bar" style="background: var(--amber-500); width: 20%;"></div>
+            </div>
+        </div>
+
+        <!-- ═══ METRICS ROW ═══ -->
+        <div class="metrics-row">
+            <div class="metric-card">
+                <div class="metric-label">
+                    <span style="color:var(--emerald-400)">●</span> 股票名录
+                </div>
+                <div class="metric-value" id="db-stocks">—</div>
+                <div class="metric-sub">stock_list 表记录</div>
+                <div class="metric-icon">📋</div>
+                <div class="metric-accent-line" style="background: linear-gradient(90deg, var(--emerald-500), transparent)"></div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">
+                    <span style="color:var(--blue-400)">●</span> 日线行情
+                </div>
+                <div class="metric-value" id="db-daily">—</div>
+                <div class="metric-sub">daily_prices 表记录</div>
+                <div class="metric-icon">📊</div>
+                <div class="metric-accent-line" style="background: linear-gradient(90deg, var(--blue-500), transparent)"></div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">
+                    <span style="color:var(--violet-400)">●</span> 主力资金
+                </div>
+                <div class="metric-value" id="db-moneyflow">—</div>
+                <div class="metric-sub">moneyflow 表记录</div>
+                <div class="metric-icon">💰</div>
+                <div class="metric-accent-line" style="background: linear-gradient(90deg, var(--violet-500), transparent)"></div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">
+                    <span style="color:var(--amber-400)">●</span> 股东户数
+                </div>
+                <div class="metric-value" id="db-holder">—</div>
+                <div class="metric-sub">stk_holdernumber 表记录</div>
+                <div class="metric-icon">👥</div>
+                <div class="metric-accent-line" style="background: linear-gradient(90deg, var(--amber-500), transparent)"></div>
+            </div>
+        </div>
+
+        <!-- ═══ MAIN GRID ═══ -->
+        <div class="main-grid">
+
+            <!-- 系统状态 Card -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <div class="card-title-icon icon-emerald">📡</div>
+                        进程状态
+                    </div>
+                    <button class="btn btn-ghost btn-sm" onclick="refreshStatus()">↻ 刷新</button>
+                </div>
+
+                <div class="status-list">
+                    <div class="status-row">
+                        <div class="status-label">
+                            <span class="indicator inactive" id="scheduler-indicator"></span>
+                            自动调度器 (Scheduler)
+                        </div>
+                        <span class="card-badge badge-idle" id="scheduler-badge">已停止</span>
+                    </div>
+                    <div class="status-row">
+                        <div class="status-label">
+                            <span class="indicator inactive" id="fetcher-indicator"></span>
+                            数据拉取进程 (Fetcher)
+                        </div>
+                        <span class="card-badge badge-idle" id="fetcher-badge">闲置中</span>
+                    </div>
+                    <div class="status-row">
+                        <div class="status-label">
+                            <span class="indicator active" style="background:var(--emerald-500)"></span>
+                            本地 Ollama 服务
+                        </div>
+                        <span class="card-badge badge-live">localhost:11434</span>
+                    </div>
+                    <div class="status-row">
+                        <div class="status-label">
+                            <span class="indicator active" style="background:var(--blue-500)"></span>
+                            SQLite 数据库
+                        </div>
+                        <span class="card-badge" style="background:rgba(59,130,246,0.15);color:var(--blue-400)">stock_daily.db</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 自动调度 Card -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <div class="card-title-icon icon-blue">🤖</div>
+                        无人值守挂机
+                    </div>
+                    <span class="card-badge badge-idle" id="scheduler-status-badge">已停止</span>
+                </div>
+
+                <div class="scheduler-toggle">
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="scheduler-toggle" onchange="onToggleScheduler()">
+                        <span class="toggle-track"></span>
+                    </label>
+                    <div class="toggle-info">
+                        <div class="toggle-title" id="toggle-title">调度器已停止</div>
+                        <div class="toggle-desc">开启后在指定时间自动触发分析</div>
+                    </div>
+                </div>
+
+                <div class="section-label" style="margin-bottom:12px">每日自动执行计划</div>
+                <div class="timeline">
+                    <div class="timeline-item">
+                        <div class="timeline-time">08:40</div>
+                        <div class="timeline-dot"></div>
+                        <div class="timeline-desc">拉取昨日收盘数据 + 早盘前选股分析</div>
+                    </div>
+                    <div class="timeline-item">
+                        <div class="timeline-time">11:25</div>
+                        <div class="timeline-dot"></div>
+                        <div class="timeline-desc">午盘前资金流向更新推送</div>
+                    </div>
+                    <div class="timeline-item">
+                        <div class="timeline-time">14:30</div>
+                        <div class="timeline-dot"></div>
+                        <div class="timeline-desc">尾盘异动监测 + 三层漏斗筛选</div>
+                    </div>
+                    <div class="timeline-item">
+                        <div class="timeline-time">19:30</div>
+                        <div class="timeline-dot"></div>
+                        <div class="timeline-desc">全量复盘 + 飞书每日简报推送</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 手动触发 Card -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <div class="card-title-icon icon-violet">🎯</div>
+                        手动触发扫描
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="form-label">推送标题前缀</div>
+                    <input type="text" id="scan-session" value="手动触发" placeholder="例：早盘扫描">
+                </div>
+
+                <button class="btn btn-violet btn-full" onclick="runManualScan()" style="margin-bottom:12px">
+                    ⚡ 立即执行全市场三层漏斗分析
+                </button>
+
+                <div class="divider"></div>
+
+                <div class="form-group">
+                    <div class="form-label">并发 AI 分析数 <span id="worker-val">3</span></div>
+                    <div class="range-wrapper">
+                        <input type="range" id="fetch-workers" min="1" max="5" value="3"
+                               oninput="document.getElementById('worker-val').innerText = this.value">
+                        <span class="range-val" id="worker-display">3</span>
+                    </div>
+                </div>
+                <div style="font-size:0.72rem; color:var(--text-muted); line-height:1.5;">
+                    并发数控制 Ollama GPU 显存占用，建议 3-4。超过 5 可能导致显存溢出。
+                </div>
+            </div>
+
+        </div><!-- /main-grid -->
+
+        <!-- ═══ BOTTOM GRID ═══ -->
+        <div class="bottom-grid">
+
+            <!-- 数据同步 Card -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <div class="card-title-icon icon-blue">⚡</div>
+                        数据同步 (Tushare)
+                    </div>
+                    <span class="card-badge badge-idle" id="fetcher-status-badge">就绪</span>
+                </div>
+
+                <div class="section-label" style="margin-bottom:12px">更新模式</div>
+                <div class="mode-selector">
+                    <label class="mode-option selected" id="mode-inc" onclick="selectMode('incremental')">
+                        <input type="radio" name="fetchmode" value="incremental" checked>
+                        <div class="mode-title">⚡ 增量更新</div>
+                        <div class="mode-desc">仅拉取最新日期数据，速度快</div>
+                    </label>
+                    <label class="mode-option" id="mode-full" onclick="selectMode('full')">
+                        <input type="radio" name="fetchmode" value="full">
+                        <div class="mode-title">🔄 全量冷启动</div>
+                        <div class="mode-desc">从 2020-01-01 补齐所有历史数据</div>
+                    </label>
+                </div>
+
+                <button id="btn-run-fetch" class="btn btn-blue btn-full" onclick="runDataFetch()">
+                    📥 启动数据同步
+                </button>
+
+                <div style="margin-top:12px; padding:10px 12px; background:rgba(245,158,11,0.07); border:1px solid rgba(245,158,11,0.2); border-radius:var(--radius-sm); font-size:0.73rem; color:var(--amber-400); line-height:1.6;">
+                    ⚠️ 全量冷启动预计耗时数小时，请确保 Tushare 积分充足（建议 5000+ 分）
+                </div>
+            </div>
+
+            <!-- 系统配置 + 策略微调 Card -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <div class="card-title-icon icon-amber">⚙️</div>
+                        系统配置
+                    </div>
+                    <button class="btn btn-ghost btn-sm" onclick="saveConfig()">💾 保存</button>
+                </div>
+
+                <div class="form-group">
+                    <div class="form-label">Tushare API Token</div>
+                    <input type="password" id="cfg-tushare" placeholder="输入 Tushare Token（5000积分账户）">
+                </div>
+
+                <div class="form-group">
+                    <div class="form-label">飞书 Webhook URL</div>
+                    <div class="input-with-btn">
+                        <input type="password" id="cfg-feishu" placeholder="https://open.feishu.cn/open-apis/bot/...">
+                        <button class="btn btn-ghost btn-sm" onclick="testFeishu()" style="white-space:nowrap">🚀 测试</button>
+                    </div>
+                </div>
+
+                <div class="divider"></div>
+                <div class="section-label" style="margin-bottom:12px">策略微调</div>
+
+                <div class="form-group">
+                    <div class="form-label">大盘环境模式</div>
+                    <div class="strategy-market-pill">
+                        <div class="market-pill bull selected" id="pill-bull" onclick="selectMarket('牛市')">🟢 牛市</div>
+                        <div class="market-pill neutral" id="pill-neutral" onclick="selectMarket('震荡')">🟡 震荡</div>
+                        <div class="market-pill bear" id="pill-bear" onclick="selectMarket('熊市')">🔴 熊市</div>
+                    </div>
+                    <input type="hidden" id="ai-market-env" value="牛市">
+                </div>
+
+                <div class="form-group">
+                    <div class="form-label">最大允许乖离率 <span id="bias-val">15</span>%</div>
+                    <div class="range-wrapper">
+                        <input type="range" id="ai-max-bias" min="5" max="30" value="15"
+                               oninput="document.getElementById('bias-val').innerText=this.value">
+                        <span class="range-val" id="bias-display">15%</span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="form-label">定向扫描板块（留空=全市场）</div>
+                    <input type="text" id="ai-sector" placeholder="例：半导体, 消费电子, 新能源">
+                </div>
+
+                <button class="btn btn-primary btn-full" onclick="saveAllConfig()">
+                    💾 保存全部配置
+                </button>
+            </div>
+
+        </div><!-- /bottom-grid -->
+
+        <!-- ═══ TERMINAL LOG ═══ -->
+        <div class="terminal-wrap fade-in">
+            <div class="terminal-header">
+                <div class="terminal-dots">
+                    <div class="term-dot term-dot-r"></div>
+                    <div class="term-dot term-dot-y"></div>
+                    <div class="term-dot term-dot-g"></div>
+                </div>
+                <span class="terminal-label">实时执行日志 — 自动刷新 2s</span>
+                <button class="btn btn-ghost btn-sm" onclick="clearTerminal()" style="padding:3px 10px;font-size:0.7rem;">清屏</button>
+            </div>
+            <div id="terminal-logs" class="terminal-body">正在连接日志流...</div>
+        </div>
+
+    </div><!-- /content -->
+</div><!-- /main -->
+
+<!-- TOAST CONTAINER -->
+<div id="toast-container"></div>
+
+<!-- ═══════════════════════════════════════
+     JAVASCRIPT
+═══════════════════════════════════════ -->
+<script>
+    /* ── Clock ── */
+    function updateClock() {
+        const now = new Date();
+        document.getElementById('clock').textContent =
+            now.toLocaleTimeString('zh-CN', { hour12: false });
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    /* ── Toast ── */
+    function showToast(msg, type = 'success') {
+        const icons = { success: '✓', error: '✕', info: 'ℹ' };
+        const container = document.getElementById('toast-container');
+        const el = document.createElement('div');
+        el.className = `toast toast-${type}`;
+        el.innerHTML = `
+            <div class="toast-icon">${icons[type] || '✓'}</div>
+            <span class="toast-text">${msg}</span>
+            <button class="toast-close" onclick="this.parentElement.remove()">✕</button>`;
+        container.appendChild(el);
+        requestAnimationFrame(() => el.classList.add('show'));
+        setTimeout(() => {
+            el.classList.remove('show');
+            setTimeout(() => el.remove(), 400);
+        }, 3500);
+    }
+
+    /* ── API Helper ── */
+    async function fetchAPI(url, options = {}) {
+        try {
+            const res = await fetch(url, options);
+            if (!res.ok) throw new Error(await res.text());
+            return await res.json();
+        } catch (err) {
+            showToast('请求失败: ' + err.message, 'error');
+            throw err;
+        }
+    }
+
+    /* ── Number count-up animation ── */
+    function countUp(el, target, duration = 800) {
+        const start = Date.now();
+        const from = parseInt(el.textContent.replace(/,/g, '')) || 0;
+        const to = parseInt(target);
+        if (isNaN(to)) { el.textContent = target; return; }
+        const step = () => {
+            const elapsed = Date.now() - start;
+            const progress = Math.min(elapsed / duration, 1);
+            const eased = 1 - Math.pow(1 - progress, 3);
+            el.textContent = Math.round(from + (to - from) * eased).toLocaleString();
+            if (progress < 1) requestAnimationFrame(step);
+        };
+        requestAnimationFrame(step);
+    }
+
+    /* ── Status Refresh ── */
+    async function refreshStatus() {
+        let data;
+        try { data = await fetchAPI('/api/status'); }
+        catch(e) {
+            document.getElementById('sys-status-text').textContent = '连接失败';
+            document.getElementById('sys-pulse').style.background = 'var(--red-500)';
+            return;
+        }
+
+        // Scheduler
+        const sInd   = document.getElementById('scheduler-indicator');
+        const sBadge = document.getElementById('scheduler-badge');
+        const sBadge2= document.getElementById('scheduler-status-badge');
+        const toggle = document.getElementById('scheduler-toggle');
+        const toggleTitle = document.getElementById('toggle-title');
+
+        if (data.scheduler_running) {
+            sInd.className = 'indicator active';
+            sBadge.className = 'card-badge badge-live'; sBadge.textContent = '运行中';
+            sBadge2.className= 'card-badge badge-live'; sBadge2.textContent = '运行中';
+            toggle.checked = true;
+            toggleTitle.textContent = '调度器运行中';
+        } else {
+            sInd.className = 'indicator inactive';
+            sBadge.className = 'card-badge badge-idle'; sBadge.textContent = '已停止';
+            sBadge2.className= 'card-badge badge-idle'; sBadge2.textContent = '已停止';
+            toggle.checked = false;
+            toggleTitle.textContent = '调度器已停止';
+        }
+
+        // Fetcher
+        const fInd   = document.getElementById('fetcher-indicator');
+        const fBadge = document.getElementById('fetcher-badge');
+        const fBadge2= document.getElementById('fetcher-status-badge');
+        const bFetch = document.getElementById('btn-run-fetch');
+
+        if (data.fetcher_running) {
+            fInd.className = 'indicator active';
+            fBadge.className = fBadge2.className = 'card-badge badge-running';
+            fBadge.textContent = fBadge2.textContent = '拉取中…';
+            bFetch.disabled = true; bFetch.textContent = '🔄 任务进行中…';
+        } else {
+            fInd.className = 'indicator inactive';
+            fBadge.className = 'card-badge badge-idle'; fBadge.textContent = '闲置中';
+            fBadge2.className= 'card-badge badge-idle'; fBadge2.textContent = '就绪';
+            bFetch.disabled = false; bFetch.textContent = '📥 启动数据同步';
+        }
+
+        // DB Metrics with count-up
+        countUp(document.getElementById('db-stocks'),     data.db.stock_count);
+        countUp(document.getElementById('db-daily'),      data.db.daily_count);
+        countUp(document.getElementById('db-moneyflow'),  data.db.moneyflow_count);
+        countUp(document.getElementById('db-holder'),     data.db.holder_count);
+
+        // Funnel viz
+        const total = data.db.stock_count;
+        document.getElementById('fv-total').textContent =
+            total ? total.toLocaleString() : '—';
+    }
+
+    /* ── Scheduler Toggle ── */
+    async function onToggleScheduler() {
+        const checked = document.getElementById('scheduler-toggle').checked;
+        await toggleScheduler(checked ? 'start' : 'stop');
+    }
+
+    async function toggleScheduler(action) {
+        await fetchAPI('/api/scheduler', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action })
+        });
+        showToast(action === 'start' ? '🤖 自动挂机已启动' : '⏹ 自动挂机已停止',
+                  action === 'start' ? 'success' : 'info');
+        setTimeout(refreshStatus, 800);
+    }
+
+    /* ── Manual Scan ── */
+    async function runManualScan() {
+        const session = document.getElementById('scan-session').value;
+        await fetchAPI('/api/scan', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ session_name: session })
+        });
+        showToast('⚡ 三层漏斗扫描已触发，关注飞书推送', 'success');
+    }
+
+    /* ── Mode Selector ── */
+    let _selectedMode = 'incremental';
+    function selectMode(mode) {
+        _selectedMode = mode;
+        document.getElementById('mode-inc').classList.toggle('selected', mode === 'incremental');
+        document.getElementById('mode-full').classList.toggle('selected', mode === 'full');
+    }
+
+    /* ── Data Fetch ── */
+    async function runDataFetch() {
+        const workers = parseInt(document.getElementById('fetch-workers').value);
+        await fetchAPI('/api/fetch', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ workers, mode: _selectedMode })
+        });
+        showToast('📥 数据同步已在后台启动', 'success');
+        setTimeout(refreshStatus, 1000);
+    }
+
+    /* ── Config ── */
+    async function loadConfig() {
+        const data = await fetchAPI('/api/config');
+        document.getElementById('cfg-tushare').value = data.tushare_token;
+        document.getElementById('cfg-feishu').value  = data.feishu_webhook;
+    }
+
+    async function saveConfig() {
+        const token = document.getElementById('cfg-tushare').value;
+        const hook  = document.getElementById('cfg-feishu').value;
+        await fetchAPI('/api/config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tushare_token: token, feishu_webhook: hook })
+        });
+        showToast('💾 API 配置已保存', 'success');
+    }
+
+    async function testFeishu() {
+        try {
+            await fetchAPI('/api/test_feishu', { method: 'POST' });
+            showToast('🚀 飞书测试消息发送成功', 'success');
+        } catch(e) {}
+    }
+
+    /* ── Market Pills ── */
+    let _selectedMarket = '牛市';
+    function selectMarket(val) {
+        _selectedMarket = val;
+        document.getElementById('ai-market-env').value = val;
+        const map = { '牛市': 'bull', '震荡': 'neutral', '熊市': 'bear' };
+        ['bull','neutral','bear'].forEach(k => {
+            const el = document.getElementById('pill-' + k);
+            el.classList.remove('selected');
+        });
+        document.getElementById('pill-' + map[val]).classList.add('selected');
+    }
+
+    /* ── AI Config ── */
+    async function loadAIConfig() {
+        try {
+            const data = await fetchAPI('/api/ai_config');
+            selectMarket(data.market_env || '震荡');
+            const bias = data.max_bias || 15;
+            document.getElementById('ai-max-bias').value = bias;
+            document.getElementById('bias-val').textContent = bias;
+            document.getElementById('ai-sector').value = data.sector_focus || '';
+        } catch(e) {}
+    }
+
+    async function saveAIConfig() {
+        const env    = document.getElementById('ai-market-env').value;
+        const bias   = parseInt(document.getElementById('ai-max-bias').value);
+        const sector = document.getElementById('ai-sector').value;
+        await fetchAPI('/api/ai_config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ market_env: env, max_bias: bias, sector_focus: sector })
+        });
+        showToast('📐 策略参数已保存', 'success');
+    }
+
+    async function saveAllConfig() {
+        await saveConfig();
+        await saveAIConfig();
+    }
+
+    /* ── Sidebar Nav ── */
+    function switchView(view) {
+        ['dashboard','control','data','config'].forEach(v => {
+            document.getElementById('nav-' + v)?.classList.remove('active');
+        });
+        document.getElementById('nav-' + view)?.classList.add('active');
+        showToast('切换到 ' + view + ' 视图（暂为单页模式）', 'info');
+    }
+
+    /* ── Range sync ── */
+    document.getElementById('fetch-workers').addEventListener('input', function() {
+        document.getElementById('worker-val').textContent = this.value;
+        document.getElementById('worker-display').textContent = this.value;
+    });
+
+    document.getElementById('ai-max-bias').addEventListener('input', function() {
+        document.getElementById('bias-val').textContent = this.value;
+        document.getElementById('bias-display').textContent = this.value + '%';
+    });
+
+    /* ── Logs ── */
+    async function refreshLogs() {
+        try {
+            const data = await fetchAPI('/api/logs');
+            const term = document.getElementById('terminal-logs');
+            if (term.textContent !== data.logs) {
+                term.textContent = data.logs;
+                term.scrollTop = term.scrollHeight;
+            }
+        } catch(e) {
+            document.getElementById('terminal-logs').textContent =
+                '[日志服务不可达，请确认 web_server.py 正在运行]';
+        }
+    }
+
+    function clearTerminal() {
+        document.getElementById('terminal-logs').textContent = '— 日志已清除 —';
+    }
+
+    /* ── Init ── */
+    window.onload = () => {
+        refreshStatus();
+        loadConfig();
+        loadAIConfig();
+        setInterval(refreshStatus, 5000);
+        setInterval(refreshLogs, 2000);
+        refreshLogs();
+    };
+</script>
+</body>
+</html>

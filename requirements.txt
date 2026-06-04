@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+psutil
+pydantic
+pandas
+tushare
+requests
