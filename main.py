@@ -621,12 +621,11 @@ def push_to_feishu(
     if not trade_date and filter_results:
         trade_date = filter_results[0].get("trade_date", "")
 
-    push_list = [
-        r for r in ai_results
-        if r.get("total_score", 0) >= 80 and r.get("report_md", "")
-    ]
+    # 强制推送前5名
+    sorted_results = sorted(ai_results, key=lambda x: x.get("total_score", 0), reverse=True)
+    push_list = [r for r in sorted_results[:5] if r.get("report_md", "")]
 
-    log.info("第三层推送：AI结果 %d 只 → 推送 %d 只（≥80分）",
+    log.info("第三层推送：AI结果 %d 只 → 推送 %d 只（强制排名前5）",
              len(ai_results), len(push_list))
 
     # 1. 汇总卡片
@@ -766,19 +765,22 @@ def main(
         sector_risk=sector_risk,
     )
 
-    push_candidates = [r for r in ai_results if r.get("total_score", 0) >= 80]
+    # 强制推送前5名，不允许零推送
+    sorted_results = sorted(ai_results, key=lambda x: x.get("total_score", 0), reverse=True)
+    push_candidates = sorted_results[:5]  # 强制取前5名
     _cprint(_GREEN,
             f"  AI \u5206\u6790\u5b8c\u6210\uff1a{above_threshold} \u53ea\u8fdb\u5165\u5206\u6790 \u2192 "
-            f"{len(push_candidates)} \u53ea\u8fbe\u5230\u63a8\u9001\u95e8\u69db\uff08\u226580\u5206\uff09\n")
+            f"{len(push_candidates)} \u53ea\u6765\u81ea\u6700\u9AD8\u5206\u6392\u540D\n")
 
     # ── v4.0 新增：将精选结果暴露为模块级变量，供 scheduler 步骤4读取 ─────────
     global _last_selected_candidates
     _last_selected_candidates = [
         {
-            "ts_code":    r["ts_code"],
-            "name":       r.get("name", ""),
-            "total_score": r["total_score"],
-            "score_card": r.get("score_card", {}),   # 供 trade_plan 计算仓位
+            "ts_code":        r["ts_code"],
+            "name":           r.get("name", ""),
+            "total_score":    r["total_score"],
+            "score_card":     r.get("score_card", {}),   # 供 trade_plan 计算仓位
+            "ai_confidence":  r.get("ai_confidence", -1),  # 供 scheduler 信心过滤
         }
         for r in push_candidates
     ]
@@ -804,7 +806,7 @@ def main(
     _cprint(_BOLD, f"  预筛选:    {len(prescreened):>6,} 只  (SQL 活跃股过滤)")
     _cprint(_BOLD, f"  Top候选:   {len(scored_stocks):>6,} 只  (并行打分 Top-{TOP_N})")
     _cprint(_BOLD, f"  AI 分析:   {above_threshold:>6,} 只  (>={AI_TRIGGER_SCORE}分进入 Ollama)")
-    _cprint(_BOLD, f"  精选推送:  {len(push_candidates):>6,} 只  (>=80分推飞书)")
+    _cprint(_BOLD, f"  精选推送:  {len(push_candidates):>6,} 只  (强制排名前5)")
     _cprint(_BOLD, f"  总耗时:    {elapsed_total:>5.1f} 秒")
     _cprint(_BOLD, "═" * 65 + "\n")
 

@@ -8,7 +8,7 @@ market_env.py —— StockAI v4.0 大盘环境判断模块
     empty    (空仓)  →  max_pos = 0.00  今日休战，终止后续流程
 
 判断逻辑（双重降级）：
-    一级：查询 daily_prices 中的上证指数 (000001.SH)
+#    一级：查询 daily_index 中的上证指数 (000001.SH)
           计算60日均线及斜率：
             close > MA60 且 slope > +0.2%  → attack
             close < MA60 且 slope < -0.2%  → empty
@@ -56,13 +56,13 @@ MODE_ZH = {
 
 def _mode_from_index(conn: sqlite3.Connection):
     """
-    从 daily_prices 中读取上证指数 (000001.SH) 近120日收盘价。
+    从 daily_index 中读取上证指数 (000001.SH) 近120日收盘价。
     返回 (mode, max_pos, detail_str) 或 None（无数据时）。
     """
     try:
         df = pd.read_sql(
             """SELECT trade_date, close
-               FROM   daily_prices
+               FROM   daily_index
                WHERE  ts_code = '000001.SH'
                ORDER  BY trade_date DESC LIMIT 120""",
             conn
@@ -72,7 +72,7 @@ def _mode_from_index(conn: sqlite3.Connection):
         return None
 
     if df is None or len(df) < 62:
-        log.info("daily_prices 中上证指数数据不足（%d 行），启用降级方案", len(df) if df is not None else 0)
+        log.info("daily_index 中上证指数数据不足（%d 行），启用降级方案", len(df) if df is not None else 0)
         return None
 
     # 时序从旧到新，计算60日均线

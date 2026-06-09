@@ -54,11 +54,11 @@ try:
     # 得分 → 基础仓位映射（v3.3 Final 最终版 2026-06-09）
     # 决策依据：固定8%止损 + 动态仓位框架，防守仓位与止损幅度匹配
     POSITION_LIMITS = get_config("strategy.position_limits", {
-        "attack":  {"strong": 0.15, "medium": 0.08},   # 进攻：强信号15%
-        "defense": {"strong": 0.08, "medium": 0.03},   # 防守：强信号8%（与止损幅度匹配）
-        "neutral": {"strong": 0.10, "medium": 0.05},   # 中性：强信号10%
+        "attack":  {"strong": 0.00, "medium": 0.00},   # 进攻：不开新仓（2025年数据验证）
+        "defense": {"strong": 0.12, "medium": 0.05},   # 防守：强信号12%（集中火力）
+        "empty":   {"strong": 0.00, "medium": 0.00},   # 空仓：不开仓
     })
-    
+
     # 阈值配置
     THRESHOLDS = get_config("strategy.thresholds", {
         "strong": 30,
@@ -67,13 +67,13 @@ try:
     })
     
 except ImportError:
-    # 降级方案（v3.3 Final 最终版 2026-06-09）
-    # 决策依据：固定8%止损 + 动态仓位框架，防守仓位与止损幅度匹配
+    # 降级方案（v4.0 修正版 2026-06-09）
+    # 决策依据：进攻模式不开新仓（2025年数据验证胜率低），防守模式集中火力
     SINGLE_STOCK_MAX_POS = 0.20   # 单股绝对上限20%（铁律）
     POSITION_LIMITS = {
-        "attack":  {"strong": 0.15, "medium": 0.08},   # 进攻：强信号15%，中信号8%
-        "defense": {"strong": 0.08, "medium": 0.03},   # 防守：强信号8%，中信号3%
-        "neutral": {"strong": 0.10, "medium": 0.05},   # 中性：强信号10%，中信号5%
+        "attack":  {"strong": 0.00, "medium": 0.00},   # 进攻：不开新仓
+        "defense": {"strong": 0.12, "medium": 0.05},   # 防守：强信号12%（集中火力）
+        "empty":   {"strong": 0.00, "medium": 0.00},   # 空仓：不开仓
     }
     THRESHOLDS = {"strong": 30, "medium": 15, "filter": 0}
 

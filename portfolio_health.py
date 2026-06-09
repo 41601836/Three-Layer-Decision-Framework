@@ -98,11 +98,15 @@ def check_portfolio(portfolio_file: str = "portfolio.json") -> list:
             # 获取当前价格
             current_price = 0.0
             try:
-                data = analyzer.fetch_daily_data(ts_code)
-                if not data.empty:
-                    current_price = float(data.iloc[0]['close'])
-            except:
-                pass
+                # 直接查询数据库获取最新收盘价
+                row = analyzer.conn.execute(
+                    "SELECT close FROM daily_prices WHERE ts_code = ? ORDER BY trade_date DESC LIMIT 1",
+                    (ts_code,)
+                ).fetchone()
+                if row:
+                    current_price = float(row[0])
+            except Exception as e:
+                log.debug("获取当前价格失败 %s: %s", ts_code, e)
             
             # 计算盈亏
             pnl_pct = 0.0

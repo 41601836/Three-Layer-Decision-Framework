@@ -325,7 +325,8 @@ def _get_catalyst_score(industry: str, conn: sqlite3.Connection) -> int:
 def score_one(ts_code: str, name: str, industry: str,
               conn: sqlite3.Connection,
               cfg: dict = None,
-              weights: dict = None) -> Optional[Dict]:
+              weights: dict = None,
+              row=None) -> Optional[Dict]:
     """
     对单只股票执行 Python 硬过滤 + 多维评分。
     返回 None 表示被一票否决（不进入候选池）。
@@ -652,6 +653,7 @@ class FilterEngine:
                         conn=conn,
                         cfg=self.cfg,
                         weights=weights,
+                        row=row,
                     )
                     if r is None:
                         veto_cnt += 1
@@ -714,9 +716,19 @@ class FilterEngine:
             "stocks": results,
         }
 
+        def _json_default(o):
+            import numpy as np
+            if isinstance(o, np.integer):
+                return int(o)
+            elif isinstance(o, np.floating):
+                return float(o)
+            elif isinstance(o, np.ndarray):
+                return o.tolist()
+            raise TypeError(f"Object of type {o.__class__.__name__} is not JSON serializable")
+
         for path in [output_path, latest_path]:
             with open(path, "w", encoding="utf-8") as f:
-                json.dump(payload, f, ensure_ascii=False, indent=2)
+                json.dump(payload, f, ensure_ascii=False, indent=2, default=_json_default)
 
         log.info("💾 过滤结果已保存 → %s", output_path)
         return output_path

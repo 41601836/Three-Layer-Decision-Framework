@@ -305,15 +305,15 @@ def run_full_pipeline(session_name: str = "手动触发"):
         mode_zh = MODE_ZH.get(market_mode, market_mode)
         log.info("[大盘] 模式: %s | 仓位上限: %.0f%%", mode_zh, max_pos * 100)
 
-        # 空仓模式：推送休战通知
+        # 空仓模式：推送风险提示，但继续执行分析流程
         if market_mode == "empty":
             send_daily_brief(
                 market_mode="空仓",
                 max_position=0.0,
                 trade_date=today,
             )
-            log.info("空仓模式，今日休战")
-            return
+            log.info("⚠️ 空仓模式，继续执行分析但不生成买入计划")
+            # 不return，继续执行后续分析流程
 
     except Exception as e:
         log.warning("大盘环境判断失败，使用防守默认值: %s", e)

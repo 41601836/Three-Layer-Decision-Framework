@@ -1477,15 +1477,9 @@
                 <div class="divider"></div>
 
                 <div class="form-group">
-                    <div class="form-label">从持仓选择</div>
-                    <select id="washout-portfolio" class="washout-portfolio-select" onchange="onPortfolioSelect()">
-                        <option value="">请选择持仓股票...</option>
-                    </select>
+                    <div class="form-label">股票代码</div>
+                    <input id="washout-portfolio" class="washout-portfolio-input" type="text" placeholder="请输入股票代码（如：600000.SH）" oninput="onPortfolioInput()" />
                 </div>
-
-                <button class="btn btn-ghost btn-full" onclick="loadPortfolioStocks()" style="margin-top:8px">
-                    🔄 刷新持仓列表
-                </button>
             </div>
 
         </div><!-- /main-grid -->
@@ -1859,29 +1853,10 @@
     });
 
     /* ── Washout Analysis ── */
-    async function loadPortfolioStocks() {
-        try {
-            const data = await fetchAPI('/api/washout/portfolio');
-            const select = document.getElementById('washout-portfolio');
-            select.innerHTML = '<option value="">请选择持仓股票...</option>';
-            data.stocks.forEach(stock => {
-                const opt = document.createElement('option');
-                opt.value = stock.ts_code;
-                opt.textContent = `${stock.ts_code} - ${stock.name || '未知'}`;
-                select.appendChild(opt);
-            });
-            if (data.stocks.length === 0) {
-                showToast('暂无持仓，请先在托盘菜单中添加', 'info');
-            }
-        } catch(e) {
-            showToast('加载持仓失败', 'error');
-        }
-    }
-
-    function onPortfolioSelect() {
-        const select = document.getElementById('washout-portfolio');
-        if (select.value) {
-            document.getElementById('washout-code').value = select.value;
+    function onPortfolioInput() {
+        const input = document.getElementById('washout-portfolio');
+        if (input.value) {
+            document.getElementById('washout-code').value = input.value.trim();
         }
     }
 

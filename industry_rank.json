@@ -1,179 +1,179 @@
 {
-  "calc_date": "20260608",
-  "timestamp": "2026-06-08T20:05:40.228689",
+  "calc_date": "20260609",
+  "timestamp": "2026-06-09T15:37:08.918833",
   "main_line": [
-    "通信设备",
     "煤炭开采"
   ],
   "backup_line": [
     "焦炭加工",
-    "电器仪表",
-    "矿物制品",
     "机械基件",
+    "电器仪表",
     "机床制造",
-    "陶瓷",
-    "元器件",
-    "银行"
+    "化工机械",
+    "银行",
+    "轻工机械",
+    "工程机械",
+    "陶瓷"
   ],
   "all_industries": [
     {
-      "industry": "通信设备",
-      "avg_pct_chg": -0.291,
-      "net_mf_amount": 253.31,
-      "stock_count": 131,
-      "composite_score": 0.8405,
-      "tier": "main"
-    },
-    {
       "industry": "煤炭开采",
-      "avg_pct_chg": 0.414,
-      "net_mf_amount": 10.0,
+      "avg_pct_chg": 0.521,
+      "net_mf_amount": 16.03,
       "stock_count": 25,
-      "composite_score": 0.8361,
+      "composite_score": 0.9986,
       "tier": "main"
     },
     {
       "industry": "焦炭加工",
-      "avg_pct_chg": 0.382,
-      "net_mf_amount": -1.04,
+      "avg_pct_chg": 0.529,
+      "net_mf_amount": -2.85,
       "stock_count": 7,
-      "composite_score": 0.8215,
-      "tier": "backup"
-    },
-    {
-      "industry": "电器仪表",
-      "avg_pct_chg": 0.062,
-      "net_mf_amount": -2.73,
-      "stock_count": 90,
-      "composite_score": 0.7479,
-      "tier": "backup"
-    },
-    {
-      "industry": "矿物制品",
-      "avg_pct_chg": 0.072,
-      "net_mf_amount": -14.29,
-      "stock_count": 32,
-      "composite_score": 0.7425,
+      "composite_score": 0.9782,
       "tier": "backup"
     },
     {
       "industry": "机械基件",
-      "avg_pct_chg": 0.07,
-      "net_mf_amount": -16.42,
+      "avg_pct_chg": 0.157,
+      "net_mf_amount": -0.97,
       "stock_count": 116,
-      "composite_score": 0.7404,
+      "composite_score": 0.9157,
+      "tier": "backup"
+    },
+    {
+      "industry": "电器仪表",
+      "avg_pct_chg": 0.128,
+      "net_mf_amount": -8.46,
+      "stock_count": 90,
+      "composite_score": 0.902,
       "tier": "backup"
     },
     {
       "industry": "机床制造",
-      "avg_pct_chg": -0.007,
-      "net_mf_amount": -5.71,
+      "avg_pct_chg": 0.001,
+      "net_mf_amount": -3.2,
       "stock_count": 22,
-      "composite_score": 0.7302,
+      "composite_score": 0.8859,
       "tier": "backup"
     },
     {
-      "industry": "陶瓷",
-      "avg_pct_chg": -0.057,
-      "net_mf_amount": 10.45,
-      "stock_count": 5,
-      "composite_score": 0.7298,
-      "tier": "backup"
-    },
-    {
-      "industry": "元器件",
-      "avg_pct_chg": -0.13,
-      "net_mf_amount": 18.57,
-      "stock_count": 287,
-      "composite_score": 0.7187,
+      "industry": "化工机械",
+      "avg_pct_chg": -0.141,
+      "net_mf_amount": -7.01,
+      "stock_count": 12,
+      "composite_score": 0.8566,
       "tier": "backup"
     },
     {
       "industry": "银行",
-      "avg_pct_chg": -0.107,
-      "net_mf_amount": -15.53,
+      "avg_pct_chg": -0.153,
+      "net_mf_amount": -7.36,
       "stock_count": 42,
-      "composite_score": 0.701,
+      "composite_score": 0.8542,
       "tier": "backup"
     },
     {
-      "industry": "电信运营",
-      "avg_pct_chg": -0.244,
-      "net_mf_amount": 0.99,
-      "stock_count": 5,
-      "composite_score": 0.6812,
-      "tier": "avoid"
-    },
-    {
       "industry": "轻工机械",
-      "avg_pct_chg": -0.3,
-      "net_mf_amount": 0.19,
+      "avg_pct_chg": -0.289,
+      "net_mf_amount": 0.87,
       "stock_count": 7,
-      "composite_score": 0.668,
-      "tier": "avoid"
-    },
-    {
-      "industry": "玻璃",
-      "avg_pct_chg": -0.316,
-      "net_mf_amount": -17.09,
-      "stock_count": 19,
-      "composite_score": 0.6527,
-      "tier": "avoid"
-    },
-    {
-      "industry": "专用机械",
-      "avg_pct_chg": -0.347,
-      "net_mf_amount": -35.1,
-      "stock_count": 260,
-      "composite_score": 0.6336,
-      "tier": "avoid"
-    },
-    {
-      "industry": "铁路",
-      "avg_pct_chg": -0.444,
-      "net_mf_amount": -3.49,
-      "stock_count": 7,
-      "composite_score": 0.633,
-      "tier": "avoid"
-    },
-    {
-      "industry": "小金属",
-      "avg_pct_chg": -0.484,
-      "net_mf_amount": 8.35,
-      "stock_count": 60,
-      "composite_score": 0.6319,
-      "tier": "avoid"
-    },
-    {
-      "industry": "化工机械",
-      "avg_pct_chg": -0.439,
-      "net_mf_amount": -10.76,
-      "stock_count": 12,
-      "composite_score": 0.6292,
-      "tier": "avoid"
+      "composite_score": 0.8401,
+      "tier": "backup"
     },
     {
       "industry": "工程机械",
-      "avg_pct_chg": -0.484,
-      "net_mf_amount": -4.22,
+      "avg_pct_chg": -0.312,
+      "net_mf_amount": -0.12,
       "stock_count": 33,
-      "composite_score": 0.6235,
-      "tier": "avoid"
+      "composite_score": 0.8349,
+      "tier": "backup"
     },
     {
-      "industry": "塑料",
-      "avg_pct_chg": -0.463,
-      "net_mf_amount": -36.31,
-      "stock_count": 68,
-      "composite_score": 0.6065,
+      "industry": "陶瓷",
+      "avg_pct_chg": -0.43,
+      "net_mf_amount": 3.54,
+      "stock_count": 5,
+      "composite_score": 0.8186,
+      "tier": "backup"
+    },
+    {
+      "industry": "玻璃",
+      "avg_pct_chg": -0.124,
+      "net_mf_amount": -45.37,
+      "stock_count": 19,
+      "composite_score": 0.8153,
       "tier": "avoid"
     },
     {
       "industry": "石油开采",
-      "avg_pct_chg": -0.577,
-      "net_mf_amount": -18.46,
+      "avg_pct_chg": -0.464,
+      "net_mf_amount": -0.75,
       "stock_count": 20,
-      "composite_score": 0.5928,
+      "composite_score": 0.8077,
+      "tier": "avoid"
+    },
+    {
+      "industry": "铁路",
+      "avg_pct_chg": -0.463,
+      "net_mf_amount": -10.5,
+      "stock_count": 7,
+      "composite_score": 0.7966,
+      "tier": "avoid"
+    },
+    {
+      "industry": "矿物制品",
+      "avg_pct_chg": -0.381,
+      "net_mf_amount": -27.56,
+      "stock_count": 32,
+      "composite_score": 0.7911,
+      "tier": "avoid"
+    },
+    {
+      "industry": "塑料",
+      "avg_pct_chg": -0.344,
+      "net_mf_amount": -35.54,
+      "stock_count": 68,
+      "composite_score": 0.7884,
+      "tier": "avoid"
+    },
+    {
+      "industry": "船舶",
+      "avg_pct_chg": -0.5,
+      "net_mf_amount": -19.64,
+      "stock_count": 11,
+      "composite_score": 0.7796,
+      "tier": "avoid"
+    },
+    {
+      "industry": "纺织机械",
+      "avg_pct_chg": -0.594,
+      "net_mf_amount": -8.04,
+      "stock_count": 11,
+      "composite_score": 0.7767,
+      "tier": "avoid"
+    },
+    {
+      "industry": "出版业",
+      "avg_pct_chg": -0.653,
+      "net_mf_amount": -5.33,
+      "stock_count": 29,
+      "composite_score": 0.7695,
+      "tier": "avoid"
+    },
+    {
+      "industry": "化纤",
+      "avg_pct_chg": -0.543,
+      "net_mf_amount": -24.36,
+      "stock_count": 32,
+      "composite_score": 0.7666,
+      "tier": "avoid"
+    },
+    {
+      "industry": "摩托车",
+      "avg_pct_chg": -0.683,
+      "net_mf_amount": -6.11,
+      "stock_count": 11,
+      "composite_score": 0.7633,
       "tier": "avoid"
     }
   ]

@@ -1,13 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-feishu_bot.py —— 飞书机器人推送模块 (v3.0 交互卡片版)
+feishu_bot.py —— StockAI v4.0 飞书机器人推送模块 (全新交互卡片版)
 =====================================================================
-核心变更：
-  - 废弃纯文本推送（不再发几百行文字）
-  - 新增 send_feishu_card()：使用飞书交互式卡片 (Interactive Card) JSON
-  - 颜色分级：score >= 85 → 红色高亮；80-84 → 橙色；其他 → 蓝色
-  - send_stock_report()：将单只股票的 AI 分析结果格式化为精美卡片
-  - send_daily_summary()：发送今日精选汇总卡片（表格形式）
+核心功能：
+  1. 市场全局汇总卡片（涨跌家数、成交额、涨停统计、5日线占比、主线板块）
+  2. 板块汇总卡片（涨停家数、连板、信号统计、资金流向）
+  3. 精选金股卡片（完整评分体系、交易方案、风险提示、AI解读）
 
 飞书卡片文档参考：
   https://open.feishu.cn/document/ukTMukTMukTM/uAjNwUjLwYDM1QjLwITM
@@ -26,7 +24,6 @@ sys.path.insert(0, ROOT_DIR)
 
 log = logging.getLogger(__name__)
 
-# ── Webhook 地址读取（从 config.json 读取）─────────────────────────────────────
 try:
     from config_loader import get_config
     FEISHU_WEBHOOK = get_config("api.feishu_webhook", "")
@@ -36,19 +33,19 @@ except ImportError:
     except ImportError:
         FEISHU_WEBHOOK = os.environ.get("FEISHU_WEBHOOK", "")
 
-TIMEOUT = 12  # 请求超时（秒）
+TIMEOUT = 12
 
+# 色彩规范
+COLORS = {
+    "strong": "#f53f3f",      # 亮红 - 强信号/上涨/风险警示
+    "medium": "#ffaa00",      # 亮黄 - 中信号/普通提示
+    "filter": "#00b42a",      # 青绿 - 下跌/过滤标签
+    "text": "#e5e6eb",        # 浅灰 - 常规内容
+    "bg": "rgba(40,50,70,0.6)"# 半透深色 - 标签背景
+}
 
-# =============================================================================
-# 底层发送函数
-# =============================================================================
 
 def _post(payload: dict) -> bool:
-    """
-    向飞书 Webhook 发送 JSON payload。
-    返回 True 表示成功，False 表示失败。
-    飞书成功响应：{"code": 0, "msg": "success"}
-    """
     if not FEISHU_WEBHOOK:
         log.warning("FEISHU_WEBHOOK 未配置，跳过推送")
         return False
@@ -56,7 +53,6 @@ def _post(payload: dict) -> bool:
         resp = requests.post(FEISHU_WEBHOOK, json=payload, timeout=TIMEOUT)
         resp.raise_for_status()
         data = resp.json()
-        # 飞书自定义机器人返回 code=0 为成功
         if data.get("code", -1) == 0 or data.get("StatusCode", 1) == 0:
             log.info("飞书推送成功")
             return True
@@ -68,20 +64,7 @@ def _post(payload: dict) -> bool:
         return False
 
 
-# =============================================================================
-# 工具函数
-# =============================================================================
-
 def _score_to_color(score: float) -> str:
-    """
-    根据综合得分返回飞书卡片 header 颜色字符串。
-    飞书支持的颜色值：
-        red / orange / yellow / green / blue / purple / grey / turquoise / carmine / violet / indigo
-    分级规则：
-        score >= 85  → red     （旗舰级，强烈关注）
-        80 <= score < 85 → orange  （A级，纳入观察）
-        score < 80   → blue    （B/C级，仅参考）
-    """
     if score >= 85:
         return "red"
     elif score >= 80:
@@ -91,7 +74,6 @@ def _score_to_color(score: float) -> str:
 
 
 def _score_to_grade_emoji(score: float) -> str:
-    """得分 → 评级文字（含 emoji）"""
     if score >= 85:
         return "🔴 S级 · 强烈关注"
     elif score >= 80:
@@ -103,19 +85,7 @@ def _score_to_grade_emoji(score: float) -> str:
 
 
 def _extract_ai_conclusion(ai_text: str) -> str:
-    """
-    从 Ollama 返回的 Markdown 报告中提取「一句话决策」。
-
-    ai_report.py 使用的 SYSTEM_PROMPT 要求 AI 输出以下格式：
-        > **一句话决策**：[具体内容]
-    或者
-        **一句话决策**：[具体内容]
-
-    此函数优先提取该行；若找不到，则取报告第一个非空段落（截断到 80 字）。
-    """
     import re
-
-    # 优先匹配「一句话决策」行（支持引用块格式和普通格式）
     patterns = [
         r"[\*\>]*\s*\*\*一句话决策\*\*[：:]\s*(.+)",
         r"一句话决策[：:]\s*(.+)",
@@ -126,26 +96,20 @@ def _extract_ai_conclusion(ai_text: str) -> str:
         m = re.search(pat, ai_text)
         if m:
             conclusion = m.group(1).strip()
-            # 去掉末尾的 Markdown 符号
             conclusion = re.sub(r"[\*\`\[\]]+", "", conclusion).strip()
-            return conclusion[:100]  # 飞书卡片字段限制
-
-    # 兜底：取第一个非标题、非空行（去除 #、> 等 Markdown 符号）
+            return conclusion[:100]
     for line in ai_text.splitlines():
         line = re.sub(r"^[#\>\-\*\s]+", "", line).strip()
         if len(line) > 10:
             return line[:80] + ("…" if len(line) > 80 else "")
-
     return "AI 分析已完成，请查看完整报告"
 
 
 def _extract_operation(ai_text: str) -> str:
-    """从 AI 报告中提取操作方向（买入 / 观望 / 规避）"""
     import re
     m = re.search(r"\*\*操作方向\*\*[：:]\s*(.+?)(?:\n|$)", ai_text)
     if m:
         return re.sub(r"[\*\[\]]+", "", m.group(1)).strip()[:30]
-    # 关键词判断
     if any(w in ai_text for w in ["逢低建仓", "可以介入", "买入"]):
         return "🟢 逢低建仓"
     if any(w in ai_text for w in ["建议规避", "暂不介入", "卖出"]):
@@ -154,7 +118,6 @@ def _extract_operation(ai_text: str) -> str:
 
 
 def _extract_stop_loss(ai_text: str) -> str:
-    """从 AI 报告中提取防守止损价"""
     import re
     m = re.search(r"防守止损[：:][^\¥]*¥\s*([\d\.]+)", ai_text)
     if m:
@@ -166,9 +129,346 @@ def _extract_stop_loss(ai_text: str) -> str:
 
 
 # =============================================================================
-# 核心：单只股票交互式卡片
+# 新增：市场全局汇总卡片
 # =============================================================================
+def send_market_summary_card(
+    trade_date: str = "",
+    market_mode: str = "防守",
+    sh_index: float = 0.0,
+    sh_pct: float = 0.0,
+    up_count: int = 0,
+    down_count: int = 0,
+    total_stocks: int = 0,
+    turnover: float = 0.0,
+    limit_up_count: int = 0,
+    limit_down_count: int = 0,
+    ma5_ratio: float = 0.0,
+    main_sectors: list = None,
+    backup_sectors: list = None,
+) -> bool:
+    """
+    发送市场全局汇总卡片。
+    
+    参数：
+        trade_date: 交易日期
+        market_mode: 市场模式（进攻/防守/空仓）
+        sh_index: 上证指数点数
+        sh_pct: 上证指数涨跌幅
+        up_count: 上涨家数
+        down_count: 下跌家数
+        total_stocks: 总股票数
+        turnover: 成交额（亿元）
+        limit_up_count: 涨停家数
+        limit_down_count: 跌停家数
+        ma5_ratio: 5日线占比
+        main_sectors: 主线板块列表
+        backup_sectors: 备选板块列表
+    """
+    date_str = f"{trade_date[:4]}-{trade_date[4:6]}-{trade_date[6:8]}" if trade_date else datetime.now().strftime("%Y-%m-%d")
+    
+    up_ratio = up_count / total_stocks if total_stocks > 0 else 0.5
+    pct_color = "red" if sh_pct > 0 else ("green" if sh_pct < 0 else "grey")
+    
+    card = {
+        "config": {"wide_screen_mode": True},
+        "header": {
+            "title": {"tag": "plain_text", "content": "📊 市场全局汇总"},
+            "subtitle": {"tag": "plain_text", "content": date_str},
+            "template": "blue"
+        },
+        "elements": [
+            {
+                "tag": "column_set",
+                "flex_mode": "none",
+                "background_style": "grey",
+                "columns": [
+                    {
+                        "tag": "column", "width": "weighted", "weight": 2,
+                        "elements": [{"tag": "markdown",
+                            "content": f"**上证指数**\n{sh_index:.2f}\n<font color='{pct_color}'>{sh_pct:+.2f}%</font>"}]
+                    },
+                    {
+                        "tag": "column", "width": "weighted", "weight": 1,
+                        "elements": [{"tag": "markdown",
+                            "content": f"**市场模式**\n{market_mode}模式"}]
+                    },
+                    {
+                        "tag": "column", "width": "weighted", "weight": 1,
+                        "elements": [{"tag": "markdown",
+                            "content": f"**上涨占比**\n{up_ratio:.1%}"}]
+                    }
+                ]
+            },
+            {"tag": "hr"},
+            {
+                "tag": "column_set",
+                "flex_mode": "none",
+                "columns": [
+                    {
+                        "tag": "column", "width": "weighted", "weight": 1,
+                        "elements": [{"tag": "markdown",
+                            "content": f"**涨跌家数**\n↑ {up_count} | ↓ {down_count}"}]
+                    },
+                    {
+                        "tag": "column", "width": "weighted", "weight": 1,
+                        "elements": [{"tag": "markdown",
+                            "content": f"**成交额**\n{turnover:.0f} 亿"}]
+                    },
+                    {
+                        "tag": "column", "width": "weighted", "weight": 1,
+                        "elements": [{"tag": "markdown",
+                            "content": f"**涨停/跌停**\n{limit_up_count} / {limit_down_count}"}]
+                    },
+                    {
+                        "tag": "column", "width": "weighted", "weight": 1,
+                        "elements": [{"tag": "markdown",
+                            "content": f"**5日线占比**\n{ma5_ratio:.1%}"}]
+                    }
+                ]
+            },
+            {"tag": "hr"},
+            {
+                "tag": "markdown",
+                "content": (
+                    f"**🎯 主线板块**：{'、'.join(main_sectors) if main_sectors else '暂无'}\n"
+                    f"**📌 备选板块**：{'、'.join(backup_sectors) if backup_sectors else '暂无'}"
+                )
+            },
+            {
+                "tag": "note",
+                "elements": [{"tag": "plain_text", "content": "StockAI 量化系统 · 仅供参考"}]
+            }
+        ]
+    }
+    return _post({"msg_type": "interactive", "card": card})
 
+
+# =============================================================================
+# 新增：板块汇总卡片
+# =============================================================================
+def send_sector_summary_card(
+    sectors: list,
+    trade_date: str = ""
+) -> bool:
+    """
+    发送板块汇总卡片。
+    
+    sectors 列表中每个元素包含：
+        name: 板块名称
+        limit_up_count: 涨停家数
+        consecutive_count: 连板家数
+        signal_count: 信号数
+        money_flow: 资金流向（亿元）
+        trend: 趋势描述
+    """
+    date_str = f"{trade_date[:4]}-{trade_date[4:6]}-{trade_date[6:8]}" if trade_date else datetime.now().strftime("%Y-%m-%d")
+    
+    table_lines = ["**板块名称** | **涨停数** | **连板** | **信号数** | **资金流向**",
+                   ":--- | :---: | :---: | :---: | :---"]
+    for sector in sectors:
+        mf = sector.get("money_flow", 0)
+        mf_str = f"流入{mf:.1f}亿" if mf > 0 else f"流出{abs(mf):.1f}亿" if mf < 0 else "持平"
+        table_lines.append(
+            f"{sector.get('name', '')} | {sector.get('limit_up_count', 0)} | "
+            f"{sector.get('consecutive_count', 0)} | {sector.get('signal_count', 0)} | {mf_str}"
+        )
+    
+    card = {
+        "config": {"wide_screen_mode": True},
+        "header": {
+            "title": {"tag": "plain_text", "content": "📈 板块热力图"},
+            "subtitle": {"tag": "plain_text", "content": date_str},
+            "template": "purple"
+        },
+        "elements": [
+            {
+                "tag": "markdown",
+                "content": "\n".join(table_lines)
+            },
+            {
+                "tag": "note",
+                "elements": [{"tag": "plain_text", "content": "StockAI 量化系统 · 仅供参考"}]
+            }
+        ]
+    }
+    return _post({"msg_type": "interactive", "card": card})
+
+
+# =============================================================================
+# 重构：精选金股卡片（完整格式）
+# =============================================================================
+def send_stock_report_v2(
+    ts_code: str,
+    name: str,
+    total_score: float,
+    python_score: float,
+    ai_score: float,
+    report_md: str,
+    industry: str = "",
+    close_price: float = 0.0,
+    pct_chg: float = 0.0,
+    session_name: str = "",
+    trade_date: str = "",
+    market_mode: str = "防守",
+    # 新增字段
+    score_details: dict = None,
+    buy_range: str = "",
+    stop_loss_main: str = "",
+    stop_loss_struct: str = "",
+    final_stop_loss: str = "",
+    position_defense: str = "",
+    position_attack: str = "",
+    logic_basis: str = "",
+    risks: list = None,
+    ai_analysis: dict = None,
+) -> bool:
+    """
+    发送全新格式的精选金股卡片。
+    """
+    conclusion = _extract_ai_conclusion(report_md)
+    operation = _extract_operation(report_md)
+    
+    pct_str = f"{pct_chg:+.2f}%" if pct_chg != 0 else "N/A"
+    pct_color = "red" if pct_chg > 0 else ("green" if pct_chg < 0 else "grey")
+    
+    header_color = _score_to_color(total_score)
+    grade_text = _score_to_grade_emoji(total_score)
+    
+    filled = min(int(total_score // 4), 10)
+    bar = "█" * filled + "░" * (10 - filled)
+    
+    date_str = f"{trade_date[:4]}-{trade_date[4:6]}-{trade_date[6:8]}" if trade_date else datetime.now().strftime("%Y-%m-%d")
+    
+    score_details = score_details or {}
+    risks = risks or []
+    ai_analysis = ai_analysis or {}
+    
+    content_lines = []
+    
+    # 一、核心加分项
+    content_lines.append("## 一、核心评分明细")
+    content_lines.append("")
+    
+    add_items = []
+    deduct_items = []
+    for key, value in score_details.items():
+        if value > 0:
+            add_items.append(f"- **{key}**：+{value} 分")
+        elif value < 0:
+            deduct_items.append(f"- **{key}**：{value} 分")
+    
+    if add_items:
+        content_lines.append("### 🟢 加分项")
+        content_lines.extend(add_items)
+    
+    if deduct_items:
+        content_lines.append("")
+        content_lines.append("### 🔴 扣分项")
+        content_lines.extend(deduct_items)
+    
+    content_lines.append("")
+    content_lines.append(f"**总分计算**：{python_score:.0f} + {ai_score:.0f} = **{total_score:.0f} 分**")
+    
+    # 二、大盘与行业模式
+    content_lines.append("")
+    content_lines.append("## 二、大盘与行业模式")
+    content_lines.append(f"- **当前大盘模式**：{market_mode}模式")
+    content_lines.append(f"- **所属行业层级**：{industry}（普通行业）")
+    
+    # 三、交易方案
+    content_lines.append("")
+    content_lines.append("## 三、交易方案")
+    content_lines.append(f"- **操作方向**：{operation}")
+    content_lines.append(f"- **推荐仓位**：防守模式 {position_defense} | 进攻模式 {position_attack}")
+    content_lines.append(f"- **铁律限制**：单股持仓上限 20%，禁止超限")
+    
+    if buy_range:
+        content_lines.append(f"- **买入参考区间**：{buy_range}")
+    
+    content_lines.append("")
+    content_lines.append("### 🛡️ 双止损规则")
+    if stop_loss_main:
+        content_lines.append(f"- 主止损：{stop_loss_main}")
+    if stop_loss_struct:
+        content_lines.append(f"- 结构止损：{stop_loss_struct}")
+    if final_stop_loss:
+        content_lines.append(f"- **最终执行止损**：<font color='red'>{final_stop_loss}</font>")
+    
+    # 四、逻辑依据
+    content_lines.append("")
+    content_lines.append("## 四、逻辑依据")
+    content_lines.append(logic_basis if logic_basis else "待补充")
+    
+    # 五、重点风险提示
+    content_lines.append("")
+    content_lines.append("## 五、重点风险提示")
+    for risk in risks:
+        content_lines.append(f"- <font color='red'>{risk}</font>")
+    
+    # 六、后续跟踪计划
+    content_lines.append("")
+    content_lines.append("## 六、后续跟踪计划")
+    content_lines.append("- **核心观察指标**：成交量是否持续放大、主力资金是否延续流入")
+    content_lines.append("- **动态调仓策略**：")
+    content_lines.append("  - 放量上涨：持有并观察")
+    content_lines.append(f"  - 跌破止损价 {final_stop_loss}：立即止盈/止损离场")
+    content_lines.append("  - 连续2日主力净流出：减仓观望")
+    
+    # 七、AI专项解读
+    content_lines.append("")
+    content_lines.append("## 七、AI专项解读")
+    if ai_analysis:
+        content_lines.append("| 评估维度 | 得分 | 解读 |")
+        content_lines.append("|:---|:---:|:---|")
+        for dim, data in ai_analysis.items():
+            content_lines.append(f"| {dim} | {data.get('score', '-')} | {data.get('comment', '-')} |")
+        content_lines.append("")
+        content_lines.append(f"**AI一句话结论**：{conclusion}")
+    
+    card = {
+        "config": {"wide_screen_mode": True},
+        "header": {
+            "title": {"tag": "plain_text",
+                "content": f"{'🔥' if total_score >= 85 else '📈'} 今日精选金股 · {ts_code} {name}"},
+            "subtitle": {"tag": "plain_text",
+                "content": f"{session_name or ''} | {industry} | {date_str} 评估"},
+            "template": header_color
+        },
+        "elements": [
+            {
+                "tag": "column_set",
+                "flex_mode": "none",
+                "background_style": "grey",
+                "columns": [
+                    {
+                        "tag": "column", "width": "weighted", "weight": 2,
+                        "elements": [{"tag": "markdown",
+                            "content": f"**综合得分**\n**{int(total_score)}** 分  {bar}\n{grade_text}"}]
+                    },
+                    {
+                        "tag": "column", "width": "weighted", "weight": 1,
+                        "elements": [{"tag": "markdown",
+                            "content": f"**收盘价**\n¥{close_price:.2f}\n<font color='{pct_color}'>{pct_str}</font>"}]
+                    }
+                ]
+            },
+            {"tag": "hr"},
+            {
+                "tag": "markdown",
+                "content": "\n".join(content_lines)[:8000]
+            },
+            {
+                "tag": "note",
+                "elements": [{"tag": "plain_text", "content": "仅供参考，不构成投资建议"}]
+            }
+        ]
+    }
+    return _post({"msg_type": "interactive", "card": card})
+
+
+# =============================================================================
+# 兼容旧接口
+# =============================================================================
 def send_stock_report(
     ts_code: str,
     name: str,
@@ -182,209 +482,21 @@ def send_stock_report(
     session_name: str = "",
     trade_date: str = "",
 ) -> bool:
-    """
-    发送单只股票的 AI 深度诊断交互式卡片。
-
-    卡片结构：
-    ┌─────────────────────────────────────────┐
-    │ 🔥 今日精选金股 · [代码] [名称]          │  ← Header（颜色随分级变化）
-    ├─────────────────────────────────────────┤
-    │ 综合得分: ████░ 92分  [评级]            │
-    │ ─────────────────────────────────────── │
-    │ 📌 AI 核心结论                          │
-    │    [从 report_md 提取的一句话决策]       │
-    │ ─────────────────────────────────────── │
-    │ 操作方向 │ 今日涨跌 │ 止损参考          │  ← 三列数据
-    ├─────────────────────────────────────────┤
-    │ 评分构成：Python基础 XX | AI补充 XX     │
-    │ [查看完整报告] 按钮                     │
-    └─────────────────────────────────────────┘
-
-    参数：
-        ts_code      股票代码（如 000001.SZ）
-        name         股票名称
-        total_score  综合得分（Python分 + AI分）
-        python_score Python 硬过滤得分
-        ai_score     Ollama AI 加分
-        report_md    Ollama 返回的完整 Markdown 报告文本
-        industry     所属行业
-        close_price  最新收盘价
-        pct_chg      今日涨跌幅（%）
-        session_name 触发会话名称（显示在副标题）
-    """
-    # ── 从 AI 报告中提取关键字段 ──────────────────────────────────────────────
-    conclusion = _extract_ai_conclusion(report_md)
-    operation  = _extract_operation(report_md)
-    stop_loss  = _extract_stop_loss(report_md)
-
-    # ── 涨跌颜色 ─────────────────────────────────────────────────────────────
-    pct_str    = f"{pct_chg:+.2f}%" if pct_chg != 0 else "N/A"
-    pct_color  = "red" if pct_chg > 0 else ("green" if pct_chg < 0 else "grey")
-    # 注：A股红涨绿跌习惯
-
-    # ── 卡片颜色（与分级挂钩）────────────────────────────────────────────────
-    header_color  = _score_to_color(total_score)
-    grade_text    = _score_to_grade_emoji(total_score)
-
-    # ── 评分进度条（用 emoji 方块模拟，最高 100 分，每格 10 分）────────────────
-    filled  = min(int(total_score // 10), 10)
-    bar     = "█" * filled + "░" * (10 - filled)
-
-    # ── 截断过长的完整报告（飞书 Markdown 字段限制约 30KB）────────────────────
-    MAX_REPORT_LEN = 3500
-    report_truncated = report_md[:MAX_REPORT_LEN] + (
-        "\n\n…（内容过长已截断）" if len(report_md) > MAX_REPORT_LEN else ""
+    """兼容旧接口，转发到新格式"""
+    return send_stock_report_v2(
+        ts_code=ts_code,
+        name=name,
+        total_score=total_score,
+        python_score=python_score,
+        ai_score=ai_score,
+        report_md=report_md,
+        industry=industry,
+        close_price=close_price,
+        pct_chg=pct_chg,
+        session_name=session_name,
+        trade_date=trade_date,
     )
 
-    # ── 构建飞书交互式卡片 JSON ───────────────────────────────────────────────
-    # 飞书卡片 JSON 规范参考：
-    #   https://open.feishu.cn/document/uAjLw4CM/ukzMukzMukzM/feishu-cards/card-components
-    #
-    # 结构说明：
-    #   card.header        → 卡片顶部标题栏（template 控制背景色）
-    #   card.elements[]    → 卡片正文，按顺序渲染
-    #     tag: "markdown"  → 支持飞书 Markdown 语法
-    #     tag: "column_set"→ 多列布局（用于并排展示数据）
-    #     tag: "action"    → 按钮区
-    #     tag: "note"      → 底部灰色小字注释
-    #     tag: "hr"        → 分割线
-    card = {
-        "config": {
-            "wide_screen_mode": True   # 启用宽屏模式（PC/手机自适应）
-        },
-        "header": {
-            "title": {
-                "tag": "plain_text",
-                # 根据分级显示不同 emoji 前缀
-                "content": f"{'🔥' if total_score >= 85 else '📈'} 今日精选金股 · {ts_code}  {name}"
-            },
-            "subtitle": {
-                "tag": "plain_text",
-                "content": f"{session_name or ''}  |  {industry}  |  {trade_date[:4]}-{trade_date[4:6]}-{trade_date[6:8]} 评估"
-            },
-            # template 值决定卡片 header 背景色
-            # 可选：red / orange / yellow / green / blue / purple / grey
-            "template": header_color
-        },
-        "elements": [
-
-            # ── 评分区块 ─────────────────────────────────────────────────────
-            {
-                "tag": "column_set",
-                "flex_mode": "none",
-                "background_style": "grey",
-                "columns": [
-                    {
-                        "tag": "column",
-                        "width": "weighted",
-                        "weight": 2,
-                        "elements": [{
-                            "tag": "markdown",
-                            "content": (
-                                f"**综合得分**\n"
-                                f"**{int(total_score)}** 分  {bar}\n"
-                                f"{grade_text}"
-                            )
-                        }]
-                    },
-                    {
-                        "tag": "column",
-                        "width": "weighted",
-                        "weight": 1,
-                        "elements": [{
-                            "tag": "markdown",
-                            "content": (
-                                f"**收盘价**\n"
-                                f"¥{close_price:.2f}\n"
-                                f"<font color='{pct_color}'>{pct_str}</font>"
-                            )
-                        }]
-                    }
-                ]
-            },
-
-            {"tag": "hr"},
-
-            # ── AI 核心结论 ───────────────────────────────────────────────────
-            {
-                "tag": "markdown",
-                # 飞书 Markdown 支持加粗、颜色语法 <font color=''>
-                "content": (
-                    f"**📌 AI 核心结论**\n"
-                    f"> {conclusion}"
-                )
-            },
-
-            {"tag": "hr"},
-
-            # ── 三列数据：操作方向 | 止损参考 | 评分构成 ─────────────────────
-            {
-                "tag": "column_set",
-                "flex_mode": "none",
-                "columns": [
-                    {
-                        "tag": "column",
-                        "width": "weighted",
-                        "weight": 1,
-                        "elements": [{
-                            "tag": "markdown",
-                            "content": f"**操作方向**\n{operation}"
-                        }]
-                    },
-                    {
-                        "tag": "column",
-                        "width": "weighted",
-                        "weight": 1,
-                        "elements": [{
-                            "tag": "markdown",
-                            "content": f"**防守止损**\n{stop_loss}"
-                        }]
-                    },
-                    {
-                        "tag": "column",
-                        "width": "weighted",
-                        "weight": 1,
-                        "elements": [{
-                            "tag": "markdown",
-                            "content": (
-                                f"**评分构成**\n"
-                                f"Python {int(python_score)} + AI {int(ai_score)}"
-                            )
-                        }]
-                    }
-                ]
-            },
-
-            {"tag": "hr"},
-
-            # ── 完整 AI 报告折叠展示 ──────────────────────────────────────────
-            # 飞书卡片不支持原生折叠，用 markdown 块显示，超长内容已截断
-            {
-                "tag": "markdown",
-                "content": (
-                    f"**📋 完整诊断报告**\n"
-                    f"{report_truncated}"
-                )
-            },
-
-            # ── 底部注释 ──────────────────────────────────────────────────────
-            {
-                "tag": "note",
-                "elements": [{
-                    "tag": "plain_text",
-                    "content": "仅供参考，不构成投资建议"
-                }]
-            }
-        ]
-    }
-
-    payload = {"msg_type": "interactive", "card": card}
-    return _post(payload)
-
-
-# =============================================================================
-# 今日精选汇总卡片（发多只股票的汇总表）
-# =============================================================================
 
 def send_daily_summary(
     results: List[Dict],
@@ -392,132 +504,127 @@ def send_daily_summary(
     total_scanned: int = 5000,
     trade_date: str = "",
 ) -> bool:
-    """
-    发送今日精选金股汇总卡片（表格 + 分级统计）。
-
-    results 中每个 dict 需包含：
-        ts_code, name, industry, total_score, grade, ai_conclusion(可选)
-
-    卡片结构：
-    ┌─────────────────────────────────────────┐
-    │ 📊 StockAI 三层漏斗今日扫描报告         │
-    ├─────────────────────────────────────────┤
-    │ 全市场扫描 → 候选池 → AI 精选           │
-    ├─────────────────────────────────────────┤
-    │ 代码     名称   行业   得分  评级        │
-    │ 000001   平安   银行   92   🔴 S级       │
-    │ ...                                     │
-    ├─────────────────────────────────────────┤
-    │ S级: X只  A级: X只  总扫描: XXXX 只     │
-    └─────────────────────────────────────────┘
-    """
+    """发送今日精选汇总卡片"""
     if not results:
-        # 无候选股时发简单文本通知
         return send_text(
             f"📊 {session_name} · 三层漏斗扫描完成\n"
-            f"本次全市场扫描 {total_scanned:,} 只股票，暂无符合条件的精选标的（得分 > 80）。"
+            f"本次全市场扫描 {total_scanned:,} 只股票，暂无符合条件的精选标的。"
         )
-
-    # ── 分级统计 ──────────────────────────────────────────────────────────────
+    
     s_list = [r for r in results if r.get("total_score", 0) >= 85]
     a_list = [r for r in results if 80 <= r.get("total_score", 0) < 85]
-
-    # ── 构建股票列表 Markdown 表格 ────────────────────────────────────────────
-    # 飞书 Markdown 支持标准 GitHub 表格语法
+    
     table_lines = [
         "**股票代码** | **名称** | **行业** | **得分** | **评级**",
         ":--- | :--- | :--- | :---: | :---"
     ]
     for r in sorted(results, key=lambda x: x.get("total_score", 0), reverse=True):
-        score  = r.get("total_score", 0)
-        grade  = _score_to_grade_emoji(score)
+        score = r.get("total_score", 0)
+        grade = _score_to_grade_emoji(score)
         table_lines.append(
             f"{r['ts_code']} | {r['name']} | {r.get('industry','—')} | "
             f"**{int(score)}** | {grade}"
         )
-
+    
     table_md = "\n".join(table_lines)
-
-    # ── 决定卡片颜色（有 S 级用红色，仅 A 级用橙色）─────────────────────────
     header_color = "red" if s_list else ("orange" if a_list else "blue")
-
+    
+    date_str = f"{trade_date[:4]}-{trade_date[4:6]}-{trade_date[6:8]}" if trade_date else ""
+    
     card = {
         "config": {"wide_screen_mode": True},
         "header": {
-            "title": {
-                "tag": "plain_text",
-                "content": f"🔥 今日精选金股 · {session_name}"
-            },
-            "subtitle": {
-                "tag": "plain_text",
-                "content": (
-                    f"全市场 {total_scanned:,} 只 → Python 过滤 → AI 精选 {len(results)} 只  "
-                    f"|  {trade_date[:4]}-{trade_date[4:6]}-{trade_date[6:8]} 评估" if trade_date else
-                    f"全市场 {total_scanned:,} 只 → Python 过滤 → AI 精选 {len(results)} 只"
-                )
-            },
+            "title": {"tag": "plain_text", "content": f"🔥 今日精选金股 · {session_name}"},
+            "subtitle": {"tag": "plain_text",
+                "content": f"全市场 {total_scanned:,} 只 → Python 过滤 → AI 精选 {len(results)} 只 | {date_str}" if date_str else
+                f"全市场 {total_scanned:,} 只 → Python 过滤 → AI 精选 {len(results)} 只"},
             "template": header_color
         },
         "elements": [
-
-            # ── 漏斗统计数字 ──────────────────────────────────────────────────
             {
                 "tag": "column_set",
                 "flex_mode": "none",
                 "background_style": "grey",
                 "columns": [
-                    {
-                        "tag": "column", "width": "weighted", "weight": 1,
-                        "elements": [{"tag": "markdown",
-                                      "content": f"**全市场扫描**\n{total_scanned:,} 只"}]
-                    },
-                    {
-                        "tag": "column", "width": "weighted", "weight": 1,
-                        "elements": [{"tag": "markdown",
-                                      "content": f"**精选输出**\n{len(results)} 只（>80分）"}]
-                    },
-                    {
-                        "tag": "column", "width": "weighted", "weight": 1,
-                        "elements": [{"tag": "markdown",
-                                      "content": f"**S级 (≥85)**\n🔴 {len(s_list)} 只"}]
-                    },
-                    {
-                        "tag": "column", "width": "weighted", "weight": 1,
-                        "elements": [{"tag": "markdown",
-                                      "content": f"**A级 (80-84)**\n🟠 {len(a_list)} 只"}]
-                    },
+                    {"tag": "column", "width": "weighted", "weight": 1,
+                        "elements": [{"tag": "markdown", "content": f"**全市场扫描**\n{total_scanned:,} 只"}]},
+                    {"tag": "column", "width": "weighted", "weight": 1,
+                        "elements": [{"tag": "markdown", "content": f"**精选输出**\n{len(results)} 只"}]},
+                    {"tag": "column", "width": "weighted", "weight": 1,
+                        "elements": [{"tag": "markdown", "content": f"**S级 (≥85)**\n🔴 {len(s_list)} 只"}]},
+                    {"tag": "column", "width": "weighted", "weight": 1,
+                        "elements": [{"tag": "markdown", "content": f"**A级 (80-84)**\n🟠 {len(a_list)} 只"}]},
                 ]
             },
-
             {"tag": "hr"},
-
-            # ── 股票明细表格 ──────────────────────────────────────────────────
-            {
-                "tag": "markdown",
-                "content": table_md
-            },
-
+            {"tag": "markdown", "content": table_md},
             {"tag": "hr"},
-
-            # ── 底部注释 ──────────────────────────────────────────────────────
             {
                 "tag": "note",
-                "elements": [{
-                    "tag": "plain_text",
-                    "content": (
-                        "仅供参考，不构成投资建议"
-                    )
-                }]
+                "elements": [{"tag": "plain_text", "content": "仅供参考，不构成投资建议"}]
             }
         ]
     }
-
     return _post({"msg_type": "interactive", "card": card})
 
 
-# =============================================================================
-# 陈明专属：精简版推送（30秒可读完）
-# =============================================================================
+def send_text(text: str) -> bool:
+    payload = {
+        "msg_type": "post",
+        "content": {
+            "post": {
+                "zh_cn": {
+                    "title": "StockAI Funnel 通知",
+                    "content": [[{"tag": "text", "text": text}]]
+                }
+            }
+        }
+    }
+    return _post(payload)
+
+
+def send_scan_summary(candidates: list, session_name: str = "") -> bool:
+    results = []
+    for c in candidates:
+        results.append({
+            "ts_code": c.get("ts_code", ""),
+            "name": c.get("name", ""),
+            "industry": c.get("industry", ""),
+            "total_score": c.get("score", 0),
+            "grade": c.get("grade", "C"),
+        })
+    return send_daily_summary(results, session_name=session_name)
+
+
+def send_ai_report(ts_code: str, name: str, grade: str, report_md: str) -> bool:
+    score_map = {"S": 90, "A": 82, "B": 65, "C": 40}
+    total = score_map.get(grade, 70)
+    return send_stock_report(
+        ts_code=ts_code,
+        name=name,
+        total_score=total,
+        python_score=total * 0.7,
+        ai_score=total * 0.3,
+        report_md=report_md,
+    )
+
+
+def send_markdown_card(title: str, content: str, grade: str = "") -> bool:
+    color_map = {"S": "red", "A": "orange", "B": "yellow", "C": "grey"}
+    card = {
+        "config": {"wide_screen_mode": True},
+        "header": {
+            "title": {"tag": "plain_text", "content": title},
+            "template": color_map.get(grade, "blue")
+        },
+        "elements": [
+            {"tag": "markdown", "content": content[:4000]},
+            {"tag": "note", "elements": [{"tag": "plain_text",
+                "content": f"StockAI Funnel · {datetime.now().strftime('%Y-%m-%d %H:%M')}"}]}
+        ]
+    }
+    return _post({"msg_type": "interactive", "card": card})
+
 
 def send_daily_brief(
     market_mode: str = "防守",
@@ -530,20 +637,6 @@ def send_daily_brief(
     attachment_url: str = "",
     data_label: str = "",
 ) -> bool:
-    """
-    发送精简版"今日操作简报"，专为陈明设计，30秒可读完。
-    
-    参数：
-        market_mode: 市场环境（进攻/防守/空仓）
-        max_position: 仓位上限（0.3 = 30%）
-        main_industries: 主线行业列表
-        backup_industries: 备选行业列表
-        portfolio_status: 持仓体检结果列表
-        selected_stocks: 今日精选股票列表
-        trade_date: 交易日期
-        attachment_url: 完整报告附件链接
-        data_label: 数据日期标注（如"📅 数据基于：2026-06-07（昨日收盘）"）
-    """
     main_industries = main_industries or []
     backup_industries = backup_industries or []
     portfolio_status = portfolio_status or []
@@ -551,29 +644,22 @@ def send_daily_brief(
     
     date_str = f"{trade_date[:4]}-{trade_date[4:6]}-{trade_date[6:8]}" if trade_date else ""
     
-    # 构建简报内容
     content_lines = []
-    
-    # 标题
     content_lines.append(f"📈 **今日操作简报** | {date_str}")
     content_lines.append("")
     
-    # 数据日期标注
     if data_label:
         content_lines.append(data_label)
         content_lines.append("")
     
-    # 市场环境
     content_lines.append(f"🔍 **市场环境**：{market_mode}模式，仓位控制在{int(max_position*100)}%以内")
     
-    # 主线行业
     if main_industries:
         content_lines.append(f"📊 **主线行业**：{'、'.join(main_industries)}")
     if backup_industries:
         content_lines.append(f"   **备选**：{'、'.join(backup_industries)}")
     content_lines.append("")
     
-    # 持仓体检
     if portfolio_status:
         content_lines.append("📌 **您的持仓**：")
         for pos in portfolio_status:
@@ -590,7 +676,6 @@ def send_daily_brief(
                 content_lines.append(f"   理由：{reason}")
         content_lines.append("")
     
-    # 今日精选
     if selected_stocks:
         content_lines.append("🔥 **今日精选**：")
         for stock in selected_stocks:
@@ -602,11 +687,9 @@ def send_daily_brief(
             content_lines.append(f"🟢 **{ts_code} {name}**（{score}分）→ {suggestion}")
         content_lines.append("")
     
-    # 底部提示
     content_lines.append("⏰ 完整报告见附件")
     content_lines.append("⚠️ 量化系统生成，不构成投资建议")
     
-    # 转为飞书卡片
     card = {
         "config": {"wide_screen_mode": True},
         "header": {
@@ -615,17 +698,10 @@ def send_daily_brief(
             "template": "blue"
         },
         "elements": [
-            {
-                "tag": "markdown",
-                "content": "\n".join(content_lines)
-            },
-            {
-                "tag": "note",
-                "elements": [{"tag": "plain_text", "content": "仅供参考，不构成投资建议"}]
-            }
+            {"tag": "markdown", "content": "\n".join(content_lines)},
+            {"tag": "note", "elements": [{"tag": "plain_text", "content": "仅供参考，不构成投资建议"}]}
         ]
     }
-    
     return _post({"msg_type": "interactive", "card": card})
 
 
@@ -638,22 +714,8 @@ def send_intraday_alert(
     trigger_value: str,
     suggestion: str = "立即清仓",
 ) -> bool:
-    """
-    发送盘中紧急告警（增强版，添加关键词通过飞书安全检测）。
-    
-    参数：
-        ts_code: 股票代码
-        name: 股票名称
-        current_price: 当前价格
-        pct_chg: 涨跌幅
-        trigger_type: 触发类型（跌破止损/接近跌停/主力异常流出）
-        trigger_value: 触发值（如止损价）
-        suggestion: 操作建议
-    """
-    from datetime import datetime
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
     
-    # 构建内容（添加关键词）
     content_lines = []
     content_lines.append("🚨 **StockAI 盘中紧急告警通知**")
     content_lines.append("")
@@ -681,51 +743,31 @@ def send_intraday_alert(
             "template": "red"
         },
         "elements": [
-            {
-                "tag": "markdown",
-                "content": "\n".join(content_lines)
-            },
-            {
-                "tag": "note",
-                "elements": [{"tag": "plain_text", "content": "StockAI 量化系统 · 盘中监控 · 投资有风险"}]
-            }
+            {"tag": "markdown", "content": "\n".join(content_lines)},
+            {"tag": "note", "elements": [{"tag": "plain_text", "content": "StockAI 量化系统 · 盘中监控 · 投资有风险"}]}
         ]
     }
-    
     return _post({"msg_type": "interactive", "card": card})
 
 
 def send_portfolio_report(holdings: list, trade_date: str = "") -> bool:
-    """
-    发送独立的"持仓健康度报告"，专为陈明设计。
-    
-    参数：
-        holdings: 持仓列表，来自 portfolio_health.check_portfolio() 返回值
-        trade_date: 交易日期 (如 20260608)
-    """
     date_str = f"{trade_date[:4]}-{trade_date[4:6]}-{trade_date[6:8]}" if trade_date else datetime.now().strftime("%Y-%m-%d")
     
-    # 构建报告内容（添加关键词以通过飞书安全检测）
     content_lines = []
-    
-    # 标题（添加关键词）
-    content_lines.append("� **StockAI 持仓健康度量化分析报告**")
+    content_lines.append("📊 **StockAI 持仓健康度量化分析报告**")
     content_lines.append(f"📅 报告日期：{date_str}")
     content_lines.append("")
     
     if not holdings:
-        # 无持仓时的提示
         content_lines.append("⚠️ 当前无持仓记录，请在 StockAI 托盘菜单中添加股票持仓")
         content_lines.append("股票代码格式：600519.SH（上海）或 000001.SZ（深圳）")
     else:
-        # 添加摘要
         total_count = len(holdings)
         buy_count = sum(1 for h in holdings if "持有" in h.get("suggestion", ""))
         sell_count = sum(1 for h in holdings if "减仓" in h.get("suggestion", "") or "清仓" in h.get("suggestion", ""))
         content_lines.append(f"📈 持仓概览：共 {total_count} 只股票，建议持有 {buy_count} 只，建议减仓 {sell_count} 只")
         content_lines.append("")
         
-        # 逐个显示持仓健康度
         content_lines.append("### 个股详细分析")
         for holding in holdings:
             ts_code = holding.get("ts_code", "")[:6]
@@ -737,66 +779,40 @@ def send_portfolio_report(holdings: list, trade_date: str = "") -> bool:
             suggestion = holding.get("suggestion", "")
             reason = holding.get("reason", "")
             
-            # 决定emoji
-            if "清仓" in suggestion:
-                emoji = "🔴"
-            elif "减仓" in suggestion:
-                emoji = "🟠"
-            elif "持有" in suggestion:
-                emoji = "✅"
-            else:
-                emoji = "🟡"
-            
-            # 盈亏颜色标记
+            emoji = "🔴" if "清仓" in suggestion else ("🟠" if "减仓" in suggestion else ("✅" if "持有" in suggestion else "🟡"))
             pnl_color = "green" if pnl_pct > 0 else ("red" if pnl_pct < 0 else "grey")
             
-            # 完整信息（添加关键词）
             content_lines.append(f"{emoji} **{ts_code} {name}**（量化评分：{score}分）")
             content_lines.append(f"   成本价：¥{cost:.2f} | 当前价：¥{current_price:.2f} | 盈亏：<font color='{pnl_color}'>{pnl_pct:+.2f}%</font>")
             content_lines.append(f"   📌 操作建议：{suggestion}")
             content_lines.append(f"   📝 量化理由：{reason}")
             
-            # 计算建议止损（简单逻辑：成本价 * 0.95）
             stop_loss = cost * 0.95
             if current_price > 0 and pnl_pct > 0:
                 content_lines.append(f"   🎯 建议止损价：¥{max(stop_loss, cost):.2f}")
             
             content_lines.append("")
     
-    # 底部提示（添加关键词）
     content_lines.append("---")
-    content_lines.append("� 本报告由 StockAI 量化分析系统自动生成，基于多因子评分模型")
-    content_lines.append("📊 数据来源：主力资金流向、筹码结构、股东户数变化等量化指标")
-    content_lines.append("⚠️ 免责声明：本报告仅供参考，不构成任何投资建议，投资有风险")
+    content_lines.append("📊 本报告由 StockAI 量化分析系统自动生成")
+    content_lines.append("⚠️ 免责声明：本报告仅供参考，不构成任何投资建议")
     
-    # 转为飞书卡片
     card = {
         "config": {"wide_screen_mode": True},
         "header": {
-            "title": {"tag": "plain_text", "content": "� StockAI 持仓健康度量化分析"},
+            "title": {"tag": "plain_text", "content": "📊 StockAI 持仓健康度量化分析"},
             "subtitle": {"tag": "plain_text", "content": f"{date_str} · {len(holdings) if holdings else 0}只持仓"},
             "template": "blue"
         },
         "elements": [
-            {
-                "tag": "markdown",
-                "content": "\n".join(content_lines)
-            },
-            {
-                "tag": "note",
-                "elements": [{"tag": "plain_text", "content": "StockAI 量化系统 · 仅供参考 · 投资有风险"}]
-            }
+            {"tag": "markdown", "content": "\n".join(content_lines)},
+            {"tag": "note", "elements": [{"tag": "plain_text", "content": "StockAI 量化系统 · 仅供参考 · 投资有风险"}]}
         ]
     }
-    
     return _post({"msg_type": "interactive", "card": card})
 
 
 def send_error_notification(error_msg: str) -> bool:
-    """
-    发送系统错误通知到飞书（增强版，添加关键词）
-    """
-    # 构建内容（添加关键词）
     content_lines = []
     content_lines.append("🚨 **StockAI 量化系统异常告警通知**")
     content_lines.append("")
@@ -810,7 +826,7 @@ def send_error_notification(error_msg: str) -> bool:
     content_lines.append("   如问题持续，请联系技术支持")
     content_lines.append("")
     content_lines.append("---")
-    content_lines.append("📊 StockAI 量化分析系统 · 系统监控通知 · 请及时处理")
+    content_lines.append("📊 StockAI 量化分析系统 · 系统监控通知")
     
     card = {
         "config": {"wide_screen_mode": True},
@@ -818,79 +834,7 @@ def send_error_notification(error_msg: str) -> bool:
             "title": {"tag": "plain_text", "content": "🚨 StockAI 系统异常告警"},
             "template": "red"
         },
-        "elements": [
-            {
-                "tag": "markdown",
-                "content": "\n".join(content_lines)
-            }
-        ]
-    }
-    
-    return _post({"msg_type": "interactive", "card": card})
-
-
-# =============================================================================
-# 兼容旧接口（send_scan_summary / send_ai_report / send_text）
-# =============================================================================
-
-def send_text(text: str) -> bool:
-    """发送纯文本（兼容旧调用 / 错误通知用）"""
-    payload = {
-        "msg_type": "post",
-        "content": {
-            "post": {
-                "zh_cn": {
-                    "title": "StockAI Funnel 通知",
-                    "content": [[{"tag": "text", "text": text}]]
-                }
-            }
-        }
-    }
-    return _post(payload)
-
-
-def send_scan_summary(candidates: list, session_name: str = "") -> bool:
-    """兼容 scheduler.py 旧调用：转发至 send_daily_summary"""
-    results = []
-    for c in candidates:
-        results.append({
-            "ts_code":     c.get("ts_code", ""),
-            "name":        c.get("name", ""),
-            "industry":    c.get("industry", ""),
-            "total_score": c.get("score", 0),
-            "grade":       c.get("grade", "C"),
-        })
-    return send_daily_summary(results, session_name=session_name)
-
-
-def send_ai_report(ts_code: str, name: str, grade: str, report_md: str) -> bool:
-    """兼容旧调用：用最小信息组装 send_stock_report"""
-    score_map = {"S": 90, "A": 82, "B": 65, "C": 40}
-    total = score_map.get(grade, 70)
-    return send_stock_report(
-        ts_code=ts_code,
-        name=name,
-        total_score=total,
-        python_score=total * 0.7,
-        ai_score=total * 0.3,
-        report_md=report_md,
-    )
-
-
-def send_markdown_card(title: str, content: str, grade: str = "") -> bool:
-    """兼容旧调用：简单卡片"""
-    color_map = {"S": "red", "A": "orange", "B": "yellow", "C": "grey"}
-    card = {
-        "config": {"wide_screen_mode": True},
-        "header": {
-            "title": {"tag": "plain_text", "content": title},
-            "template": color_map.get(grade, "blue")
-        },
-        "elements": [
-            {"tag": "markdown", "content": content[:4000]},
-            {"tag": "note", "elements": [{"tag": "plain_text",
-                                          "content": f"StockAI Funnel · {datetime.now().strftime('%Y-%m-%d %H:%M')}"}]}
-        ]
+        "elements": [{"tag": "markdown", "content": "\n".join(content_lines)}]
     }
     return _post({"msg_type": "interactive", "card": card})
 
@@ -905,32 +849,6 @@ def send_full_daily_briefing(
     selected_stocks: list = None,
     trade_date: str = ""
 ) -> bool:
-    """
-    恢复旧版完整格式推送：飞书推送更新 · 每日精选
-    
-    参数：
-        market_mode: 市场环境（进攻/防守/空仓）
-        max_position: 仓位上限
-        main_industries: 主线行业列表
-        backup_industries: 备选行业列表
-        market_rise_ratio: 上涨占比
-        portfolio_status: 持仓体检结果（可选）
-        selected_stocks: 精选股票列表，每只股票包含：
-            - ts_code: 股票代码
-            - name: 股票名称
-            - total_score: 综合得分
-            - grade: 评级
-            - main_money: 主力资金流向（字符串或数值）
-            - hsgt_5d: 近5日北向资金
-            - holder_chg: 股东户数变化（%）
-            - block_premium: 大宗交易情况（字符串）
-            - margin_ratio: 融资余额占比（%）
-            - ai_conclusion: AI核心结论
-            - buy_range: 买入区间
-            - position: 仓位建议
-            - stop_loss: 止损价
-        trade_date: 交易日期
-    """
     main_industries = main_industries or []
     backup_industries = backup_industries or []
     portfolio_status = portfolio_status or []
@@ -939,11 +857,8 @@ def send_full_daily_briefing(
     date_str = f"{trade_date[:4]}-{trade_date[4:6]}-{trade_date[6:8]}" if trade_date else datetime.now().strftime("%Y-%m-%d")
     
     content_lines = []
-    
-    # 标题
     content_lines.append("## 🔥 飞书推送更新 · 每日精选\n")
     
-    # 整体分析
     content_lines.append("### 📊 整体分析")
     content_lines.append(f"- **市场环境**：{market_mode}模式，仓位控制在{int(max_position*100)}%以内")
     
@@ -954,7 +869,6 @@ def send_full_daily_briefing(
     
     content_lines.append(f"- **市场温度**：上涨占比{market_rise_ratio:.1%}\n")
     
-    # 您的持仓
     if portfolio_status:
         content_lines.append("### 📌 您的持仓")
         for pos in portfolio_status:
@@ -967,7 +881,6 @@ def send_full_daily_briefing(
                 content_lines.append(f"  理由：{reason}")
         content_lines.append("")
     
-    # 精选股票
     if selected_stocks:
         content_lines.append("### 🔍 精选股票")
         for stock in selected_stocks:
@@ -979,7 +892,6 @@ def send_full_daily_briefing(
             content_lines.append(f"#### **{name}（{ts_code}）**")
             content_lines.append(f"- **综合得分**：{total_score}分 · **评级**：{grade}")
             
-            # 主力资金
             main_money = stock.get("main_money", "N/A")
             if isinstance(main_money, (int, float)):
                 if main_money > 0:
@@ -989,7 +901,6 @@ def send_full_daily_briefing(
             else:
                 content_lines.append(f"- **主力资金**：{main_money}")
             
-            # 北向资金
             hsgt_5d = stock.get("hsgt_5d", "N/A")
             if isinstance(hsgt_5d, (int, float)):
                 if hsgt_5d > 0:
@@ -999,7 +910,6 @@ def send_full_daily_briefing(
             else:
                 content_lines.append(f"- **北向资金**：{hsgt_5d}")
             
-            # 股东户数
             holder_chg = stock.get("holder_chg", "N/A")
             if isinstance(holder_chg, (int, float)):
                 if holder_chg < 0:
@@ -1009,23 +919,19 @@ def send_full_daily_briefing(
             else:
                 content_lines.append(f"- **股东户数**：{holder_chg}")
             
-            # 大宗交易
             block_premium = stock.get("block_premium", "无")
             content_lines.append(f"- **大宗交易**：近期{'有' if block_premium and '有' in block_premium else '无'}溢价成交")
             
-            # 融资余额
             margin_ratio = stock.get("margin_ratio", "N/A")
             if isinstance(margin_ratio, (int, float)):
                 content_lines.append(f"- **融资余额**：占流通市值{margin_ratio:.2%}")
             else:
                 content_lines.append(f"- **融资余额**：{margin_ratio}")
             
-            # AI核心结论
             ai_conclusion = stock.get("ai_conclusion", "")
             if ai_conclusion:
                 content_lines.append(f"- **AI核心结论**：{ai_conclusion}")
             
-            # 交易计划
             buy_range = stock.get("buy_range", "")
             position = stock.get("position", "")
             stop_loss = stock.get("stop_loss", "")
@@ -1038,13 +944,11 @@ def send_full_daily_briefing(
                 if stop_loss:
                     content_lines.append(f"  止损价：{stop_loss}")
             
-            content_lines.append("")  # 分隔
+            content_lines.append("")
     
-    # 底部提示
     content_lines.append("---")
     content_lines.append("⚠️ 量化系统生成，不构成投资建议")
     
-    # 构建飞书卡片
     card = {
         "config": {"wide_screen_mode": True},
         "header": {
@@ -1053,101 +957,80 @@ def send_full_daily_briefing(
             "template": "red" if selected_stocks else "blue"
         },
         "elements": [
-            {
-                "tag": "markdown",
-                "content": "\n".join(content_lines)[:8000]
-            },
-            {
-                "tag": "note",
-                "elements": [{"tag": "plain_text",
-                              "content": f"StockAI Funnel · {datetime.now().strftime('%Y-%m-%d %H:%M')}"}]
-            }
+            {"tag": "markdown", "content": "\n".join(content_lines)[:8000]},
+            {"tag": "note", "elements": [{"tag": "plain_text",
+                "content": f"StockAI Funnel · {datetime.now().strftime('%Y-%m-%d %H:%M')}"}]}
         ]
     }
-    
     return _post({"msg_type": "interactive", "card": card})
 
 
-# =============================================================================
-# 独立测试入口
-# =============================================================================
 if __name__ == "__main__":
     import logging as _logging
     _logging.basicConfig(level=_logging.INFO,
                          format="%(asctime)s [%(levelname)s] %(message)s")
-
-    # 测试1：单只股票报告卡片
-    print("[TEST 1] 发送单只股票卡片...")
-    ok1 = send_stock_report(
-        ts_code="000001.SZ",
-        name="平安银行",
+    
+    print("[TEST 1] 发送市场全局汇总卡片...")
+    ok1 = send_market_summary_card(
+        trade_date="20260609",
+        market_mode="防守",
+        sh_index=3959.34,
+        sh_pct=-0.85,
+        up_count=1856,
+        down_count=3348,
+        total_stocks=5214,
+        turnover=8560,
+        limit_up_count=32,
+        limit_down_count=8,
+        ma5_ratio=0.42,
+        main_sectors=["白酒", "电力", "金融"],
+        backup_sectors=["光伏", "半导体"]
+    )
+    print(f"  市场汇总卡片: {'成功' if ok1 else '失败'}")
+    
+    print("[TEST 2] 发送板块汇总卡片...")
+    ok2 = send_sector_summary_card(
+        sectors=[
+            {"name": "白酒", "limit_up_count": 5, "consecutive_count": 2, "signal_count": 3, "money_flow": 12.5},
+            {"name": "电力", "limit_up_count": 8, "consecutive_count": 3, "signal_count": 5, "money_flow": 8.3},
+            {"name": "金融", "limit_up_count": 3, "consecutive_count": 1, "signal_count": 2, "money_flow": -2.1},
+        ],
+        trade_date="20260609"
+    )
+    print(f"  板块汇总卡片: {'成功' if ok2 else '失败'}")
+    
+    print("[TEST 3] 发送精选金股卡片(v2)...")
+    ok3 = send_stock_report_v2(
+        ts_code="600519.SH",
+        name="贵州茅台",
         total_score=88,
         python_score=62,
         ai_score=26,
-        report_md=(
-            "# 平安银行 (000001.SZ) | 综合评级: S级\n"
-            "> **一句话决策**：量价结构优秀，筹码高度集中，建议逢低建仓，止损设在前低。\n\n"
-            "## 核心交易计划\n"
-            "- **操作方向**：🟢 逢低建仓\n"
-            "- **仓位建议**：**15%**\n"
-            "- **防守止损**：¥10.20\n\n"
-            "## 多维诊断分析\n"
-            "| 维度 | 状态 | 核心解读 |\n"
-            "|:---|:---|:---|\n"
-            "| 技术形态 | 多头排列 | 均线向上发散，趋势健康 |\n"
-            "| 资金量能 | 量比 1.83 | 温和放量上涨，买盘积极 |\n"
-        ),
-        industry="银行",
-        close_price=10.99,
-        pct_chg=0.73,
-        session_name="早盘异动",
-    )
-    print(f"  单股卡片: {'成功' if ok1 else '失败'}")
-
-    # 测试2：汇总卡片
-    print("[TEST 2] 发送汇总摘要卡片...")
-    ok2 = send_daily_summary(
-        results=[
-            {"ts_code": "000001.SZ", "name": "平安银行", "industry": "银行",
-             "total_score": 88, "grade": "S"},
-            {"ts_code": "600519.SH", "name": "贵州茅台", "industry": "白酒",
-             "total_score": 83, "grade": "A"},
-            {"ts_code": "300750.SZ", "name": "宁德时代", "industry": "新能源",
-             "total_score": 81, "grade": "A"},
-        ],
-        session_name="尾盘信号",
-        total_scanned=5207,
-    )
-    print(f"  汇总卡片: {'成功' if ok2 else '失败'}")
-
-    # 测试3：完整格式每日精选
-    print("[TEST 3] 发送完整格式每日精选...")
-    ok3 = send_full_daily_briefing(
+        report_md="# 贵州茅台分析报告\n> **一句话决策**：建议逢低建仓",
+        industry="白酒",
+        close_price=1688.00,
+        pct_chg=1.25,
         market_mode="防守",
-        max_position=0.3,
-        main_industries=["白酒", "电力"],
-        backup_industries=["光伏", "银行"],
-        market_rise_ratio=0.58,
-        portfolio_status=[
-            {"ts_code": "600519.SH", "name": "贵州茅台", "action": "继续持有", "reason": "主力净流入+2300万"},
+        score_details={
+            "主力资金": 15,
+            "筹码结构": 15,
+            "三日资金背离": 0,
+            "振幅风险": -5
+        },
+        buy_range="¥1650 ~ ¥1700",
+        stop_loss_main="¥1606",
+        stop_loss_struct="¥1568",
+        final_stop_loss="¥1568",
+        position_defense="2%",
+        position_attack="8%",
+        logic_basis="资金面：主力资金当日逆势净流入，做多意愿较强；筹码面：股东户数连续下降，散户筹码向主力集中；行业面：所属行业无重大利空。",
+        risks=[
+            "短期风险：个股振幅过大，市场情绪波动易引发价格回撤",
+            "潜在风险：存在限售股解禁压力，短期或出现筹码抛售"
         ],
-        selected_stocks=[
-            {
-                "ts_code": "000858.SZ",
-                "name": "五粮液",
-                "total_score": 33,
-                "grade": "强信号",
-                "main_money": 2100,
-                "hsgt_5d": 3500,
-                "holder_chg": -0.085,
-                "block_premium": "有",
-                "margin_ratio": 0.045,
-                "ai_conclusion": "量价结构优秀，筹码高度集中，建议逢低建仓",
-                "buy_range": "¥145-148",
-                "position": "轻仓介入，仓位10-15%",
-                "stop_loss": "¥142"
-            }
-        ],
-        trade_date="20260608"
+        ai_analysis={
+            "产业催化": {"score": 9, "comment": "行业无重大政策/题材催化"},
+            "环境适配": {"score": 8, "comment": "个股走势适配当前市场环境"}
+        }
     )
-    print(f"  完整格式每日精选: {'成功' if ok3 else '失败'}")
+    print(f"  精选金股卡片(v2): {'成功' if ok3 else '失败'}")
