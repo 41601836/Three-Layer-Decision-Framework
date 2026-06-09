@@ -140,7 +140,7 @@ def toggle_scheduler(cmd: SchedulerCmd):
 def test_feishu():
     try:
         from scripts.feishu_bot import send_text
-        send_text("🔔 StockAI v2.2 测试消息：您的 Webhook 配置正确，飞书通道连通性正常！")
+        send_text("🔔 StockAI v4.0 测试消息：您的 Webhook 配置正确，飞书通道连通性正常！")
         return {"status": "success", "message": "Test message sent"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -164,6 +164,45 @@ def get_logs():
             return {"logs": "".join(lines)}
     except Exception as e:
         return {"logs": f"无法读取日志: {e}"}
+
+# ──────────────────────────────────────────────────────────────
+# 洗盘分析 API
+# ──────────────────────────────────────────────────────────────
+
+class WashoutRequest(BaseModel):
+    ts_code: str
+
+@app.post("/api/washout/analyze")
+def analyze_washout(req: WashoutRequest):
+    try:
+        from washout_analyst import analyze, analyze_and_save
+        
+        ts_code = req.ts_code.strip()
+        if not ts_code:
+            raise HTTPException(status_code=400, detail="股票代码不能为空")
+        
+        report = analyze(ts_code)
+        filepath = analyze_and_save(ts_code)
+        
+        return {
+            "status": "success",
+            "ts_code": ts_code,
+            "report": report,
+            "file_path": filepath
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/washout/portfolio")
+def get_portfolio_for_washout():
+    portfolio_file = os.path.join(ROOT_DIR, "portfolio.json")
+    if not os.path.exists(portfolio_file):
+        return {"stocks": []}
+    try:
+        with open(portfolio_file, "r", encoding="utf-8") as f:
+            return {"stocks": json.load(f)}
+    except Exception as e:
+        return {"stocks": []}
 
 import json
 AI_CONFIG_PATH = os.path.join(ROOT_DIR, "ai_config.json")

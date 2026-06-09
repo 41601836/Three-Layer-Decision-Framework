@@ -611,22 +611,6 @@ def fetch_bak_basic_one(conn, ts_code, global_start, global_end):
                      (ts_code, start, end, ts_code, len(rows)))
         conn.commit()
     return len(rows)
-    if df is None or df.empty:
-        return 0
-    rows = [(r.ts_code, r.trade_date,
-             _safe(r,'name'), _safe(r,'industry'), _safe(r,'area'),
-             _safe(r,'pe'), _safe(r,'float_share'), _safe(r,'total_share'),
-             _safe(r,'total_assets'), _safe(r,'liquid_assets'), _safe(r,'fixed_assets'),
-             _safe(r,'holder_num'), _safe(r,'list_date'), _safe(r,'undp'),
-             _safe(r,'per_undp'), _safe(r,'rev_yoy'), _safe(r,'profit_yoy'),
-             _safe(r,'gpr'), _safe(r,'npr'))
-            for r in df.itertuples(index=False)]
-    with DB_LOCK:
-        conn.executemany("INSERT OR REPLACE INTO bak_basic VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", rows)
-        conn.execute("INSERT OR REPLACE INTO bak_basic_log (ts_code,last_start,last_end,rows_total,updated_at) VALUES (?,?,?,COALESCE((SELECT rows_total FROM bak_basic_log WHERE ts_code=?),0)+?,datetime('now','localtime'))",
-                     (ts_code, start, end, ts_code, len(rows)))
-        conn.commit()
-    return len(rows)
 
 
 def fetch_mins_recent(conn, ts_code, days=5):

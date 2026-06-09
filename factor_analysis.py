@@ -59,36 +59,51 @@ def load_moneyflow_data(conn: sqlite3.Connection, start_date: str, end_date: str
 
 def load_holder_data(conn: sqlite3.Connection) -> pd.DataFrame:
     """加载股东户数数据"""
-    df = pd.read_sql("""
-        SELECT ts_code, end_date, holder_num
-        FROM stk_holdernumber
-        ORDER BY ts_code, end_date DESC
-    """, conn)
-    return df
+    try:
+        df = pd.read_sql("""
+            SELECT ts_code, end_date, holder_num
+            FROM stk_holdernumber
+            ORDER BY ts_code, end_date DESC
+        """, conn)
+        return df
+    except Exception:
+        print("  ⚠️  stk_holdernumber 表不存在，跳过")
+        return pd.DataFrame()
 
 
 def load_margin_data(conn: sqlite3.Connection, start_date: str, end_date: str) -> pd.DataFrame:
     """加载融资余额数据"""
-    df = pd.read_sql("""
-        SELECT ts_code, trade_date, rzye
-        FROM stk_margin
-        WHERE trade_date BETWEEN ? AND ?
-        ORDER BY ts_code, trade_date
-    """, conn, params=(start_date, end_date))
-    df['trade_date'] = pd.to_datetime(df['trade_date'])
-    return df
+    try:
+        df = pd.read_sql("""
+            SELECT ts_code, trade_date, rzye
+            FROM stk_margin
+            WHERE trade_date BETWEEN ? AND ?
+            ORDER BY ts_code, trade_date
+        """, conn, params=(start_date, end_date))
+        df['trade_date'] = pd.to_datetime(df['trade_date'])
+        return df
+    except Exception:
+        print("  ⚠️  stk_margin 表不存在，跳过")
+        return pd.DataFrame()
 
 
 def load_hsgt_data(conn: sqlite3.Connection, start_date: str, end_date: str) -> pd.DataFrame:
     """加载北向资金数据"""
-    df = pd.read_sql("""
-        SELECT trade_date, north_money
-        FROM hsgt_moneyflow
-        WHERE trade_date BETWEEN ? AND ?
-        ORDER BY trade_date
-    """, conn, params=(start_date, end_date))
-    df['trade_date'] = pd.to_datetime(df['trade_date'])
-    return df
+    try:
+        df = pd.read_sql("""
+            SELECT trade_date, north_money
+            FROM hsgt_moneyflow
+            WHERE trade_date BETWEEN ? AND ?
+            ORDER BY trade_date
+        """, conn, params=(start_date, end_date))
+        df['trade_date'] = pd.to_datetime(df['trade_date'])
+        # 数据清洗：确保 north_money 是数字类型
+        df['north_money'] = pd.to_numeric(df['north_money'], errors='coerce')
+        df = df.dropna(subset=['north_money'])
+        return df
+    except Exception as e:
+        print(f"  ⚠️  hsgt_moneyflow 表不存在或数据异常: {e}")
+        return pd.DataFrame()
 
 
 def load_block_trade_data(conn: sqlite3.Connection, start_date: str, end_date: str) -> pd.DataFrame:
@@ -103,6 +118,7 @@ def load_block_trade_data(conn: sqlite3.Connection, start_date: str, end_date: s
         df['trade_date'] = pd.to_datetime(df['trade_date'])
         return df
     except Exception:
+        print("  ⚠️  block_trade 表不存在，跳过")
         return pd.DataFrame()
 
 
@@ -218,21 +234,25 @@ def analyze_new_factors(df: pd.DataFrame, moneyflow_df: pd.DataFrame,
         """, sqlite3.connect(DB_PATH), params=(BACKTEST_START,))
         if not hsgt_df.empty:
             hsgt_df['trade_date'] = pd.to_datetime(hsgt_df['trade_date'])
-            hsgt_df['north_inflow_5d'] = hsgt_df['north_money'].rolling(5).sum()
-            hsgt_df['north_5d_positive'] = (hsgt_df['north_inflow_5d'] > 0).astype(int)
+            # 数据清洗：确保 north_money 是数字类型
+            hsgt_df['north_money'] = pd.to_numeric(hsgt_df['north_money'], errors='coerce')
+            hsgt_df = hsgt_df.dropna(subset=['north_money'])
+            if not hsgt_df.empty:
+                hsgt_df['north_inflow_5d'] = hsgt_df['north_money'].rolling(5).sum()
+                hsgt_df['north_5d_positive'] = (hsgt_df['north_inflow_5d'] > 0).astype(int)
 
-            # 合并到日线数据
-            df = df.merge(hsgt_df[['trade_date', 'north_5d_positive']], on='trade_date', how='left')
-            df['north_5d_positive'] = df['north_5d_positive'].fillna(0)
+                # 合并到日线数据
+                df = df.merge(hsgt_df[['trade_date', 'north_5d_positive']], on='trade_date', how='left')
+                df['north_5d_positive'] = df['north_5d_positive'].fillna(0)
 
-            # 计算IC
-            ic_result = calculate_ic_ir(df, 'north_5d_positive')
-            new_factor_results['北向资金连续流入'] = {
-                'ic': ic_result['ic'],
-                'ir': ic_result['ir'],
-                'description': '近5日北向资金净流入>0',
-                'effective': abs(ic_result['ic']) > 0.02
-            }
+                # 计算IC
+                ic_result = calculate_ic_ir(df, 'north_5d_positive')
+                new_factor_results['北向资金连续流入'] = {
+                    'ic': ic_result['ic'],
+                    'ir': ic_result['ir'],
+                    'description': '近5日北向资金净流入>0',
+                    'effective': abs(ic_result['ic']) > 0.02
+                }
 
     # 新因子2：缩量程度（近20日均量/60日均量<0.5）
     if 'volume_shrink' in df.columns:

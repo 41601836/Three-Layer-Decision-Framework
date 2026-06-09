@@ -47,27 +47,91 @@ log = logging.getLogger("filter_engine")
 # =============================================================================
 FILTER_CONFIG = {
     # 数据窗口
-    "lookback_days":       60,     # 向前取多少个自然日的行情
-    "min_data_points":     20,     # 每只股票至少需要 N 日数据
+    "lookback_days":           60,     # 向前取多少个自然日的行情
+    "min_data_points":         20,     # 每只股票至少需要 N 日数据
     # 硬过滤阈值
-    "min_amount":          5e7,    # 成交额最低 5000 万元（Tushare amount 单位：千元）
-    "min_amount_tushare":  50000,  # 对应 tushare daily_prices.amount（千元）
-    "max_amplitude_veto":  0.50,   # 振幅 > 50% 直接剔除（爆炒/异常波动）
+    "min_amount":              5e7,    # 成交额最低 5000 万元（Tushare amount 单位：千元）
+    "min_amount_tushare":      50000,  # 对应 tushare daily_prices.amount（千元）
+    "max_amplitude_veto":      0.50,   # 振幅 > 50% 直接剔除（爆炒/异常波动）
+    "min_circulating_mv_billion": 10.0,  # 流通市值最低 10 亿元（过滤微盘股）
     # 技术指标参数
-    "macd_fast":           12,
-    "macd_slow":           26,
-    "macd_signal":         9,
-    "rsi_period":          14,
-    "rsi_oversold":        30,     # RSI 低于此值视为超卖（加分区）
-    "rsi_overbought":      75,     # RSI 高于此值视为超买（不加分）
+    "macd_fast":               12,
+    "macd_slow":               26,
+    "macd_signal":             9,
+    "rsi_period":              14,
+    "rsi_oversold":            30,     # RSI 低于此值视为超卖（加分区）
+    "rsi_overbought":          75,     # RSI 高于此值视为超买（不加分）
     # 均线
-    "ma_short":            5,
-    "ma_mid":              20,
-    "ma_long":             60,
+    "ma_short":                5,
+    "ma_mid":                  20,
+    "ma_long":                 60,
     # 输出
-    "top_n":               50,
-    "output_dir":          os.path.join(ROOT_DIR, "data", "filter_results"),
+    "top_n":                   50,
+    "output_dir":              os.path.join(ROOT_DIR, "data", "filter_results"),
 }
+
+# =============================================================================
+# 动态权重配置（基于IC/IR分析）
+# =============================================================================
+DYNAMIC_WEIGHTS = {
+    "offensive": {
+        "name": "进攻模式",
+        "description": "大盘涨幅>5%",
+        "weights": {
+            "moneyflow": 1.3,    # 资金因子权重+30%
+            "amplitude": 1.0,    # 振幅因子权重不变
+            "holder": 0.8,       # 筹码因子权重-20%
+            "technical": 1.0,    # 技术因子权重不变
+            "divergence": 1.3,   # 背离因子权重+30%
+        }
+    },
+    "defensive": {
+        "name": "防守模式",
+        "description": "大盘跌幅>5%",
+        "weights": {
+            "moneyflow": 0.7,    # 资金因子权重-30%
+            "amplitude": 1.0,    # 振幅因子权重不变
+            "holder": 1.3,       # 筹码因子权重+30%
+            "technical": 1.2,    # 技术因子权重+20%
+            "divergence": 0.7,   # 背离因子权重-30%
+        }
+    },
+    "neutral": {
+        "name": "中性模式",
+        "description": "大盘波动在±5%以内",
+        "weights": {
+            "moneyflow": 1.0,
+            "amplitude": 1.0,
+            "holder": 1.0,
+            "technical": 1.0,
+            "divergence": 1.0,
+        }
+    }
+}
+
+
+def get_market_regime(conn: sqlite3.Connection) -> str:
+    """判断当前市场状态：进攻/防守/中性"""
+    try:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT close FROM daily_index 
+            WHERE ts_code = '000001.SH' ORDER BY trade_date DESC LIMIT 20
+        """)
+        rows = cursor.fetchall()
+        
+        if len(rows) >= 20:
+            closes = [r[0] for r in rows if r[0] is not None]
+            if len(closes) >= 2:
+                pct_change = (closes[0] - closes[-1]) / closes[-1] * 100
+                if pct_change > 5:
+                    return 'offensive'
+                elif pct_change < -5:
+                    return 'defensive'
+    except Exception as e:
+        log.warning(f"获取大盘状态失败: {e}")
+    
+    return 'neutral'
 
 
 # =============================================================================
@@ -127,7 +191,47 @@ def _safe_read(conn: sqlite3.Connection, sql: str, params: tuple) -> pd.DataFram
 
 
 def _load_stock_list(conn: sqlite3.Connection) -> pd.DataFrame:
-    """加载全市场股票基础信息"""
+    """加载全市场股票基础信息，含最新流通市值（用于微盘股过滤）"""
+    # 尝试关联最新市值数据
+    try:
+        df = pd.read_sql("""
+            SELECT s.ts_code, s.name, s.industry, s.area, s.list_date,
+                   m.circ_mv
+            FROM stock_list s
+            LEFT JOIN (
+                SELECT ts_code, circ_mv
+                FROM stk_factor
+                WHERE (ts_code, trade_date) IN (
+                    SELECT ts_code, MAX(trade_date) FROM stk_factor GROUP BY ts_code
+                )
+            ) m ON s.ts_code = m.ts_code
+            ORDER BY s.ts_code
+        """, conn)
+        return df
+    except Exception:
+        pass
+
+    # 回退：从daily_basic获取最新流通市值
+    try:
+        df = pd.read_sql("""
+            SELECT s.ts_code, s.name, s.industry, s.area, s.list_date,
+                   d.circ_mv
+            FROM stock_list s
+            LEFT JOIN (
+                SELECT ts_code, circ_mv
+                FROM daily_basic
+                WHERE (ts_code, trade_date) IN (
+                    SELECT ts_code, MAX(trade_date) FROM daily_basic GROUP BY ts_code
+                )
+            ) d ON s.ts_code = d.ts_code
+            ORDER BY s.ts_code
+        """, conn)
+        return df
+    except Exception:
+        pass
+
+    # 最终回退：无市值数据，不过滤
+    log.warning("⚠️ 无法加载流通市值数据，微盘股过滤将跳过")
     return pd.read_sql(
         "SELECT ts_code, name, industry, area, list_date FROM stock_list ORDER BY ts_code",
         conn
@@ -179,16 +283,63 @@ def _load_moneyflow(conn: sqlite3.Connection, ts_code: str) -> pd.DataFrame:
 # 单股评分引擎
 # =============================================================================
 
+def _get_catalyst_score(industry: str, conn: sqlite3.Connection) -> int:
+    """
+    根据行业强度排名计算催化得分（0-30）。
+    主线行业（前5名）→ 20-30分
+    备选行业（6-10名）→ 10-20分
+    其他行业 → 0-10分
+    """
+    df = _safe_read(conn, """
+        SELECT industry, composite_score, tier
+        FROM industry_rank
+        ORDER BY composite_score DESC
+    """, ())
+    
+    if df.empty:
+        return 0
+    
+    matched = df[df['industry'] == industry]
+    if matched.empty:
+        return 5
+    
+    idx = df[df['industry'] == industry].index[0]
+    rank = idx + 1
+    tier = matched.iloc[0]['tier']
+    
+    if tier == 'main':
+        base_score = 25
+        adjustment = (5 - rank) * 1
+        score = base_score + adjustment
+    elif tier == 'backup':
+        base_score = 15
+        adjustment = (10 - rank) * 1
+        score = base_score + adjustment
+    else:
+        rank_pct = rank / len(df)
+        score = int(10 * (1 - rank_pct))
+    
+    return max(0, min(30, score))
+
+
 def score_one(ts_code: str, name: str, industry: str,
               conn: sqlite3.Connection,
-              cfg: dict = None) -> Optional[Dict]:
+              cfg: dict = None,
+              weights: dict = None) -> Optional[Dict]:
     """
     对单只股票执行 Python 硬过滤 + 多维评分。
     返回 None 表示被一票否决（不进入候选池）。
     返回 dict 包含：ts_code / name / industry / score / indicators / details
+    
+    Args:
+        weights: 动态权重字典，包含 moneyflow, amplitude, holder, technical, divergence 权重
     """
     if cfg is None:
         cfg = FILTER_CONFIG
+    
+    # 使用动态权重，默认为中性模式
+    if weights is None:
+        weights = DYNAMIC_WEIGHTS["neutral"]["weights"]
 
     # ── 获取日线 ──────────────────────────────────────────────────────────────
     df = _load_daily(conn, ts_code, cfg["lookback_days"])
@@ -213,6 +364,14 @@ def score_one(ts_code: str, name: str, industry: str,
     amplitude_20d = (h20 - l20) / l20 if l20 > 0 else 1.0
     if amplitude_20d > cfg["max_amplitude_veto"]:
         return None
+    # 微盘股过滤：流通市值 < 10亿（100,000万元）
+    # circ_mv 由 _load_stock_list 从 stk_factor/daily_basic 关联，单位：万元
+    # row 是 namedtuple，通过 getattr 安全获取
+    circ_mv = getattr(row, "circ_mv", None)
+    if circ_mv is not None and not (isinstance(circ_mv, float) and circ_mv != circ_mv):  # not NaN
+        min_mv_wan = cfg.get("min_circulating_mv_billion", 10.0) * 10000  # 亿 → 万
+        if float(circ_mv) < min_mv_wan:
+            return None
 
     # ── 技术指标计算（全序列）───────────────────────────────────────────────
     close = df["close"].reset_index(drop=True)
@@ -239,16 +398,17 @@ def score_one(ts_code: str, name: str, industry: str,
     score   = 0
     details = {}
 
-    # ── Step-1：量价结构（最高 20 分）───────────────────────────────────────
+    # ── Step-1：量价结构（最高 20 分 × 振幅权重）───────────────────────────────
+    amplitude_subscore = 0
     # 振幅横盘（最高 10 分）
     if amplitude_20d < 0.10:
-        score += 10
+        amplitude_subscore += 10
         details["amplitude"] = f"✅ 极度横盘，20日振幅 {amplitude_20d:.2%}（< 10%），+10分"
     elif amplitude_20d < 0.15:
-        score += 6
+        amplitude_subscore += 6
         details["amplitude"] = f"✅ 横盘整理，20日振幅 {amplitude_20d:.2%}（< 15%），+6分"
     elif amplitude_20d < 0.25:
-        score += 2
+        amplitude_subscore += 2
         details["amplitude"] = f"🔶 振幅尚可 {amplitude_20d:.2%}（< 25%），+2分"
     else:
         details["amplitude"] = f"❌ 振幅过大 {amplitude_20d:.2%}（≥ 25%）"
@@ -257,18 +417,24 @@ def score_one(ts_code: str, name: str, industry: str,
     vol_ma20 = recent_20["vol"].mean()
     vol_ratio = latest["vol"] / vol_ma20 if vol_ma20 > 0 else 0
     if 1.5 <= vol_ratio <= 3.0 and latest["pct_chg"] > 0:
-        score += 10
+        amplitude_subscore += 10
         details["volume"] = f"✅ 温和放量上涨，量比 {vol_ratio:.2f}，+10分"
     elif vol_ratio > 3.0 and latest["pct_chg"] > 0:
-        score += 6
+        amplitude_subscore += 6
         details["volume"] = f"🔶 大幅放量上涨，量比 {vol_ratio:.2f}（注意追高风险），+6分"
     elif vol_ratio < 0.5 and amplitude_20d < 0.15:
-        score += 4
+        amplitude_subscore += 4
         details["volume"] = f"✅ 缩量横盘（底部吸筹特征），量比 {vol_ratio:.2f}，+4分"
     else:
         details["volume"] = f"量比 {vol_ratio:.2f}（无明显异动）"
+    
+    # 应用振幅权重
+    amplitude_subscore = int(amplitude_subscore * weights["amplitude"])
+    score += amplitude_subscore
 
-    # ── Step-2：技术指标（最高 30 分）───────────────────────────────────────
+    # ── Step-2：技术指标（最高 30 分 × 技术权重）───────────────────────────────
+    tech_subscore = 0
+    
     # MACD（最高 15 分）
     macd_score = 0
     macd_detail_parts = []
@@ -284,7 +450,7 @@ def score_one(ts_code: str, name: str, industry: str,
         macd_score += 3
         macd_detail_parts.append("MACD 柱状线转正（+3分）")
     macd_score = min(macd_score, 15)
-    score += macd_score
+    tech_subscore += macd_score
     details["macd"] = ("✅ " if macd_score >= 6 else "❌ ") + \
                       (", ".join(macd_detail_parts) if macd_detail_parts
                        else f"MACD 未金叉，DIF={latest_dif:.4f} DEA={latest_dea:.4f}")
@@ -305,7 +471,7 @@ def score_one(ts_code: str, name: str, industry: str,
             details["rsi"] = f"❌ RSI={latest_rsi:.1f}（超买区，不加分）"
     else:
         details["rsi"] = "⚠️ RSI 数据不足"
-    score += rsi_score
+    tech_subscore += rsi_score
 
     # 均线多头排列（最高 5 分）
     close_now = float(latest["close"])
@@ -325,9 +491,14 @@ def score_one(ts_code: str, name: str, industry: str,
     else:
         ma_score = 0
         details["ma"] = "⚠️ 均线数据不足"
-    score += ma_score
+    tech_subscore += ma_score
+    
+    # 应用技术权重
+    tech_subscore = int(tech_subscore * weights["technical"])
+    score += tech_subscore
 
-    # ── Step-3：筹码集中度（最高 30 分）─────────────────────────────────────
+    # ── Step-3：筹码集中度（最高 30 分 × 筹码权重）─────────────────────────────
+    holder_subscore = 0
     df_holder = _load_holder(conn, ts_code)
     if len(df_holder) >= 2:
         n1 = df_holder.iloc[0]["holder_num"]
@@ -335,16 +506,16 @@ def score_one(ts_code: str, name: str, industry: str,
         if n2 and n2 > 0 and not pd.isna(n1):
             chg = (n1 - n2) / n2
             if chg < -0.10:
-                score += 30
+                holder_subscore += 30
                 details["holder"] = f"✅ 股东户数大幅减少 {chg:.2%}（>10%），筹码高度集中，+30分"
             elif chg < -0.05:
-                score += 18
+                holder_subscore += 18
                 details["holder"] = f"✅ 股东户数减少 {chg:.2%}（5~10%），筹码集中，+18分"
             elif chg < -0.02:
-                score += 8
+                holder_subscore += 8
                 details["holder"] = f"🔶 股东户数小幅减少 {chg:.2%}（2~5%），+8分"
             elif chg < 0:
-                score += 3
+                holder_subscore += 3
                 details["holder"] = f"🔶 股东户数微降 {chg:.2%}，+3分"
             else:
                 details["holder"] = f"❌ 股东户数增加 {chg:.2%}，筹码分散"
@@ -352,8 +523,13 @@ def score_one(ts_code: str, name: str, industry: str,
             details["holder"] = "⚠️ 股东户数数据异常"
     else:
         details["holder"] = "⚠️ 筹码数据缺失（stk_holdernumber 不足2期）"
+    
+    # 应用筹码权重
+    holder_subscore = int(holder_subscore * weights["holder"])
+    score += holder_subscore
 
-    # ── Step-4：主力资金（最高 20 分）───────────────────────────────────────
+    # ── Step-4：主力资金（最高 20 分 × 资金权重）───────────────────────────────
+    money_subscore = 0
     df_money = _load_moneyflow(conn, ts_code)
     if not df_money.empty:
         m = df_money.iloc[0]
@@ -361,45 +537,56 @@ def score_one(ts_code: str, name: str, industry: str,
         if all(c in m.index for c in needed):
             net_main = ((m["buy_elg_amount"] + m["buy_lg_amount"])
                         - (m["sell_elg_amount"] + m["sell_lg_amount"]))
-            # 正向背离（跌但主力流入）
+            # 正向背离（跌但主力流入）- 使用背离权重
             if net_main > 0 and latest["pct_chg"] < 0:
-                score += 20
+                base_score = 20
+                # 背离加分使用背离权重
+                money_subscore += int(base_score * weights["divergence"])
                 details["moneyflow"] = (
                     f"✅ 正向背离：股价跌 {latest['pct_chg']:.2f}%，"
-                    f"主力净流入 {net_main:.0f} 万元（最高加分），+20分"
+                    f"主力净流入 {net_main:.0f} 万元（最高加分），+{int(base_score * weights['divergence'])}分"
                 )
             elif net_main > 0:
-                score += 10
-                details["moneyflow"] = f"✅ 主力净流入 {net_main:.0f} 万元，+10分"
+                base_score = 10
+                money_subscore += int(base_score * weights["moneyflow"])
+                details["moneyflow"] = f"✅ 主力净流入 {net_main:.0f} 万元，+{int(base_score * weights['moneyflow'])}分"
             elif net_main < -1000:
-                score += 0
                 details["moneyflow"] = f"❌ 主力净流出 {abs(net_main):.0f} 万元"
             else:
-                score += 2
-                details["moneyflow"] = f"🔶 主力资金中性（{net_main:.0f} 万元），+2分"
+                base_score = 2
+                money_subscore += int(base_score * weights["moneyflow"])
+                details["moneyflow"] = f"🔶 主力资金中性（{net_main:.0f} 万元），+{int(base_score * weights['moneyflow'])}分"
         else:
             details["moneyflow"] = "⚠️ 资金流字段不完整"
     else:
-        details["moneyflow"] = "⚠️ 无资金流向数据"
+            details["moneyflow"] = "⚠️ 无资金流向数据"
+    score += money_subscore
+
+    # ── Step-5：行业催化评分（最高 30 分）─────────────────────────────────────
+    catalyst_score = _get_catalyst_score(industry, conn)
+    score += catalyst_score
+    details["catalyst"] = f"🔶 行业催化得分: {catalyst_score}分（行业: {industry}）"
 
     return {
-        "ts_code":      ts_code,
-        "name":         name,
-        "industry":     industry,
-        "score":        score,
-        "trade_date":   latest["trade_date"],
-        "close":        round(float(latest["close"]), 2),
-        "pct_chg":      round(float(latest["pct_chg"]), 2),
-        "amount_w":     round(float(latest["amount"]) / 100, 2),  # 转换为万元显示
-        "amplitude_20d": round(float(amplitude_20d), 4),
-        "vol_ratio":    round(float(vol_ratio), 2),
-        "rsi":          round(float(latest_rsi), 2) if not np.isnan(latest_rsi) else None,
-        "macd_dif":     round(float(latest_dif), 6),
-        "macd_dea":     round(float(latest_dea), 6),
-        "ma5":          round(float(ma5), 2) if not np.isnan(ma5) else None,
-        "ma20":         round(float(ma20), 2) if not np.isnan(ma20) else None,
-        "details":      details,
-        "filter_time":  datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "ts_code":        ts_code,
+        "name":           name,
+        "industry":       industry,
+        "score":          score,
+        "catalyst_score": catalyst_score,
+        "trade_date":     latest["trade_date"],
+        "close":          round(float(latest["close"]), 2),
+        "pct_chg":        round(float(latest["pct_chg"]), 2),
+        "amount_w":       round(float(latest["amount"]) / 100, 2),  # 转换为万元显示
+        "amplitude_20d":  round(float(amplitude_20d), 4),
+        "vol_ratio":      round(float(vol_ratio), 2),
+        "rsi":            round(float(latest_rsi), 2) if not np.isnan(latest_rsi) else None,
+        "macd_dif":       round(float(latest_dif), 6),
+        "macd_dea":       round(float(latest_dea), 6),
+        "ma5":            round(float(ma5), 2) if not np.isnan(ma5) else None,
+        "ma20":           round(float(ma20), 2) if not np.isnan(ma20) else None,
+        "details":        details,
+        "filter_time":    datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "market_regime":  weights.get("regime", "neutral"),
     }
 
 
@@ -443,7 +630,14 @@ class FilterEngine:
             total    = len(stock_df)
             log.info("📋 全市场股票数: %d", total)
 
-            # 2. 逐只评分
+            # 2. 获取市场状态，确定动态权重
+            market_regime = get_market_regime(conn)
+            weights = DYNAMIC_WEIGHTS[market_regime]["weights"].copy()
+            weights["regime"] = market_regime
+            log.info(f"📊 当前市场状态: {DYNAMIC_WEIGHTS[market_regime]['name']} ({DYNAMIC_WEIGHTS[market_regime]['description']})")
+            log.info(f"⚖️  应用权重: 资金{weights['moneyflow']}× 振幅{weights['amplitude']}× 筹码{weights['holder']}× 技术{weights['technical']}× 背离{weights['divergence']}×")
+
+            # 3. 逐只评分
             results   = []
             veto_cnt  = 0
             error_cnt = 0
@@ -457,6 +651,7 @@ class FilterEngine:
                         industry=getattr(row, "industry", ""),
                         conn=conn,
                         cfg=self.cfg,
+                        weights=weights,
                     )
                     if r is None:
                         veto_cnt += 1
@@ -482,7 +677,7 @@ class FilterEngine:
                 log.warning("❌ 硬过滤后无任何候选股")
                 return False, []
 
-            # 3. 排序，取 Top-N
+            # 4. 排序，取 Top-N
             results.sort(key=lambda x: x["score"], reverse=True)
             top_results = results[:top_n]
 
@@ -493,7 +688,7 @@ class FilterEngine:
                 top_results[-1]["score"] if top_results else 0,
             )
 
-            # 4. 持久化输出
+            # 5. 持久化输出
             self._save_result(top_results)
 
             return True, top_results

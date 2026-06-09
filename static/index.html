@@ -1456,6 +1456,38 @@
                 </div>
             </div>
 
+            <!-- 洗盘分析 Card -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <div class="card-title-icon icon-amber">🧹</div>
+                        洗盘分析
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="form-label">股票代码</div>
+                    <input type="text" id="washout-code" placeholder="输入股票代码，如 600519.SH">
+                </div>
+
+                <button class="btn btn-amber btn-full" onclick="runWashoutAnalysis()" style="margin-bottom:12px">
+                    📊 开始洗盘分析
+                </button>
+
+                <div class="divider"></div>
+
+                <div class="form-group">
+                    <div class="form-label">从持仓选择</div>
+                    <select id="washout-portfolio" class="washout-portfolio-select" onchange="onPortfolioSelect()">
+                        <option value="">请选择持仓股票...</option>
+                    </select>
+                </div>
+
+                <button class="btn btn-ghost btn-full" onclick="loadPortfolioStocks()" style="margin-top:8px">
+                    🔄 刷新持仓列表
+                </button>
+            </div>
+
         </div><!-- /main-grid -->
 
         <!-- ═══ BOTTOM GRID ═══ -->
@@ -1826,6 +1858,103 @@
         document.getElementById('bias-display').textContent = this.value + '%';
     });
 
+    /* ── Washout Analysis ── */
+    async function loadPortfolioStocks() {
+        try {
+            const data = await fetchAPI('/api/washout/portfolio');
+            const select = document.getElementById('washout-portfolio');
+            select.innerHTML = '<option value="">请选择持仓股票...</option>';
+            data.stocks.forEach(stock => {
+                const opt = document.createElement('option');
+                opt.value = stock.ts_code;
+                opt.textContent = `${stock.ts_code} - ${stock.name || '未知'}`;
+                select.appendChild(opt);
+            });
+            if (data.stocks.length === 0) {
+                showToast('暂无持仓，请先在托盘菜单中添加', 'info');
+            }
+        } catch(e) {
+            showToast('加载持仓失败', 'error');
+        }
+    }
+
+    function onPortfolioSelect() {
+        const select = document.getElementById('washout-portfolio');
+        if (select.value) {
+            document.getElementById('washout-code').value = select.value;
+        }
+    }
+
+    async function runWashoutAnalysis() {
+        const tsCode = document.getElementById('washout-code').value.trim();
+        if (!tsCode) {
+            showToast('请输入股票代码或从持仓选择', 'error');
+            return;
+        }
+
+        try {
+            showToast(`🧹 正在分析 ${tsCode}...`, 'info');
+            const data = await fetchAPI('/api/washout/analyze', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ts_code: tsCode })
+            });
+            
+            showToast(`📊 洗盘分析完成，报告已保存`, 'success');
+            
+            const newWindow = window.open('', '_blank');
+            if (newWindow) {
+                newWindow.document.write(`
+                    <!DOCTYPE html>
+                    <html lang="zh-CN">
+                    <head>
+                        <meta charset="UTF-8">
+                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                        <title>洗盘分析报告 - ${tsCode}</title>
+                        <style>
+                            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 40px; max-width: 800px; margin: 0 auto; background: #0d1117; color: #c9d1d9; line-height: 1.6; }
+                            h1, h2 { color: #58a6ff; }
+                            h1 { border-bottom: 1px solid #30363d; padding-bottom: 10px; }
+                            table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+                            th, td { border: 1px solid #30363d; padding: 8px 12px; text-align: left; }
+                            th { background: #161b22; }
+                            code { background: #21262d; padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; }
+                            pre { background: #0d1117; border: 1px solid #30363d; padding: 15px; border-radius: 8px; overflow-x: auto; white-space: pre-wrap; }
+                            .check { color: #3fb950; }
+                            .cross { color: #f85149; }
+                            .warning { color: #d29922; }
+                        </style>
+                    </head>
+                    <body>
+                        ${markdownToHtml(data.report)}
+                    </body>
+                    </html>
+                `);
+                newWindow.document.close();
+            } else {
+                showToast('报告已生成，但浏览器阻止了弹窗', 'info');
+            }
+            
+        } catch(e) {
+            showToast('洗盘分析失败: ' + e.message, 'error');
+        }
+    }
+
+    function markdownToHtml(md) {
+        return md
+            .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+            .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+            .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+            .replace(/\*\*(.*)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.*)\*/g, '<em>$1</em>')
+            .replace(/✅/g, '<span class="check">✓</span>')
+            .replace(/❌/g, '<span class="cross">✗</span>')
+            .replace(/⚠️/g, '<span class="warning">⚠</span>')
+            .replace(/📊|📈|🎯|🔔|📐|🧹/g, '')
+            .replace(/\[([^\]]+)\]/g, '<code>$1</code>')
+            .replace(/\n/g, '<br>');
+    }
+
     /* ── Logs ── */
     async function refreshLogs() {
         try {
@@ -1850,6 +1979,7 @@
         refreshStatus();
         loadConfig();
         loadAIConfig();
+        loadPortfolioStocks();
         setInterval(refreshStatus, 5000);
         setInterval(refreshLogs, 2000);
         refreshLogs();

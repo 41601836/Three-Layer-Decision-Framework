@@ -195,6 +195,7 @@ def pre_screen(
     turn_min: float = PRE_SCREEN_TURN_MIN,
     amount_min: float = PRE_SCREEN_AMOUNT,
     trade_date: str = None,
+    industry_filter: List[str] = None,
 ) -> List[Dict]:
     """
     使用 SQL 联表查询进行预筛选，仅返回"涨幅活跃 + 换手率达标"的股票列表。
@@ -217,12 +218,14 @@ def pre_screen(
         剔除次新股（上市不足 3 个月的新股波动异常）
 
     参数：
-        conn         SQLite 连接对象
-        pct_min      涨幅下限（%）
-        pct_max      涨幅上限（%），防追涨停
-        turn_min     换手率下限（%）
-        amount_min   成交额下限（千元，Tushare 单位）
-        trade_date   查询日期（YYYYMMDD），默认取数据库最新交易日
+        conn             SQLite 连接对象
+        pct_min          涨幅下限（%）
+        pct_max          涨幅上限（%），防追涨停
+        turn_min         换手率下限（%）
+        amount_min       成交额下限（千元，Tushare 单位）
+        trade_date       查询日期（YYYYMMDD），默认取数据库最新交易日
+        industry_filter  行业白名单列表（如 ['半导体','消费电子']）。
+                         传入则只扫描该行业，不传则全市场扫描（向后兼容）。
 
     返回：
         List[Dict]，每条包含: ts_code / name / industry / pct_chg /
@@ -239,8 +242,17 @@ def pre_screen(
     new_stock_cutoff = (datetime.strptime(trade_date, "%Y%m%d")
                         - timedelta(days=90)).strftime("%Y%m%d")
 
-    log.info("pre_screen: 查询日期=%s | 涨幅[%.1f%%, %.1f%%] | 换手率≥%.1f%% | 成交额≥%.0f千元",
-             trade_date, pct_min, pct_max, turn_min, amount_min)
+    log.info("pre_screen: 查询日期=%s | 涨幅[%.1f%%, %.1f%%] | 换手率>=%.1f%% | 成交额>=%.0f千元%s",
+             trade_date, pct_min, pct_max, turn_min, amount_min,
+             f" | 行业过滤: {industry_filter}" if industry_filter else "")
+
+    # ── 行业过滤子句（动态拼接，避免 SQL 注入：用参数绑定）──────────────────
+    industry_clause = ""
+    industry_params: List[str] = []
+    if industry_filter:
+        placeholders = ",".join("?" * len(industry_filter))
+        industry_clause = f"AND sl.industry IN ({placeholders})"
+        industry_params = list(industry_filter)
 
     # ── 2. 核心 SQL：三表联查 ────────────────────────────────────────────────
     # daily_prices   → 涨幅、成交额
@@ -285,21 +297,25 @@ def pre_screen(
         -- 剔除次新股（上市不足 90 天）
         AND sl.list_date <= :new_stock_cutoff
 
-    ORDER BY dp.pct_chg DESC, dp.amount DESC
-    """
+        {industry_clause}
 
-    params = {
-        "trade_date":       trade_date,
-        "pct_min":          pct_min,
-        "pct_max":          pct_max,
-        "amount_min":       amount_min,
-        "turn_min":         turn_min,
-        "new_stock_cutoff": new_stock_cutoff,
-    }
+    ORDER BY dp.pct_chg DESC, dp.amount DESC
+    """.format(industry_clause=industry_clause)
+
+    # 全部改用 positional 参数（?），行业过滤的 IN 列表参数追加到末尾
+    pos_params = (
+        trade_date, pct_min, pct_max, amount_min, turn_min, new_stock_cutoff,
+        *industry_params
+    )
+
+    # 将 SQL 中的 named params 改为 positional(?)
+    sql_pos = sql.replace(":trade_date",      "?").replace(":pct_min",         "?") \
+                 .replace(":pct_max",         "?").replace(":amount_min",      "?") \
+                 .replace(":turn_min",        "?").replace(":new_stock_cutoff","?")
 
     start_t = time.time()
     try:
-        cursor = conn.execute(sql, params)
+        cursor = conn.execute(sql_pos, pos_params)
         columns = [d[0] for d in cursor.description]
         rows    = cursor.fetchall()
     except sqlite3.OperationalError as e:
@@ -319,21 +335,25 @@ def pre_screen(
         FROM daily_prices dp
         INNER JOIN stock_list sl ON dp.ts_code = sl.ts_code
         WHERE
-            dp.trade_date = :trade_date
-            AND dp.pct_chg BETWEEN :pct_min AND :pct_max
-            AND dp.amount  >= :amount_min
+            dp.trade_date = ?
+            AND dp.pct_chg BETWEEN ? AND ?
+            AND dp.amount  >= ?
             AND sl.name NOT LIKE '%ST%'
-            AND sl.list_date <= :new_stock_cutoff
+            AND sl.list_date <= ?
+            {industry_clause}
         ORDER BY dp.pct_chg DESC, dp.amount DESC
-        """
-        cursor  = conn.execute(sql_fallback, params)
+        """.format(industry_clause=industry_clause)
+        fb_params = (trade_date, pct_min, pct_max, amount_min, new_stock_cutoff,
+                     *industry_params)
+        cursor  = conn.execute(sql_fallback, fb_params)
         columns = [d[0] for d in cursor.description]
         rows    = cursor.fetchall()
 
     elapsed = time.time() - start_t
     results = [dict(zip(columns, row)) for row in rows]
 
-    log.info("pre_screen 完成：全市场 → %d 只活跃股（SQL耗时 %.2fs）",
+    log.info("pre_screen 完成：%s扫描 → %d 只活跃股（SQL耗时 %.2fs）",
+             f"行业[{','.join(industry_filter)}]" if industry_filter else "全市场",
              len(results), elapsed)
 
     return results
@@ -592,9 +612,14 @@ def push_to_feishu(
     filter_results: List[Dict],
     session_name: str = "手动触发",
     total_scanned: int = 0,
+    trade_date: str = "",
 ) -> None:
     """将 AI 分析结果推送为飞书交互卡片（汇总卡片 + 个股详情卡片）。"""
     from scripts.feishu_bot import send_daily_summary, send_stock_report
+
+    # 获取 trade_date（从第一条结果获取）
+    if not trade_date and filter_results:
+        trade_date = filter_results[0].get("trade_date", "")
 
     push_list = [
         r for r in ai_results
@@ -615,6 +640,7 @@ def push_to_feishu(
         results=summary_data,
         session_name=session_name,
         total_scanned=total_scanned,
+        trade_date=trade_date,
     )
     time.sleep(0.5)
 
@@ -634,6 +660,7 @@ def push_to_feishu(
                 close_price=filter_data.get("close", 0.0),
                 pct_chg=filter_data.get("pct_chg", 0.0),
                 session_name=session_name,
+                trade_date=trade_date,
             )
             log.info("  推送：%s %s（%d分）", r["ts_code"], r["name"], r["total_score"])
         except Exception as e:
@@ -649,6 +676,7 @@ def main(
     session_name: str = "手动触发",
     market_volume_status: str = "放量",
     sector_risk: str = "正常",
+    industry_filter: List[str] = None,   # v4.0 新增：行业白名单（None=全市场）
 ) -> bool:
     """
     v4.0 完整三层漏斗流程：
@@ -685,14 +713,18 @@ def main(
     # ──────────────────────────────────────────────────────────────────────────
     # 步骤 1：SQL 预筛选（不遍历全市场）
     # ──────────────────────────────────────────────────────────────────────────
+    # 先获取 trade_date（数据库最新日期）
+    row = conn.execute("SELECT MAX(trade_date) FROM daily_prices").fetchone()
+    trade_date = row[0] if row and row[0] else datetime.now().strftime("%Y%m%d")
+    
     _cprint(_BOLD, "[步骤 1] SQL 预筛选（涨幅活跃 + 换手率达标）...")
-    prescreened = pre_screen(conn)
+    prescreened = pre_screen(conn, industry_filter=industry_filter)
     conn.close()   # pre_screen 完成后关闭共享连接
 
     if not prescreened:
         log.warning("预筛选结果为空：当日无涨幅活跃股票（可能为非交易日或数据未更新）")
-        from scripts.feishu_bot import send_text
-        send_text(f"⚠️ {session_name} · 预筛选无结果，请确认数据是否已更新")
+        from scripts.feishu_bot import send_text, send_daily_summary
+        send_daily_summary([], session_name=session_name, total_scanned=total_scanned, trade_date=trade_date)
         return True   # 非致命
 
     _cprint(_GREEN, f"  ✅ 预筛选完成：全市场 {total_scanned} 只 → {len(prescreened)} 只活跃股\n")
@@ -706,7 +738,7 @@ def main(
     if not scored_stocks:
         log.warning("打分后无有效候选股")
         from scripts.feishu_bot import send_daily_summary
-        send_daily_summary([], session_name=session_name, total_scanned=total_scanned)
+        send_daily_summary([], session_name=session_name, total_scanned=total_scanned, trade_date=trade_date)
         return True
 
     _cprint(_GREEN, f"  ✅ 打分完成：{len(prescreened)} 只 → Top-{len(scored_stocks)} 候选股\n")
@@ -736,8 +768,20 @@ def main(
 
     push_candidates = [r for r in ai_results if r.get("total_score", 0) >= 80]
     _cprint(_GREEN,
-            f"  ✅ AI 分析完成：{above_threshold} 只进入分析 → "
-            f"{len(push_candidates)} 只达到推送门槛（≥80分）\n")
+            f"  AI \u5206\u6790\u5b8c\u6210\uff1a{above_threshold} \u53ea\u8fdb\u5165\u5206\u6790 \u2192 "
+            f"{len(push_candidates)} \u53ea\u8fbe\u5230\u63a8\u9001\u95e8\u69db\uff08\u226580\u5206\uff09\n")
+
+    # ── v4.0 新增：将精选结果暴露为模块级变量，供 scheduler 步骤4读取 ─────────
+    global _last_selected_candidates
+    _last_selected_candidates = [
+        {
+            "ts_code":    r["ts_code"],
+            "name":       r.get("name", ""),
+            "total_score": r["total_score"],
+            "score_card": r.get("score_card", {}),   # 供 trade_plan 计算仓位
+        }
+        for r in push_candidates
+    ]
 
     # ──────────────────────────────────────────────────────────────────────────
     # 步骤 5：飞书推送
@@ -748,8 +792,9 @@ def main(
         filter_results=scored_stocks,
         session_name=session_name,
         total_scanned=total_scanned,
+        trade_date=trade_date,
     )
-    _cprint(_GREEN, f"  ✅ 推送完成：{len(push_candidates) + 1} 张卡片\n")
+    _cprint(_GREEN, f"  推送完成：{len(push_candidates) + 1} 张卡片\n")
 
     # ── 总结 ──────────────────────────────────────────────────────────────────
     elapsed_total = time.time() - t_start
@@ -758,12 +803,17 @@ def main(
     _cprint(_BOLD, f"  全市场:    {total_scanned:>6,} 只")
     _cprint(_BOLD, f"  预筛选:    {len(prescreened):>6,} 只  (SQL 活跃股过滤)")
     _cprint(_BOLD, f"  Top候选:   {len(scored_stocks):>6,} 只  (并行打分 Top-{TOP_N})")
-    _cprint(_BOLD, f"  AI 分析:   {above_threshold:>6,} 只  (≥{AI_TRIGGER_SCORE}分进入 Ollama)")
-    _cprint(_BOLD, f"  精选推送:  {len(push_candidates):>6,} 只  (≥80分推飞书)")
+    _cprint(_BOLD, f"  AI 分析:   {above_threshold:>6,} 只  (>={AI_TRIGGER_SCORE}分进入 Ollama)")
+    _cprint(_BOLD, f"  精选推送:  {len(push_candidates):>6,} 只  (>=80分推飞书)")
     _cprint(_BOLD, f"  总耗时:    {elapsed_total:>5.1f} 秒")
     _cprint(_BOLD, "═" * 65 + "\n")
 
     return True
+
+
+# 模块级精选结果缓存（由 main() 写入，scheduler 读取）
+_last_selected_candidates: List[Dict] = []
+
 
 
 # =============================================================================
