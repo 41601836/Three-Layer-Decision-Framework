@@ -70,9 +70,25 @@ def _mode_from_index(conn: sqlite3.Connection):
     except Exception as e:
         log.debug("查询上证指数失败: %s", e)
         return None
+        
+    # 如果没有数据，尝试从 daily_prices 表获取
+    if df is None or len(df) < 62:
+        try:
+            df = pd.read_sql(
+                """SELECT trade_date, close
+                   FROM   daily_prices
+                   WHERE  ts_code = '000001.SH'
+                   ORDER  BY trade_date DESC LIMIT 120""",
+                conn
+            )
+            if not df.empty:
+                log.info("从 daily_prices 获取上证指数数据")
+        except Exception as e:
+            log.debug("从 daily_prices 查询上证指数失败: %s", e)
+            return None
 
     if df is None or len(df) < 62:
-        log.info("daily_index 中上证指数数据不足（%d 行），启用降级方案", len(df) if df is not None else 0)
+        log.info("上证指数数据不足（%d 行），启用降级方案", len(df) if df is not None else 0)
         return None
 
     # 时序从旧到新，计算60日均线

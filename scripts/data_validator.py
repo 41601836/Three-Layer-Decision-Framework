@@ -1,24 +1,18 @@
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-data_validator.py —— StockAI v4.0 数据验证与自动更新模块
-=====================================================================
-核心功能：
-  1. 验证日线数据和指数数据是否为最新日期
-  2. 若数据滞后，自动触发数据更新
-  3. 支持每日19:00强制更新机制
-  4. 提供数据健康检查接口
-
-使用方式：
-  from data_validator import validate_and_update_data
-  success = validate_and_update_data(force_update=False)
+数据验证与自动更新模块
+========================
+- 检查日线数据和指数数据是否为最新
+- 自动调用更新脚本拉取最新数据
+- 支持强制更新模式
 """
-
 import os
 import sys
 import time
 import sqlite3
 import subprocess
-from datetime import datetime, time as dt_time
+from datetime import datetime, time as dt_time, timedelta
 
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB_PATH = os.path.join(ROOT_DIR, "db", "stock_daily.db")
@@ -80,12 +74,22 @@ def _run_fetch_script(script_name: str) -> bool:
             [sys.executable, script_path],
             cwd=ROOT_DIR,
             capture_output=True,
-            text=True,
+            text=False,  # 使用bytes模式避免编码问题
             timeout=300
         )
-        print(f"[INFO] {script_name} 输出:\n{result.stdout}")
+        # 手动处理UTF-8解码
+        if result.stdout:
+            try:
+                stdout_str = result.stdout.decode('utf-8', errors='replace')
+                print(f"[INFO] {script_name} 输出:\n{stdout_str}")
+            except:
+                print(f"[INFO] {script_name} 输出: (二进制数据无法解码)")
         if result.stderr:
-            print(f"[WARNING] {script_name} 错误输出:\n{result.stderr}")
+            try:
+                stderr_str = result.stderr.decode('utf-8', errors='replace')
+                print(f"[WARNING] {script_name} 错误输出:\n{stderr_str}")
+            except:
+                print(f"[WARNING] {script_name} 错误输出: (二进制数据无法解码)")
         return result.returncode == 0
     except subprocess.TimeoutExpired:
         print(f"[ERROR] {script_name} 执行超时")

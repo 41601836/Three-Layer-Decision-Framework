@@ -103,10 +103,20 @@ def check_portfolio(portfolio_file: str = "portfolio.json") -> list:
                     "SELECT close FROM daily_prices WHERE ts_code = ? ORDER BY trade_date DESC LIMIT 1",
                     (ts_code,)
                 ).fetchone()
-                if row:
+                if row and row[0] is not None:
                     current_price = float(row[0])
+                else:
+                    # 如果没有找到数据，尝试从bak_basic表获取最新价格
+                    row = analyzer.conn.execute(
+                        "SELECT close FROM bak_basic WHERE ts_code = ? ORDER BY trade_date DESC LIMIT 1",
+                        (ts_code,)
+                    ).fetchone()
+                    if row and row[0] is not None:
+                        current_price = float(row[0])
+                    else:
+                        log.warning("未找到 %s 的价格数据", ts_code)
             except Exception as e:
-                log.debug("获取当前价格失败 %s: %s", ts_code, e)
+                log.error("获取当前价格失败 %s: %s", ts_code, e)
             
             # 计算盈亏
             pnl_pct = 0.0

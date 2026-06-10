@@ -5,9 +5,14 @@
 """
 import os
 import sys
+import io
 import sqlite3
 import logging
 from datetime import datetime, timedelta
+
+# Force UTF-8 output for Windows console compatibility
+if hasattr(sys.stdout, "buffer"):
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace", line_buffering=True)
 
 import pandas as pd
 import akshare as ak
@@ -136,7 +141,7 @@ def main():
         log.info(f"数据库验证: {total} 条数据，日期范围: {date_range[0]} ~ {date_range[1]}")
     
     conn.close()
-    print(f"\n✅ 上证指数数据拉取完成！共 {count} 条")
+    print(f"\n[OK] 上证指数数据拉取完成！共 {count} 条")
 
 
 if __name__ == "__main__":

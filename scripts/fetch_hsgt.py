@@ -75,6 +75,17 @@ def get_stock_hsgt_data(pro, start_date, end_date):
             if not df.empty:
                 all_data.append(df)
                 print(f"  {current_date}: {len(df)} 条")
+                
+                # 同时获取个股北向持股明细（前100名）
+                try:
+                    df_detail = pro.hsgt_hold(trade_date=current_date)
+                    if not df_detail.empty:
+                        print(f"  {current_date}: 明细数据 {len(df_detail)} 条")
+                        # 保存明细数据到临时表
+                        df_detail.to_sql('hsgt_hold_temp', conn, if_exists='append', index=False)
+                except Exception as e:
+                    print(f"  {current_date}: 获取明细失败 - {e}")
+                    
         except Exception as e:
             print(f"  {current_date}: 获取失败 - {e}")
         
@@ -84,6 +95,36 @@ def get_stock_hsgt_data(pro, start_date, end_date):
     if all_data:
         return pd.concat(all_data, ignore_index=True)
     return pd.DataFrame()
+
+def get_stock_hsgt_history(pro, ts_code, start_date, end_date):
+    """获取个股北向资金历史持股数据"""
+    print(f"[HSGT] 正在获取个股 {ts_code} 北向持仓历史: {start_date} ~ {end_date}")
+    
+    try:
+        # 获取个股北向持股历史数据
+        df = pro.hsgt_hold(ts_code=ts_code, start_date=start_date, end_date=end_date)
+        
+        if df.empty:
+            print(f"[HSGT] 未获取到 {ts_code} 的北向历史数据")
+            return pd.DataFrame()
+            
+        print(f"[HSGT] 获取到 {ts_code} {len(df)} 条历史记录")
+        
+        # 计算5日变化
+        df['close'] = pd.to_numeric(df['close'], errors='coerce')
+        df['vol'] = pd.to_numeric(df['vol'], errors='coerce')
+        df['amount'] = pd.to_numeric(df['amount'], errors='coerce')
+        df['ratio'] = pd.to_numeric(df['ratio'], errors='coerce')
+        
+        # 计算5日变化
+        df['ratio_5d_change'] = df['ratio'].diff(5)
+        df['vol_5d_change'] = df['vol'].diff(5)
+        
+        return df
+        
+    except Exception as e:
+        print(f"[HSGT] 获取个股历史数据失败 {ts_code}: {e}")
+        return pd.DataFrame()
 
 def save_to_db(df, table_name, conn):
     """保存数据到数据库，自动去重（以 trade_date 为准）"""
@@ -119,10 +160,14 @@ def main():
     parser.add_argument("--end",   default=datetime.now().strftime('%Y%m%d'), help="结束日期")
     parser.add_argument("--stock", action='store_true', help="同时获取个股持仓数据")
     parser.add_argument("--check", action='store_true', help="仅检查当前数据量，不拉取")
+    parser.add_argument("--history", help="获取指定个股的北向历史数据（格式：600519.SH）")
     args = parser.parse_args()
 
     db_path = os.path.join(ROOT_DIR, "db", "stock_daily.db")
     conn = sqlite3.connect(db_path)
+    
+    # 全局conn变量，供get_stock_hsgt_data使用
+    global conn
 
     if args.check:
         cnt = check_2025_data(conn)
@@ -139,6 +184,30 @@ def main():
 
     before_cnt = check_2025_data(conn)
     print(f"[INFO] 补拉前2025年已有数据: {before_cnt} 条")
+    
+    # 获取个股历史数据
+    if args.history:
+        ts_code = args.history
+        # 获取最近5日数据
+        end_date = datetime.now().strftime('%Y%m%d')
+        start_date = (datetime.now() - timedelta(days=30)).strftime('%Y%m%d')
+        
+        df_history = get_stock_hsgt_history(pro, ts_code, start_date, end_date)
+        
+        if not df_history.empty:
+            # 保存到数据库
+            df_history.to_sql('hsgt_stock_history', conn, if_exists='replace', index=False)
+            print(f"[HSGT] 已保存 {ts_code} 北向历史数据到 hsgt_stock_history")
+            
+            # 显示5日变化
+            latest = df_history.iloc[0]
+            if 'ratio_5d_change' in df_history.columns and not pd.isna(latest['ratio_5d_change']):
+                print(f"[HSGT] 5日持股比例变化: {latest['ratio_5d_change']:.4f}%")
+            if 'vol_5d_change' in df_history.columns and not pd.isna(latest['vol_5d_change']):
+                print(f"[HSGT] 5日持股数量变化: {latest['vol_5d_change']:,} 股")
+                
+        conn.close()
+        return
 
     hsgt_df = get_hsgt_data(pro, args.start, args.end)
     save_to_db(hsgt_df, 'hsgt_moneyflow', conn)
@@ -146,6 +215,33 @@ def main():
     if args.stock:
         stock_df = get_stock_hsgt_data(pro, args.start, args.end)
         save_to_db(stock_df, 'hsgt_top10', conn)
+        
+        # 创建北向持股明细表（如果不存在）
+        try:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS hsgt_hold (
+                    trade_date VARCHAR(8),
+                    ts_code VARCHAR(15),
+                    name VARCHAR(50),
+                    close FLOAT,
+                    vol BIGINT,
+                    amount FLOAT,
+                    ratio FLOAT,
+                    PRIMARY KEY (trade_date, ts_code)
+                )
+            """)
+            conn.commit()
+            
+            # 从临时表导入数据
+            conn.execute("""
+                INSERT OR REPLACE INTO hsgt_hold 
+                SELECT trade_date, ts_code, name, close, vol, amount, ratio 
+                FROM hsgt_hold_temp
+            """)
+            conn.commit()
+            print("[HSGT] 已合并明细数据到 hsgt_hold 表")
+        except Exception as e:
+            print(f"[HSGT] 创建/合并明细表失败: {e}")
 
     after_cnt = check_2025_data(conn)
     print(f"[VERIFY] 补拉后2025年数据: {after_cnt} 条")
