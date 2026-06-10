@@ -15,6 +15,7 @@ import sys
 import json
 import logging
 import requests
+import numpy as np
 from datetime import datetime
 from pathlib import Path
 
@@ -28,6 +29,17 @@ AI_TRIGGER_THRESHOLD = 40
 
 Path(REPORTS_DIR).mkdir(exist_ok=True)
 sys.path.insert(0, ROOT_DIR)
+
+# 自定义 JSON encoder 处理 numpy 类型
+class NumpyEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return super().default(obj)
 
 log = logging.getLogger(__name__)
 
@@ -89,11 +101,11 @@ def _build_user_msg(data_json: dict, market_volume_status: str = "放量",
 【全局宏观环境】
 - 当前市场量能状态：{market_volume_status}（两市成交额趋势）
 - 当前板块风险：{sector_risk}
-- 现有持仓组合暴露：{json.dumps(portfolio_exposure, ensure_ascii=False)}
+- 现有持仓组合暴露：{json.dumps(portfolio_exposure, ensure_ascii=False, cls=NumpyEncoder)}
 
 【个股数据】
 ```json
-{json.dumps(data_json, ensure_ascii=False, indent=2)}
+{json.dumps(data_json, ensure_ascii=False, indent=2, cls=NumpyEncoder)}
 ```
 
 Python预计算得分：
@@ -194,9 +206,11 @@ def generate_report(data_json: dict, market_volume_status: str = "放量",
     # 强制一票否决风控检查
     negative_words = ["建议规避", "执行止损", "空头排列", "趋势向下", "暂不介入", "卖出"]
     is_negative = any(word in ai_text for word in negative_words)
+    downgrade_reason = None
     
     if is_negative:
         log.warning("触发强制风控：判定包含负面词汇，强制降级并转换检查项")
+        downgrade_reason = f"（风控降级 -25分）"
         total_score = min(total_score, 65)  # 强制降到及格线以下
         ai_text = re.sub(r"✅", "⚠️", ai_text)  # 将 ✅ 替换为 ⚠️ 风险警示
 
@@ -227,6 +241,7 @@ def generate_report(data_json: dict, market_volume_status: str = "放量",
         "total_score":    total_score,
         "grade":          grade,
         "report_md":      ai_text,
+        "downgrade_reason": downgrade_reason,  # 新增：降级原因
         "saved_path":     report_path,
     }
 

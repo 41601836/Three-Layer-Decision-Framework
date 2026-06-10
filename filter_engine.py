@@ -279,6 +279,22 @@ def _load_moneyflow(conn: sqlite3.Connection, ts_code: str) -> pd.DataFrame:
     )
 
 
+def _load_hsgt(conn: sqlite3.Connection, ts_code: str) -> float:
+    """北向资金5日净流入（万元）"""
+    # 尝试从个股北向资金表获取
+    df = _safe_read(conn,
+        """SELECT trade_date, north_money
+           FROM   hsgt_stock
+           WHERE  ts_code = ? ORDER BY trade_date DESC LIMIT 5""",
+        (ts_code,)
+    )
+    if not df.empty:
+        return df["north_money"].sum()
+    
+    # 如果没有个股数据，返回0
+    return 0.0
+
+
 # =============================================================================
 # 单股评分引擎
 # =============================================================================
@@ -500,12 +516,18 @@ def score_one(ts_code: str, name: str, industry: str,
 
     # ── Step-3：筹码集中度（最高 30 分 × 筹码权重）─────────────────────────────
     holder_subscore = 0
+    holder_chg = 0  # 新增：股东户数变化百分比
+    holder_current = 0  # 新增：当前股东户数
+    holder_prev = 0  # 新增：上期股东户数
     df_holder = _load_holder(conn, ts_code)
     if len(df_holder) >= 2:
         n1 = df_holder.iloc[0]["holder_num"]
         n2 = df_holder.iloc[1]["holder_num"]
+        holder_current = n1
+        holder_prev = n2
         if n2 and n2 > 0 and not pd.isna(n1):
             chg = (n1 - n2) / n2
+            holder_chg = chg  # 保存股东户数变化
             if chg < -0.10:
                 holder_subscore += 30
                 details["holder"] = f"✅ 股东户数大幅减少 {chg:.2%}（>10%），筹码高度集中，+30分"
@@ -531,6 +553,9 @@ def score_one(ts_code: str, name: str, industry: str,
 
     # ── Step-4：主力资金（最高 20 分 × 资金权重）───────────────────────────────
     money_subscore = 0
+    main_money = 0  # 新增：主力资金净流入（万元）
+    main_money_ratio = 0  # 新增：主力资金占比
+    total_volume = 0  # 新增：总成交额（万元）
     df_money = _load_moneyflow(conn, ts_code)
     if not df_money.empty:
         m = df_money.iloc[0]
@@ -538,6 +563,12 @@ def score_one(ts_code: str, name: str, industry: str,
         if all(c in m.index for c in needed):
             net_main = ((m["buy_elg_amount"] + m["buy_lg_amount"])
                         - (m["sell_elg_amount"] + m["sell_lg_amount"]))
+            main_money = net_main  # 保存主力资金净流入
+            # 计算主力资金占比
+            total_main = m["buy_elg_amount"] + m["sell_elg_amount"] + m["buy_lg_amount"] + m["sell_lg_amount"]
+            total_volume = m.get("amount", total_main)  # 总成交额
+            if total_volume > 0:
+                main_money_ratio = (total_main / total_volume) * 100
             # 正向背离（跌但主力流入）- 使用背离权重
             if net_main > 0 and latest["pct_chg"] < 0:
                 base_score = 20
@@ -568,6 +599,9 @@ def score_one(ts_code: str, name: str, industry: str,
     score += catalyst_score
     details["catalyst"] = f"🔶 行业催化得分: {catalyst_score}分（行业: {industry}）"
 
+    # ── 新增：北向资金5日净流入数据 ──────────────────────────────────────
+    hsgt_5d = _load_hsgt(conn, ts_code)
+    
     return {
         "ts_code":        ts_code,
         "name":           name,
@@ -588,6 +622,15 @@ def score_one(ts_code: str, name: str, industry: str,
         "details":        details,
         "filter_time":    datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "market_regime":  weights.get("regime", "neutral"),
+        # 新增：主力资金和股东户数具体数值
+        "main_money":     round(float(main_money), 2) if main_money else 0,
+        "main_money_ratio": round(float(main_money_ratio), 2) if main_money_ratio else 0,
+        "total_volume":   round(float(total_volume), 2) if total_volume else 0,
+        "holder_chg":     round(float(holder_chg), 4) if holder_chg else 0,
+        "holder_current": int(holder_current) if holder_current else 0,
+        "holder_prev":    int(holder_prev) if holder_prev else 0,
+        # 新增：北向资金5日净流入
+        "hsgt_5d":       round(float(hsgt_5d), 2) if hsgt_5d else 0,
     }
 
 

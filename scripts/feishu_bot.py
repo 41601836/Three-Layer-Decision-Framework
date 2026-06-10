@@ -248,7 +248,8 @@ def send_market_summary_card(
 # =============================================================================
 def send_sector_summary_card(
     sectors: list,
-    trade_date: str = ""
+    trade_date: str = "",
+    summary: str = ""
 ) -> bool:
     """
     发送板块汇总卡片。
@@ -273,6 +274,31 @@ def send_sector_summary_card(
             f"{sector.get('consecutive_count', 0)} | {sector.get('signal_count', 0)} | {mf_str}"
         )
     
+    # 构建卡片元素
+    elements = []
+    
+    # 添加一句话总结
+    if summary:
+        elements.append({
+            "tag": "markdown",
+            "content": f"**📊 板块资金流向总结**：{summary}"
+        })
+        elements.append({
+            "tag": "divider"
+        })
+    
+    # 添加表格
+    elements.append({
+        "tag": "markdown",
+        "content": "\n".join(table_lines)
+    })
+    
+    # 添加备注
+    elements.append({
+        "tag": "note",
+        "elements": [{"tag": "plain_text", "content": "StockAI 量化系统 · 仅供参考"}]
+    })
+    
     card = {
         "config": {"wide_screen_mode": True},
         "header": {
@@ -280,16 +306,7 @@ def send_sector_summary_card(
             "subtitle": {"tag": "plain_text", "content": date_str},
             "template": "purple"
         },
-        "elements": [
-            {
-                "tag": "markdown",
-                "content": "\n".join(table_lines)
-            },
-            {
-                "tag": "note",
-                "elements": [{"tag": "plain_text", "content": "StockAI 量化系统 · 仅供参考"}]
-            }
-        ]
+        "elements": elements
     }
     return _post({"msg_type": "interactive", "card": card})
 
@@ -321,6 +338,13 @@ def send_stock_report_v2(
     logic_basis: str = "",
     risks: list = None,
     ai_analysis: dict = None,
+    downgrade_reason: str = "",  # 新增：降级原因
+    main_money: float = 0,       # 新增：主力资金（万元）
+    holder_chg: float = 0,       # 新增：股东户数变化（%）
+    total_volume: float = 0,     # 新增：总成交额（万元）
+    holder_current: int = 0,     # 新增：当前股东户数
+    holder_prev: int = 0,        # 新增：上期股东户数
+    hsgt_5d: float = 0,          # 新增：北向资金5日净流入（万元）
 ) -> bool:
     """
     发送全新格式的精选金股卡片。
@@ -366,8 +390,34 @@ def send_stock_report_v2(
         content_lines.append("### 🔴 扣分项")
         content_lines.extend(deduct_items)
     
+    # 新增：资金与筹码数据
     content_lines.append("")
-    content_lines.append(f"**总分计算**：{python_score:.0f} + {ai_score:.0f} = **{total_score:.0f} 分**")
+    # 新增：资金与筹码数据
+    content_lines.append("### 💰 资金与筹码数据")
+    if main_money != 0:
+        content_lines.append(f"- **主力资金净流入**：{'+' if main_money > 0 else ''}{main_money:.0f} 万元")
+        # 计算主力资金占比
+        if total_volume > 0:
+            ratio = (abs(main_money) / total_volume) * 100
+            content_lines.append(f"- **主力资金占比**：{ratio:.1f}%")
+    if holder_chg != 0:
+        content_lines.append(f"- **股东户数变化**：{holder_chg:+.2f}%")
+        if holder_current > 0:
+            content_lines.append(f"- **当前股东户数**：{holder_current:,} 户")
+            # 计算每股成本（假设总股本为1，实际需要从数据库获取）
+            if close_price > 0:
+                # 简化计算：当前股价近似为每股成本
+                content_lines.append(f"- **每股成本估算**：¥{close_price:.2f}")
+    if hsgt_5d != 0:
+        content_lines.append(f"- **北向资金5日净流入**：{'+' if hsgt_5d > 0 else ''}{hsgt_5d:.0f} 万元")
+    
+    content_lines.append("")
+    # 正确显示总分计算（包含降级情况）
+    if downgrade_reason:
+        original_total = python_score + ai_score
+        content_lines.append(f"**总分计算**：{python_score:.0f} + {ai_score:.0f} = {original_total:.0f} 分 {downgrade_reason} → **{total_score:.0f} 分**")
+    else:
+        content_lines.append(f"**总分计算**：{python_score:.0f} + {ai_score:.0f} = **{total_score:.0f} 分**")
     
     # 二、大盘与行业模式
     content_lines.append("")

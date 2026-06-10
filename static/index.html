@@ -1051,6 +1051,256 @@
         }
 
         /* ═══════════════════════════════════════════════════
+           PUSH HISTORY STYLES
+        ═══════════════════════════════════════════════════ */
+        .view-content {
+            padding: 0;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 16px;
+            margin-top: 16px;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 16px;
+            background: var(--bg-elevated);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--glass-border);
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: 700;
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+
+        .filter-bar {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .filter-bar input, .filter-bar select {
+            padding: 6px 10px;
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-sm);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-size: 0.8rem;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            margin-top: 16px;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .data-table th {
+            padding: 12px 16px;
+            text-align: left;
+            font-weight: 600;
+            color: var(--text-muted);
+            border-bottom: 1px solid var(--glass-border);
+            background: var(--bg-elevated);
+        }
+
+        .data-table td {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .reason-cell {
+            max-width: 300px;
+            white-space: pre-wrap;
+            line-height: 1.4;
+        }
+
+        .grade-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: var(--radius-sm);
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .grade-s { background: rgba(239,68,68,0.12); color: var(--red-400); border: 1px solid rgba(239,68,68,0.3); }
+        .grade-a { background: rgba(245,158,11,0.12); color: var(--orange-400); border: 1px solid rgba(245,158,11,0.3); }
+        .grade-b { background: rgba(234,179,8,0.12); color: var(--yellow-400); border: 1px solid rgba(234,179,8,0.3); }
+        .grade-c { background: rgba(16,185,129,0.12); color: var(--emerald-400); border: 1px solid rgba(16,185,129,0.3); }
+
+        .status-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: var(--radius-sm);
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .status-success { background: rgba(16,185,129,0.12); color: var(--emerald-400); border: 1px solid rgba(16,185,129,0.3); }
+        .status-failed { background: rgba(239,68,68,0.12); color: var(--red-400); border: 1px solid rgba(239,68,68,0.3); }
+
+        .pagination {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 16px;
+            padding: 12px;
+            background: var(--bg-secondary);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--glass-border);
+        }
+
+        .pagination span {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .pagination div {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 9999;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-content {
+            background-color: var(--bg-primary);
+            margin: 5% auto;
+            padding: 0;
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-lg);
+            width: 90%;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow: hidden;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .modal-header h3 {
+            margin: 0;
+            color: var(--text-primary);
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: var(--radius-sm);
+            transition: all var(--transition-fast);
+        }
+
+        .modal-close:hover {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+
+        .modal-body {
+            padding: 20px;
+            max-height: calc(80vh - 80px);
+            overflow-y: auto;
+        }
+
+        .detail-section {
+            margin-bottom: 24px;
+        }
+
+        .detail-section h4 {
+            margin: 0 0 12px 0;
+            color: var(--text-primary);
+            font-size: 1.1rem;
+        }
+
+        .detail-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+        }
+
+        .detail-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .detail-label {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+
+        .detail-value {
+            font-size: 0.9rem;
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        .detail-content {
+            padding: 12px;
+            background: var(--bg-elevated);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--glass-border);
+        }
+
+        .detail-content pre {
+            margin: 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-size: 0.8rem;
+        }
+
+        .text-center {
+            text-align: center;
+            color: var(--text-muted);
+        }
+            flex: 1;
+        }
+
+        /* ═══════════════════════════════════════════════════
            TOAST NOTIFICATIONS
         ═══════════════════════════════════════════════════ */
         #toast-container {
@@ -1234,6 +1484,11 @@
     <button class="nav-item" id="nav-config" onclick="switchView('config')" title="配置">
         <span>⬡</span>
         <span class="nav-tooltip">系统配置</span>
+    </button>
+    
+    <button class="nav-item" id="nav-history" onclick="switchView('history')" title="推送历史">
+        <span>📋</span>
+        <span class="nav-tooltip">推送历史</span>
     </button>
 </nav>
 
@@ -1594,6 +1849,114 @@
     </div><!-- /content -->
 </div><!-- /main -->
 
+<!-- ═══════════════════════════════════════
+     PUSH HISTORY VIEW
+═══════════════════════════════════════ -->
+<div id="history-view" class="view-content" style="display: none;">
+    <div class="content">
+        <!-- 推送历史统计卡片 -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <div class="card-title-icon icon-blue">📊</div>
+                    推送统计概览
+                </div>
+                <button class="btn btn-ghost btn-sm" onclick="refreshHistoryStats()">↻ 刷新</button>
+            </div>
+            <div class="card-body">
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-number" id="stat-total">0</div>
+                        <div class="stat-label">总推送次数</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="stat-success">0</div>
+                        <div class="stat-label">成功推送</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="stat-rate">0%</div>
+                        <div class="stat-label">成功率</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="stat-today">0</div>
+                        <div class="stat-label">今日推送</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 推送历史表格 -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <div class="card-title-icon icon-green">📋</div>
+                    推送历史记录
+                </div>
+                <div class="filter-bar">
+                    <input type="text" id="history-search" placeholder="搜索股票代码或名称" onkeyup="onSearchChange()">
+                    <select id="status-filter" onchange="onFilterChange()">
+                        <option value="">全部状态</option>
+                        <option value="success">成功</option>
+                        <option value="failed">失败</option>
+                    </select>
+                    <select id="grade-filter" onchange="onFilterChange()">
+                        <option value="">全部评级</option>
+                        <option value="S">S级</option>
+                        <option value="A">A级</option>
+                        <option value="B">B级</option>
+                        <option value="C">C级</option>
+                    </select>
+                    <button class="btn btn-ghost btn-sm" onclick="loadPushHistory()">↻ 刷新</button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>推送时间</th>
+                                <th>股票代码</th>
+                                <th>股票名称</th>
+                                <th>推送理由</th>
+                                <th>评级</th>
+                                <th>评分</th>
+                                <th>状态</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-table-body">
+                            <tr>
+                                <td colspan="8" class="text-center">加载中...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="pagination" id="pagination">
+                    <span>显示 0-0 条，共 0 条</span>
+                    <div>
+                        <button class="btn btn-ghost btn-sm" disabled>上一页</button>
+                        <span>1 / 1</span>
+                        <button class="btn btn-ghost btn-sm" disabled>下一页</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 推送详情模态框 -->
+<div id="detail-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>推送详情</h3>
+            <button class="modal-close" onclick="closeDetailModal()">✕</button>
+        </div>
+        <div class="modal-body" id="detail-content">
+            <!-- 内容将通过JavaScript动态加载 -->
+        </div>
+    </div>
+</div>
+
 <!-- TOAST CONTAINER -->
 <div id="toast-container"></div>
 
@@ -1834,11 +2197,26 @@
 
     /* ── Sidebar Nav ── */
     function switchView(view) {
-        ['dashboard','control','data','config'].forEach(v => {
+        ['dashboard','control','data','config','history'].forEach(v => {
             document.getElementById('nav-' + v)?.classList.remove('active');
         });
         document.getElementById('nav-' + view)?.classList.add('active');
-        showToast('切换到 ' + view + ' 视图（暂为单页模式）', 'info');
+        
+        // 切换内容显示
+        document.querySelectorAll('.view-content').forEach(el => {
+            el.style.display = 'none';
+        });
+        
+        const viewContent = document.getElementById(view + '-view');
+        if (viewContent) {
+            viewContent.style.display = 'block';
+            // 如果是历史视图，加载数据
+            if (view === 'history') {
+                loadPushHistory();
+            }
+        }
+        
+        showToast('切换到 ' + view + ' 视图', 'info');
     }
 
     /* ── Range sync ── */
@@ -1850,6 +2228,229 @@
     document.getElementById('ai-max-bias').addEventListener('input', function() {
         document.getElementById('bias-val').textContent = this.value;
         document.getElementById('bias-display').textContent = this.value + '%';
+    });
+
+    /* ── Push History Functions ── */
+    let currentPage = 1;
+    let currentSearch = '';
+    let currentStatus = '';
+    let currentGrade = '';
+    
+    async function loadPushHistory(page = 1) {
+        try {
+            const params = new URLSearchParams({
+                page: page,
+                page_size: 20
+            });
+            
+            if (currentSearch) params.append('search', currentSearch);
+            if (currentStatus) params.append('status', currentStatus);
+            if (currentGrade) params.append('grade', currentGrade);
+            
+            const response = await fetch(`/api/push-history?${params}`);
+            const data = await response.json();
+            
+            if (data.code === 0) {
+                renderHistoryTable(data.data);
+                renderPagination(data.data);
+                currentPage = page;
+            } else {
+                showToast('加载推送历史失败', 'error');
+            }
+        } catch (error) {
+            console.error('加载推送历史失败:', error);
+            showToast('加载推送历史失败', 'error');
+        }
+    }
+    
+    function renderHistoryTable(data) {
+        const tbody = document.getElementById('history-table-body');
+        
+        if (data.list.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="8" class="text-center">暂无推送记录</td>
+                </tr>
+            `;
+            return;
+        }
+        
+        tbody.innerHTML = data.list.map(item => `
+            <tr>
+                <td>${formatDateTime(item.push_time)}</td>
+                <td>${item.ts_code}</td>
+                <td>${item.stock_name}</td>
+                <td class="reason-cell">${item.push_reason}</td>
+                <td><span class="grade-badge grade-${item.grade?.toLowerCase()}">${item.grade || '-'}</span></td>
+                <td>${item.total_score || '-'}</td>
+                <td><span class="status-badge status-${item.push_status}">${item.push_status === 'success' ? '✅ 成功' : '❌ 失败'}</span></td>
+                <td><button class="btn btn-ghost btn-sm" onclick="viewPushDetail(${item.id})">查看详情</button></td>
+            </tr>
+        `).join('');
+    }
+    
+    function renderPagination(data) {
+        const pagination = document.getElementById('pagination');
+        const totalPages = data.total_pages;
+        const total = data.total;
+        const startIndex = (currentPage - 1) * data.page_size + 1;
+        const endIndex = Math.min(currentPage * data.page_size, total);
+        
+        pagination.innerHTML = `
+            <span>显示 ${startIndex}-${endIndex} 条，共 ${total} 条</span>
+            <div>
+                <button class="btn btn-ghost btn-sm" onclick="loadPushHistory(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>上一页</button>
+                <span>${currentPage} / ${totalPages}</span>
+                <button class="btn btn-ghost btn-sm" onclick="loadPushHistory(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>下一页</button>
+            </div>
+        `;
+    }
+    
+    async function refreshHistoryStats() {
+        try {
+            const response = await fetch('/api/push-history/stats');
+            const data = await response.json();
+            
+            if (data.code === 0) {
+                const stats = data.data;
+                document.getElementById('stat-total').textContent = stats.total_pushes;
+                document.getElementById('stat-success').textContent = stats.success_pushes;
+                document.getElementById('stat-rate').textContent = stats.success_rate + '%';
+                document.getElementById('stat-today').textContent = stats.today_pushes || 0;
+            }
+        } catch (error) {
+            console.error('加载统计数据失败:', error);
+        }
+    }
+    
+    async function viewPushDetail(recordId) {
+        try {
+            const response = await fetch(`/api/push-history/${recordId}`);
+            const data = await response.json();
+            
+            if (data.code === 0) {
+                showDetailModal(data.data);
+            } else {
+                showToast('获取详情失败', 'error');
+            }
+        } catch (error) {
+            console.error('获取详情失败:', error);
+            showToast('获取详情失败', 'error');
+        }
+    }
+    
+    function showDetailModal(data) {
+        const modal = document.getElementById('detail-modal');
+        const content = document.getElementById('detail-content');
+        
+        content.innerHTML = `
+            <div class="detail-section">
+                <h4>基本信息</h4>
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <span class="detail-label">推送时间:</span>
+                        <span class="detail-value">${formatDateTime(data.push_time)}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">股票代码:</span>
+                        <span class="detail-value">${data.ts_code}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">股票名称:</span>
+                        <span class="detail-value">${data.stock_name}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">推送状态:</span>
+                        <span class="detail-value">${data.push_status === 'success' ? '✅ 成功' : '❌ 失败'}</span>
+                    </div>
+                    ${data.total_score ? `
+                    <div class="detail-item">
+                        <span class="detail-label">综合评分:</span>
+                        <span class="detail-value">${data.total_score}</span>
+                    </div>
+                    ` : ''}
+                    ${data.grade ? `
+                    <div class="detail-item">
+                        <span class="detail-label">评级:</span>
+                        <span class="detail-value"><span class="grade-badge grade-${data.grade.toLowerCase()}">${data.grade}</span></span>
+                    </div>
+                    ` : ''}
+                    ${data.session_name ? `
+                    <div class="detail-item">
+                        <span class="detail-label">会话名称:</span>
+                        <span class="detail-value">${data.session_name}</span>
+                    </div>
+                    ` : ''}
+                </div>
+            </div>
+            
+            <div class="detail-section">
+                <h4>推送理由</h4>
+                <div class="detail-content">
+                    <p>${data.push_reason}</p>
+                </div>
+            </div>
+            
+            ${data.push_content ? `
+            <div class="detail-section">
+                <h4>推送内容</h4>
+                <div class="detail-content">
+                    <pre>${JSON.stringify(data.push_content, null, 2)}</pre>
+                </div>
+            </div>
+            ` : ''}
+        `;
+        
+        modal.style.display = 'block';
+    }
+    
+    function closeDetailModal() {
+        const modal = document.getElementById('detail-modal');
+        modal.style.display = 'none';
+    }
+    
+    function onSearchChange() {
+        currentSearch = document.getElementById('history-search').value.trim();
+        currentPage = 1;
+        loadPushHistory(currentPage);
+    }
+    
+    function onFilterChange() {
+        currentStatus = document.getElementById('status-filter').value;
+        currentGrade = document.getElementById('grade-filter').value;
+        currentPage = 1;
+        loadPushHistory(currentPage);
+    }
+    
+    function formatDateTime(dateStr) {
+        try {
+            const date = new Date(dateStr);
+            return date.toLocaleString('zh-CN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        } catch (error) {
+            return dateStr;
+        }
+    }
+    
+    // 点击模态框外部关闭
+    document.getElementById('detail-modal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeDetailModal();
+        }
+    });
+    
+    // 页面加载时刷新统计
+    document.addEventListener('DOMContentLoaded', function() {
+        // 如果当前显示的是历史视图，加载数据
+        if (document.getElementById('history-view').style.display === 'block') {
+            loadPushHistory();
+        }
+        refreshHistoryStats();
     });
 
     /* ── Washout Analysis ── */

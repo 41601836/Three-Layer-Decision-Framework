@@ -1,19 +1,26 @@
 import os
 import sys
+import logging
 import psutil
 import subprocess
 import sqlite3
 import re
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, File, UploadFile, HTTPException, BackgroundTasks
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+import json
+from datetime import datetime
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 SCRIPTS_DIR = os.path.join(ROOT_DIR, "scripts")
 STATIC_DIR = os.path.join(ROOT_DIR, "static")
 DB_PATH = os.path.join(ROOT_DIR, "db", "stock_daily.db")
-TOKENS_PATH = os.path.join(SCRIPTS_DIR, "tokens.py")
+TOKENS_PATH = os.path.join(ROOT_DIR, "tokens.py")
+
+# 导入推送历史管理模块
+sys.path.append(os.path.join(ROOT_DIR, "scripts"))
+from push_history import push_history_manager
 
 os.makedirs(STATIC_DIR, exist_ok=True)
 
@@ -227,6 +234,148 @@ def set_ai_config(config: AIConfigUpdate):
     with open(AI_CONFIG_PATH, "w", encoding="utf-8") as f:
         json.dump(config.dict(), f, ensure_ascii=False, indent=2)
     return {"status": "success"}
+
+# ═══════════════════════════════════════════════════
+# 推送历史API
+# ═══════════════════════════════════════════════════
+@app.get("/api/push-history")
+def get_push_history(
+    page: int = 1,
+    page_size: int = 20,
+    search: str = None,
+    status: str = None,
+    grade: str = None,
+    start_time: str = None,
+    end_time: str = None
+):
+    """获取推送历史列表"""
+    try:
+        result = push_history_manager.get_push_history(
+            page=page,
+            page_size=page_size,
+            search=search,
+            status=status,
+            grade=grade,
+            start_time=start_time,
+            end_time=end_time
+        )
+        return {
+            "code": 0,
+            "message": "success",
+            "data": result
+        }
+    except Exception as e:
+        logger.error(f"获取推送历史失败: {e}")
+        return {
+            "code": -1,
+            "message": "获取推送历史失败",
+            "data": {}
+        }
+
+@app.get("/api/push-history/{record_id}")
+def get_push_detail(record_id: int):
+    """获取推送详情"""
+    try:
+        detail = push_history_manager.get_push_detail(record_id)
+        if detail:
+            return {
+                "code": 0,
+                "message": "success",
+                "data": detail
+            }
+        else:
+            return {
+                "code": -1,
+                "message": "记录不存在",
+                "data": {}
+            }
+    except Exception as e:
+        logger.error(f"获取推送详情失败: {e}")
+        return {
+            "code": -1,
+            "message": "获取推送详情失败",
+            "data": {}
+        }
+
+@app.post("/api/push-history")
+def add_push_history(
+    ts_code: str,
+    stock_name: str,
+    push_reason: str,
+    push_content: str = None,
+    session_name: str = None,
+    total_score: float = None,
+    grade: str = None,
+    push_status: str = "success"
+):
+    """添加推送记录"""
+    try:
+        # 解析JSON内容
+        if push_content:
+            try:
+                push_content = json.loads(push_content)
+            except json.JSONDecodeError:
+                pass
+        
+        record_id = push_history_manager.add_push_record(
+            ts_code=ts_code,
+            stock_name=stock_name,
+            push_reason=push_reason,
+            push_content=push_content,
+            session_name=session_name,
+            total_score=total_score,
+            grade=grade,
+            push_status=push_status
+        )
+        
+        if record_id > 0:
+            return {
+                "code": 0,
+                "message": "success",
+                "data": {"record_id": record_id}
+            }
+        else:
+            return {
+                "code": -1,
+                "message": "保存失败",
+                "data": {}
+            }
+    except Exception as e:
+        logger.error(f"添加推送记录失败: {e}")
+        return {
+            "code": -1,
+            "message": "添加推送记录失败",
+            "data": {}
+        }
+
+@app.get("/api/push-history/stats")
+def get_push_stats(days: int = 7):
+    """获取推送统计信息"""
+    try:
+        stats = push_history_manager.get_statistics(days=days)
+        
+        # 计算今日推送数量
+        today = datetime.now().strftime('%Y-%m-%d')
+        today_count = push_history_manager.get_push_history(
+            page=1,
+            page_size=1,
+            start_time=f"{today} 00:00:00",
+            end_time=f"{today} 23:59:59"
+        )['total']
+        stats['today_pushes'] = today_count
+        
+        return {
+            "code": 0,
+            "message": "success",
+            "data": stats
+        }
+    except Exception as e:
+        logger.error(f"获取推送统计失败: {e}")
+        return {
+            "code": -1,
+            "message": "获取推送统计失败",
+            "data": {}
+        }
     
 if __name__ == "__main__":
     import uvicorn
