@@ -676,8 +676,69 @@ class StockAnalyzer:
         reasoning = []
         total_score = 0
 
-        # ── 因子1：主力资金净流入 > 0（特大单+大单净买入）→ +15分 ───────────
+        # ========== 主力拆单预设与判断 ==========
+        is_split_order = False
+        main_net_3day = "非连续流入"
+        small_net_ratio = 0.0
+        holder_trend = "未下降"
+        vol_trend = "其他"
+        amplitude_val = 999.0
+        
+        # 1. 资金指标
         if not data["money"].empty:
+            m = data["money"].iloc[0]
+            total_sm_inflow = float(m.get("buy_sm_amount", 0) - m.get("sell_sm_amount", 0))
+            total_mf_amount = sum(float(m.get(c, 0)) for c in ["buy_sm_amount", "buy_md_amount", "buy_lg_amount", "buy_elg_amount", "sell_sm_amount", "sell_md_amount", "sell_lg_amount", "sell_elg_amount"])
+            small_net_ratio = (total_sm_inflow / total_mf_amount * 100) if total_mf_amount > 0 else 0.0
+            
+            if len(data["money"]) >= 3:
+                inflows = []
+                for i in range(3):
+                    m_i = data["money"].iloc[i]
+                    net_big_i = (float(m_i.get("buy_elg_amount", 0)) + float(m_i.get("buy_lg_amount", 0))
+                                 - float(m_i.get("sell_elg_amount", 0)) - float(m_i.get("sell_lg_amount", 0)))
+                    inflows.append(net_big_i > 0)
+                if all(inflows):
+                    main_net_3day = "连续流入"
+
+        # 2. 筹码指标
+        if len(data["holder"]) >= 2:
+            nums = data["holder"]["holder_num"].dropna().values
+            if len(nums) >= 2 and nums[0] <= nums[1]:
+                holder_trend = "连续2~3期下降"
+
+        # 3. 量能与振幅指标
+        if len(df) >= 20:
+            recent_20 = df.head(20)
+            amplitude_val = ((recent_20["high"].max() - recent_20["low"].min()) / recent_20["low"].min()) * 100
+            
+            vol_5 = recent_20.head(5)["vol"].mean()
+            vol_20 = recent_20["vol"].mean()
+            if vol_20 > 0:
+                if vol_5 < vol_20 * 0.7:
+                    close_3d = df.head(3)["close"]
+                    if close_3d.min() > 0 and (close_3d.max() / close_3d.min() - 1) < 0.03:
+                        vol_trend = "缩量企稳"
+                elif vol_20 * 1.2 < vol_5 < vol_20 * 2.0:
+                    vol_trend = "温和放量"
+
+        # 组合条件判定主力拆单
+        cond1 = (main_net_3day != "连续流入") and (small_net_ratio > 60)
+        cond2 = (holder_trend == "连续2~3期下降")
+        cond3 = (vol_trend in ["温和放量", "缩量企稳"])
+        cond4 = (amplitude_val <= 30)
+        
+        match_count = sum([cond1, cond2, cond3, cond4])
+        if match_count >= 2:
+            is_split_order = True
+            reasoning.append("🔍 触发主力拆单吸筹判定")
+
+        # ── 因子1：主力资金净流入及主力拆单修正 ───────────
+        if is_split_order:
+            total_score += 20
+            reasoning.append("✅ 主力拆单吸筹修正：强制按【连续3日流入】计分，+20分")
+            score_card["market_behavior"] += 20
+        elif not data["money"].empty:
             m = data["money"].iloc[0]
             needed = {"buy_elg_amount", "buy_lg_amount", "sell_elg_amount", "sell_lg_amount"}
             if needed.issubset(set(m.index)):
@@ -689,6 +750,10 @@ class StockAnalyzer:
                     score_card["market_behavior"] += 15
                 else:
                     reasoning.append(f"❌ 主力净流出 {abs(net_big):.0f}万，未达加分条件")
+
+        # 1. 小单占比扣分豁免
+        if is_split_order and small_net_ratio > 60:
+            reasoning.append("✅ 主力拆单豁免：取消小单占比扣分")
 
         # ── 因子2：股东户数连续下降（近2期或3期）→ +15分 ──────────────────
         holder_num, holder_src = self._get_holder_num(data["bak"], data["holder"])

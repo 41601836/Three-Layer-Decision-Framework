@@ -117,12 +117,16 @@ def analyze_portfolio(portfolio: list) -> list:
             
             try:
                 analyzer = StockAnalyzer(ts_code)
-                # 使用 analyze_v3_0 分析
-                total_score, python_score, ai_score, grade, report = analyzer.analyze_v3_0(
+                score_card, reasoning = analyzer.analyze_v3_0(
                     ts_code=ts_code,
                     catalyst_score=0,
                     industry_mode="normal"
                 )
+                total_score = score_card.get("total_score", 0)
+                python_score = total_score
+                ai_score = 0
+                grade = "强信号" if total_score >= 30 else "中信号" if total_score >= 15 else "弱信号"
+                report = "\n".join(reasoning)
                 
                 # 生成操作建议
                 action, reason, stop_loss = generate_position_action(

@@ -1,179 +1,179 @@
 {
-  "calc_date": "20260610",
-  "timestamp": "2026-06-10T17:33:49.409574",
+  "calc_date": "20260611",
+  "timestamp": "2026-06-11T20:04:16.323872",
   "main_line": [
-    "机床制造",
-    "机械基件",
     "银行"
   ],
   "backup_line": [
+    "保险",
     "玻璃",
-    "塑料",
-    "矿物制品",
+    "公路",
     "摩托车",
-    "工程机械",
-    "电器仪表",
-    "陶瓷"
+    "陶瓷",
+    "染料涂料",
+    "机场",
+    "矿物制品",
+    "塑料"
   ],
   "all_industries": [
     {
-      "industry": "玻璃",
-      "avg_pct_chg": 1.239,
-      "net_mf_amount": -23.13,
-      "stock_count": 19,
-      "composite_score": 0.9398,
-      "tier": "backup"
-    },
-    {
-      "industry": "机床制造",
-      "avg_pct_chg": 0.588,
-      "net_mf_amount": 0.85,
-      "stock_count": 22,
-      "composite_score": 0.8761,
-      "tier": "main"
-    },
-    {
-      "industry": "机械基件",
-      "avg_pct_chg": 0.368,
-      "net_mf_amount": 10.4,
-      "stock_count": 116,
-      "composite_score": 0.8567,
-      "tier": "main"
-    },
-    {
       "industry": "银行",
-      "avg_pct_chg": 0.303,
-      "net_mf_amount": 15.86,
+      "avg_pct_chg": 0.707,
+      "net_mf_amount": 54.35,
       "stock_count": 42,
-      "composite_score": 0.8552,
+      "composite_score": 0.9893,
       "tier": "main"
     },
     {
-      "industry": "塑料",
-      "avg_pct_chg": 0.438,
-      "net_mf_amount": -22.43,
-      "stock_count": 68,
-      "composite_score": 0.8169,
+      "industry": "保险",
+      "avg_pct_chg": 0.772,
+      "net_mf_amount": -13.76,
+      "stock_count": 5,
+      "composite_score": 0.921,
       "tier": "backup"
     },
     {
-      "industry": "矿物制品",
-      "avg_pct_chg": 0.306,
-      "net_mf_amount": -22.49,
-      "stock_count": 32,
-      "composite_score": 0.7964,
+      "industry": "玻璃",
+      "avg_pct_chg": 0.605,
+      "net_mf_amount": -19.85,
+      "stock_count": 19,
+      "composite_score": 0.8862,
+      "tier": "backup"
+    },
+    {
+      "industry": "公路",
+      "avg_pct_chg": 0.414,
+      "net_mf_amount": -0.17,
+      "stock_count": 3,
+      "composite_score": 0.8773,
       "tier": "backup"
     },
     {
       "industry": "摩托车",
-      "avg_pct_chg": 0.024,
-      "net_mf_amount": -4.86,
+      "avg_pct_chg": 0.344,
+      "net_mf_amount": -3.49,
       "stock_count": 11,
-      "composite_score": 0.78,
-      "tier": "backup"
-    },
-    {
-      "industry": "工程机械",
-      "avg_pct_chg": -0.075,
-      "net_mf_amount": 4.49,
-      "stock_count": 33,
-      "composite_score": 0.7792,
-      "tier": "backup"
-    },
-    {
-      "industry": "电器仪表",
-      "avg_pct_chg": -0.011,
-      "net_mf_amount": -2.18,
-      "stock_count": 90,
-      "composite_score": 0.7788,
+      "composite_score": 0.862,
       "tier": "backup"
     },
     {
       "industry": "陶瓷",
-      "avg_pct_chg": -0.113,
-      "net_mf_amount": 3.45,
+      "avg_pct_chg": 0.191,
+      "net_mf_amount": -1.6,
       "stock_count": 5,
-      "composite_score": 0.7717,
+      "composite_score": 0.8388,
       "tier": "backup"
     },
     {
       "industry": "染料涂料",
-      "avg_pct_chg": -0.014,
-      "net_mf_amount": -9.45,
+      "avg_pct_chg": 0.211,
+      "net_mf_amount": -6.12,
       "stock_count": 35,
-      "composite_score": 0.767,
+      "composite_score": 0.8369,
+      "tier": "backup"
+    },
+    {
+      "industry": "机场",
+      "avg_pct_chg": 0.04,
+      "net_mf_amount": -1.44,
+      "stock_count": 5,
+      "composite_score": 0.8139,
+      "tier": "backup"
+    },
+    {
+      "industry": "矿物制品",
+      "avg_pct_chg": 0.106,
+      "net_mf_amount": -12.16,
+      "stock_count": 32,
+      "composite_score": 0.8123,
+      "tier": "backup"
+    },
+    {
+      "industry": "塑料",
+      "avg_pct_chg": -0.029,
+      "net_mf_amount": -16.3,
+      "stock_count": 68,
+      "composite_score": 0.7852,
+      "tier": "backup"
+    },
+    {
+      "industry": "电信运营",
+      "avg_pct_chg": -0.236,
+      "net_mf_amount": 5.95,
+      "stock_count": 5,
+      "composite_score": 0.7767,
       "tier": "avoid"
     },
     {
-      "industry": "公路",
-      "avg_pct_chg": -0.148,
-      "net_mf_amount": -0.31,
-      "stock_count": 3,
-      "composite_score": 0.7605,
+      "industry": "啤酒",
+      "avg_pct_chg": -0.189,
+      "net_mf_amount": -2.78,
+      "stock_count": 8,
+      "composite_score": 0.7744,
       "tier": "avoid"
     },
     {
-      "industry": "出版业",
-      "avg_pct_chg": -0.1,
-      "net_mf_amount": -5.92,
-      "stock_count": 29,
-      "composite_score": 0.7592,
+      "industry": "农业综合",
+      "avg_pct_chg": -0.169,
+      "net_mf_amount": -6.63,
+      "stock_count": 40,
+      "composite_score": 0.7732,
       "tier": "avoid"
     },
     {
-      "industry": "纺织机械",
-      "avg_pct_chg": -0.167,
-      "net_mf_amount": -5.03,
-      "stock_count": 11,
-      "composite_score": 0.7502,
+      "industry": "机床制造",
+      "avg_pct_chg": -0.244,
+      "net_mf_amount": 2.25,
+      "stock_count": 22,
+      "composite_score": 0.7711,
       "tier": "avoid"
     },
     {
       "industry": "铁路",
-      "avg_pct_chg": -0.159,
-      "net_mf_amount": -8.07,
+      "avg_pct_chg": -0.259,
+      "net_mf_amount": -4.98,
       "stock_count": 7,
-      "composite_score": 0.7467,
-      "tier": "avoid"
-    },
-    {
-      "industry": "机场",
-      "avg_pct_chg": -0.233,
-      "net_mf_amount": -3.08,
-      "stock_count": 5,
-      "composite_score": 0.743,
-      "tier": "avoid"
-    },
-    {
-      "industry": "保险",
-      "avg_pct_chg": -0.086,
-      "net_mf_amount": -21.82,
-      "stock_count": 5,
-      "composite_score": 0.7368,
-      "tier": "avoid"
-    },
-    {
-      "industry": "其他商业",
-      "avg_pct_chg": -0.356,
-      "net_mf_amount": -3.43,
-      "stock_count": 12,
-      "composite_score": 0.7235,
-      "tier": "avoid"
-    },
-    {
-      "industry": "轻工机械",
-      "avg_pct_chg": -0.387,
-      "net_mf_amount": -1.98,
-      "stock_count": 7,
-      "composite_score": 0.7209,
+      "composite_score": 0.7601,
       "tier": "avoid"
     },
     {
       "industry": "化工机械",
-      "avg_pct_chg": -0.38,
-      "net_mf_amount": -4.53,
+      "avg_pct_chg": -0.322,
+      "net_mf_amount": 0.36,
       "stock_count": 12,
-      "composite_score": 0.7181,
+      "composite_score": 0.756,
+      "tier": "avoid"
+    },
+    {
+      "industry": "工程机械",
+      "avg_pct_chg": -0.416,
+      "net_mf_amount": 8.25,
+      "stock_count": 33,
+      "composite_score": 0.7495,
+      "tier": "avoid"
+    },
+    {
+      "industry": "旅游景点",
+      "avg_pct_chg": -0.342,
+      "net_mf_amount": -4.09,
+      "stock_count": 18,
+      "composite_score": 0.7475,
+      "tier": "avoid"
+    },
+    {
+      "industry": "食品",
+      "avg_pct_chg": -0.332,
+      "net_mf_amount": -6.36,
+      "stock_count": 86,
+      "composite_score": 0.7465,
+      "tier": "avoid"
+    },
+    {
+      "industry": "园区开发",
+      "avg_pct_chg": -0.389,
+      "net_mf_amount": -0.68,
+      "stock_count": 14,
+      "composite_score": 0.7436,
       "tier": "avoid"
     }
   ]

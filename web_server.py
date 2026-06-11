@@ -12,6 +12,9 @@ from pydantic import BaseModel
 import json
 from datetime import datetime
 
+# 配置日志
+logger = logging.getLogger("web_server")
+
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 SCRIPTS_DIR = os.path.join(ROOT_DIR, "scripts")
 STATIC_DIR = os.path.join(ROOT_DIR, "static")
@@ -211,6 +214,125 @@ def get_portfolio_for_washout():
     except Exception as e:
         return {"stocks": []}
 
+
+class PortfolioItem(BaseModel):
+    ts_code: str
+    cost: float
+    shares: int
+
+
+@app.get("/api/portfolio")
+def get_portfolio():
+    portfolio_file = os.path.join(ROOT_DIR, "portfolio.json")
+    if not os.path.exists(portfolio_file):
+        return {"stocks": []}
+    try:
+        with open(portfolio_file, "r", encoding="utf-8") as f:
+            stocks = json.load(f)
+        if not isinstance(stocks, list):
+            stocks = []
+        conn = sqlite3.connect(DB_PATH)
+        for s in stocks:
+            if not s.get("name"):
+                row = conn.execute("SELECT name FROM stock_list WHERE ts_code=?", (s["ts_code"],)).fetchone()
+                s["name"] = row[0] if row else "未知"
+        conn.close()
+        return {"stocks": stocks}
+    except Exception as e:
+        return {"stocks": [], "error": str(e)}
+
+
+@app.post("/api/portfolio")
+def add_portfolio_item(item: PortfolioItem):
+    portfolio_file = os.path.join(ROOT_DIR, "portfolio.json")
+    stocks = []
+    if os.path.exists(portfolio_file):
+        try:
+            with open(portfolio_file, "r", encoding="utf-8") as f:
+                stocks = json.load(f)
+            if not isinstance(stocks, list):
+                stocks = []
+        except:
+            pass
+    
+    conn = sqlite3.connect(DB_PATH)
+    row = conn.execute("SELECT name FROM stock_list WHERE ts_code=?", (item.ts_code.strip(),)).fetchone()
+    conn.close()
+    if not row:
+        raise HTTPException(status_code=400, detail="未找到该股票代码，请检查输入是否正确(如 600519.SH)")
+    name = row[0]
+    
+    found = False
+    for s in stocks:
+        if s["ts_code"] == item.ts_code.strip():
+            s["cost"] = item.cost
+            s["shares"] = item.shares
+            s["name"] = name
+            found = True
+            break
+    if not found:
+        stocks.append({
+            "ts_code": item.ts_code.strip(),
+            "name": name,
+            "cost": item.cost,
+            "shares": item.shares
+        })
+        
+    try:
+        with open(portfolio_file, "w", encoding="utf-8") as f:
+            json.dump(stocks, f, ensure_ascii=False, indent=2)
+        return {"status": "success", "stocks": stocks}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/portfolio/{ts_code}")
+def delete_portfolio_item(ts_code: str):
+    portfolio_file = os.path.join(ROOT_DIR, "portfolio.json")
+    if not os.path.exists(portfolio_file):
+        return {"status": "success", "stocks": []}
+    try:
+        with open(portfolio_file, "r", encoding="utf-8") as f:
+            stocks = json.load(f)
+        if not isinstance(stocks, list):
+            stocks = []
+        stocks = [s for s in stocks if s["ts_code"] != ts_code]
+        with open(portfolio_file, "w", encoding="utf-8") as f:
+            json.dump(stocks, f, ensure_ascii=False, indent=2)
+        return {"status": "success", "stocks": stocks}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/portfolio/analyze")
+def analyze_portfolio_api():
+    try:
+        from portfolio_health import check_portfolio
+        results = check_portfolio("portfolio.json")
+        return {"status": "success", "results": results}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/stock/search")
+def search_stock(q: str):
+    if not q or len(q) < 2:
+        return {"stocks": []}
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT ts_code, name, industry FROM stock_list WHERE ts_code LIKE ? OR name LIKE ? LIMIT 10",
+            (f"%{q}%", f"%{q}%")
+        )
+        rows = cursor.fetchall()
+        conn.close()
+        stocks = [{"ts_code": r[0], "name": r[1], "industry": r[2]} for r in rows]
+        return {"stocks": stocks}
+    except Exception as e:
+        return {"stocks": [], "error": str(e)}
+
+
 import json
 AI_CONFIG_PATH = os.path.join(ROOT_DIR, "ai_config.json")
 
@@ -269,31 +391,6 @@ def get_push_history(
         return {
             "code": -1,
             "message": "获取推送历史失败",
-            "data": {}
-        }
-
-@app.get("/api/push-history/{record_id}")
-def get_push_detail(record_id: int):
-    """获取推送详情"""
-    try:
-        detail = push_history_manager.get_push_detail(record_id)
-        if detail:
-            return {
-                "code": 0,
-                "message": "success",
-                "data": detail
-            }
-        else:
-            return {
-                "code": -1,
-                "message": "记录不存在",
-                "data": {}
-            }
-    except Exception as e:
-        logger.error(f"获取推送详情失败: {e}")
-        return {
-            "code": -1,
-            "message": "获取推送详情失败",
             "data": {}
         }
 
@@ -374,6 +471,31 @@ def get_push_stats(days: int = 7):
         return {
             "code": -1,
             "message": "获取推送统计失败",
+            "data": {}
+        }
+
+@app.get("/api/push-history/{record_id}")
+def get_push_detail(record_id: int):
+    """获取推送详情"""
+    try:
+        detail = push_history_manager.get_push_detail(record_id)
+        if detail:
+            return {
+                "code": 0,
+                "message": "success",
+                "data": detail
+            }
+        else:
+            return {
+                "code": -1,
+                "message": "记录不存在",
+                "data": {}
+            }
+    except Exception as e:
+        logger.error(f"获取推送详情失败: {e}")
+        return {
+            "code": -1,
+            "message": "获取推送详情失败",
             "data": {}
         }
     

@@ -744,6 +744,7 @@ def push_to_feishu(
                 trade_date=trade_date,
                 downgrade_reason=r.get("downgrade_reason", ""),
                 # 新增：主力资金和股东户数具体数值
+                score_details=filter_data.get("details", {}),
                 main_money=filter_data.get("main_money", 0),
                 holder_chg=filter_data.get("holder_chg", 0),
                 total_volume=filter_data.get("total_volume", 0),
@@ -762,49 +763,206 @@ def _send_market_summary(trade_date: str) -> None:
     from scripts.feishu_bot import send_market_summary_card
     from market_env import get_market_mode
     import pandas as pd
+    import sqlite3
+    import os
+    import json
     
     try:
         mode, max_pos, detail = get_market_mode()
         
-        # 解析上证指数信息
-        import re
-        match = re.search(r"上证 (\d+\.\d+)", detail)
-        sh_index = float(match.group(1)) if match else 0.0
-        
-        # 获取市场广度数据
-        import sqlite3
-        from datetime import datetime
         conn = sqlite3.connect("db/stock_daily.db")
+        cursor = conn.cursor()
         
-        # 获取上涨家数占比
+        # 如果没有传入 trade_date，先获取最新的日期
+        if not trade_date:
+            cursor.execute("SELECT MAX(trade_date) FROM daily_prices")
+            trade_date = cursor.fetchone()[0]
+            
+        sh_index = 0.0
+        sh_pct = 0.0
         if trade_date:
-            df = pd.read_sql(
-                """SELECT pct_chg FROM daily_prices WHERE trade_date = ? AND pct_chg IS NOT NULL""",
+            # 优先从 daily_index 查询上证指数
+            cursor.execute(
+                "SELECT close, pct_chg FROM daily_index WHERE ts_code = '000001.SH' AND trade_date = ?",
+                (trade_date,)
+            )
+            row = cursor.fetchone()
+            if row:
+                sh_index, sh_pct = row[0], row[1]
+            else:
+                # 尝试从 daily_prices 查询上证指数
+                cursor.execute(
+                    "SELECT close, pct_chg FROM daily_prices WHERE ts_code = '000001.SH' AND trade_date = ?",
+                    (trade_date,)
+                )
+                row = cursor.fetchone()
+                if row:
+                    sh_index, sh_pct = row[0], row[1]
+                else:
+                    # 获取最接近 trade_date 的一条数据
+                    cursor.execute(
+                        "SELECT close, pct_chg FROM daily_index WHERE ts_code = '000001.SH' AND trade_date <= ? ORDER BY trade_date DESC LIMIT 1",
+                        (trade_date,)
+                    )
+                    row = cursor.fetchone()
+                    if row:
+                        sh_index, sh_pct = row[0], row[1]
+
+        # 2. 真实成交额、涨跌家数、涨停/跌停数计算 (排除ST、*ST、退市股)
+        turnover = 0.0
+        up_count = 0
+        down_count = 0
+        total_stocks = 0
+        limit_up_count = 0
+        limit_down_count = 0
+        ma5_ratio = 0.5
+        
+        if trade_date:
+            df_today = pd.read_sql(
+                """
+                SELECT dp.ts_code, dp.pct_chg, dp.amount, dp.close, sl.name
+                FROM daily_prices dp
+                LEFT JOIN stock_list sl ON dp.ts_code = sl.ts_code
+                WHERE dp.trade_date = ? AND dp.pct_chg IS NOT NULL
+                """,
                 conn, params=(trade_date,)
             )
-            if not df.empty:
-                up_ratio = (df["pct_chg"] > 0).mean()
-            else:
-                up_ratio = 0.5
-        else:
-            up_ratio = 0.5
+            if not df_today.empty:
+                total_stocks = len(df_today)
+                up_count = int((df_today["pct_chg"] > 0).sum())
+                down_count = int((df_today["pct_chg"] < 0).sum())
+                # turnover: amount 单位是千元，除以 100000 转换为亿元
+                turnover = float(df_today["amount"].sum() / 100000)
+                
+                # 计算涨跌停 (排除ST、*ST、退市股)
+                for _, row in df_today.iterrows():
+                    ts_code = row["ts_code"]
+                    pct_chg = row["pct_chg"]
+                    name = row["name"] or ""
+                    
+                    if "ST" in name or "退" in name:
+                        continue
+                        
+                    if ts_code.startswith(('30', '68')):
+                        if pct_chg >= 19.9:
+                            limit_up_count += 1
+                        elif pct_chg <= -19.9:
+                            limit_down_count += 1
+                    elif ts_code.startswith(('43', '83', '87', '88', '92')):
+                        if pct_chg >= 29.9:
+                            limit_up_count += 1
+                        elif pct_chg <= -29.9:
+                            limit_down_count += 1
+                    else:
+                        if pct_chg >= 9.9:
+                            limit_up_count += 1
+                        elif pct_chg <= -9.9:
+                            limit_down_count += 1
+            
+            # 3. 5日线占比计算
+            cursor.execute(
+                "SELECT DISTINCT trade_date FROM daily_prices WHERE trade_date <= ? ORDER BY trade_date DESC LIMIT 5",
+                (trade_date,)
+            )
+            dates = [r[0] for r in cursor.fetchall()]
+            if len(dates) == 5:
+                df_ma = pd.read_sql(
+                    "SELECT ts_code, trade_date, close FROM daily_prices WHERE trade_date IN (?, ?, ?, ?, ?)",
+                    conn, params=dates
+                )
+                if not df_ma.empty:
+                    df_latest = df_ma[df_ma["trade_date"] == trade_date].set_index("ts_code")
+                    df_mean = df_ma.groupby("ts_code")["close"].mean()
+                    compare = df_latest.join(df_mean, rsuffix="_ma5")
+                    above_ma5 = (compare["close"] > compare["close_ma5"]).sum()
+                    total_valid = len(compare)
+                    if total_valid > 0:
+                        ma5_ratio = float(above_ma5 / total_valid)
+
+        # 4. 获取真实的行业强度以及 5/10/20日累加值
+        # 获取最新20个交易日
+        cursor.execute(
+            "SELECT DISTINCT trade_date FROM daily_prices WHERE trade_date <= ? ORDER BY trade_date DESC LIMIT 20",
+            (trade_date,)
+        )
+        dates_20 = [r[0] for r in cursor.fetchall()]
         
+        industry_metrics = {}
+        top5_gainers = []
+        bottom5_decliners = []
+        
+        if dates_20:
+            placeholders = ",".join("?" * len(dates_20))
+            df_ind_all = pd.read_sql(
+                f"""
+                SELECT dp.trade_date, sl.industry, AVG(dp.pct_chg) as avg_pct_chg
+                FROM daily_prices dp
+                JOIN stock_list sl ON dp.ts_code = sl.ts_code
+                WHERE dp.trade_date IN ({placeholders})
+                  AND sl.industry IS NOT NULL AND sl.industry != ''
+                  AND dp.pct_chg IS NOT NULL
+                GROUP BY dp.trade_date, sl.industry
+                """,
+                conn, params=dates_20
+            )
+            
+            for ind, group in df_ind_all.groupby("industry"):
+                ind_data = group.set_index("trade_date")["avg_pct_chg"]
+                chg_latest = float(ind_data.get(dates_20[0], 0.0))
+                sum_5 = float(sum(ind_data.get(d, 0.0) for d in dates_20[:5]))
+                sum_10 = float(sum(ind_data.get(d, 0.0) for d in dates_20[:10]))
+                sum_20 = float(sum(ind_data.get(d, 0.0) for d in dates_20[:20]))
+                
+                industry_metrics[ind] = {
+                    "name": ind,
+                    "current": chg_latest,
+                    "sum_5": sum_5,
+                    "sum_10": sum_10,
+                    "sum_20": sum_20
+                }
+            
+            # 按今日涨跌幅排序筛选领涨领跌板块
+            df_latest_ind = df_ind_all[df_ind_all["trade_date"] == dates_20[0]].copy()
+            df_latest_ind = df_latest_ind.sort_values("avg_pct_chg", ascending=False)
+            all_inds_sorted = df_latest_ind["industry"].tolist()
+            
+            top5_gainers = all_inds_sorted[:5]
+            bottom5_decliners = all_inds_sorted[-5:]
+            bottom5_decliners.reverse() # 最惨的排在最前
+
         conn.close()
+        
+        # 封装板块列表，传递给 feishu_bot
+        main_sectors_detail = []
+        for name in top5_gainers[:3]:
+            if name in industry_metrics:
+                main_sectors_detail.append(industry_metrics[name])
+                
+        backup_sectors_detail = []
+        for name in top5_gainers[3:5]:
+            if name in industry_metrics:
+                backup_sectors_detail.append(industry_metrics[name])
+                
+        decline_sectors_detail = []
+        for name in bottom5_decliners:
+            if name in industry_metrics:
+                decline_sectors_detail.append(industry_metrics[name])
         
         send_market_summary_card(
             trade_date=trade_date,
             market_mode={"attack": "进攻", "defense": "防守", "empty": "空仓"}.get(mode, mode),
             sh_index=sh_index,
-            sh_pct=0.0,
-            up_count=int(up_ratio * 5200),
-            down_count=int((1 - up_ratio) * 5200),
-            total_stocks=5200,
-            turnover=8500,
-            limit_up_count=30,
-            limit_down_count=5,
-            ma5_ratio=0.45,
-            main_sectors=["白酒", "电力", "金融"],
-            backup_sectors=["光伏", "半导体"],
+            sh_pct=sh_pct,
+            up_count=up_count,
+            down_count=down_count,
+            total_stocks=total_stocks or 5200,
+            turnover=turnover,
+            limit_up_count=limit_up_count,
+            limit_down_count=limit_down_count,
+            ma5_ratio=ma5_ratio,
+            main_sectors=main_sectors_detail,
+            backup_sectors=backup_sectors_detail,
+            decline_sectors=decline_sectors_detail,
         )
         log.info("已发送市场全局汇总卡片")
     except Exception as e:

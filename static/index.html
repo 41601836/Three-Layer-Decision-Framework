@@ -553,6 +553,7 @@
 
         input[type="text"],
         input[type="password"],
+        input[type="number"],
         select,
         textarea {
             width: 100%;
@@ -1454,6 +1455,35 @@
             grid-template-columns: 1fr 1fr;
             gap: 20px;
         }
+        
+        /* Autocomplete suggestions */
+        .autocomplete-suggestions {
+            border: 1px solid var(--glass-border);
+            background: var(--bg-elevated);
+            border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+            position: absolute;
+            z-index: 1000;
+            max-height: 220px;
+            overflow-y: auto;
+            width: 100%;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(12px);
+        }
+        .autocomplete-item {
+            padding: 10px 14px;
+            cursor: pointer;
+            font-size: 0.82rem;
+            color: var(--text-secondary);
+            transition: all var(--transition-fast);
+            border-bottom: 1px solid rgba(255,255,255,0.02);
+        }
+        .autocomplete-item:last-child {
+            border-bottom: none;
+        }
+        .autocomplete-item:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
     </style>
 </head>
 <body>
@@ -1584,6 +1614,73 @@
                 <div class="metric-sub">stk_holdernumber 表记录</div>
                 <div class="metric-icon">👥</div>
                 <div class="metric-accent-line" style="background: linear-gradient(90deg, var(--amber-500), transparent)"></div>
+            </div>
+        </div>
+
+        <!-- 💼 持仓股票池 Card -->
+        <div class="card" style="margin-bottom: 24px;">
+            <div class="card-header">
+                <div class="card-title">
+                    <div class="card-title-icon icon-emerald">💼</div>
+                    持仓股票池与智能策略分析
+                </div>
+                <div class="btn-group">
+                    <button class="btn btn-primary btn-sm" onclick="runPortfolioAnalysis()">
+                        🔍 自动运行策略分析
+                    </button>
+                    <button class="btn btn-ghost btn-sm" onclick="loadPortfolio()">
+                        ↻ 刷新列表
+                    </button>
+                </div>
+            </div>
+
+            <!-- 添加持仓表单 -->
+            <div class="portfolio-form" style="display: grid; grid-template-columns: 2fr 1fr 1.5fr 1.5fr 1.5fr; gap: 12px; margin-bottom: 20px; align-items: end; padding: 16px; background: rgba(0,0,0,0.2); border-radius: var(--radius-md); border: 1px solid var(--glass-border);">
+                <div class="form-group" style="margin-bottom:0; position: relative;">
+                    <div class="form-label">股票代码/名称</div>
+                    <input type="text" id="port-code" placeholder="输入代码或名称搜索，如 600519" oninput="searchStockForPortfolio()">
+                    <div id="port-autocomplete" class="autocomplete-suggestions" style="display:none; position: absolute; top: 100%; left: 0; right: 0;"></div>
+                </div>
+                <div class="form-group" style="margin-bottom:0;">
+                    <div class="form-label">股票名称</div>
+                    <input type="text" id="port-name" readonly placeholder="自动关联" style="background: rgba(255,255,255,0.03); color: var(--text-secondary);">
+                </div>
+                <div class="form-group" style="margin-bottom:0;">
+                    <div class="form-label">持仓成本 (元)</div>
+                    <input type="number" step="0.01" id="port-cost" placeholder="如 1250.00">
+                </div>
+                <div class="form-group" style="margin-bottom:0;">
+                    <div class="form-label">持仓股数 (股)</div>
+                    <input type="number" id="port-shares" placeholder="如 100">
+                </div>
+                <button class="btn btn-blue" onclick="addPortfolioItem()">
+                    ➕ 添加持仓
+                </button>
+            </div>
+
+            <!-- 持仓列表表格 -->
+            <div class="table-container" style="overflow-x:auto;">
+                <table class="data-table" style="width:100%; border-collapse: collapse; text-align:left;">
+                    <thead>
+                        <tr style="border-bottom: 1px solid var(--glass-border); height: 40px; color: var(--text-secondary);">
+                            <th style="padding: 10px;">股票代码</th>
+                            <th style="padding: 10px;">名称</th>
+                            <th style="padding: 10px;">持仓成本</th>
+                            <th style="padding: 10px;">持仓数量</th>
+                            <th style="padding: 10px;">当前收盘价</th>
+                            <th style="padding: 10px;">持仓市值</th>
+                            <th style="padding: 10px;">账面盈亏</th>
+                            <th style="padding: 10px;">评分</th>
+                            <th style="padding: 10px;">策略建议</th>
+                            <th style="padding: 10px; text-align: center;">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="portfolio-table-body">
+                        <tr>
+                            <td colspan="10" style="text-align:center; padding: 20px; color: var(--text-secondary);">加载持仓股票池中...</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
 
@@ -2549,6 +2646,187 @@
     function clearTerminal() {
         document.getElementById('terminal-logs').textContent = '— 日志已清除 —';
     }
+
+    /* ── Portfolio Management ── */
+    async function loadPortfolio() {
+        try {
+            const data = await fetchAPI('/api/portfolio');
+            renderPortfolioTable(data.stocks || []);
+        } catch(e) {
+            showToast('加载持仓失败: ' + e.message, 'error');
+        }
+    }
+
+    function renderPortfolioTable(stocks) {
+        const tbody = document.getElementById('portfolio-table-body');
+        if (!stocks || stocks.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="10" style="text-align:center; padding: 20px; color: var(--text-secondary);">持仓股票池为空，请在上方添加股票。</td>
+                </tr>
+            `;
+            return;
+        }
+
+        tbody.innerHTML = stocks.map(s => {
+            const cost = s.cost || 0;
+            const shares = s.shares || 0;
+            return `
+                <tr style="border-bottom: 1px solid rgba(255,255,255,0.04); height: 50px;">
+                    <td style="padding: 10px; font-family:'JetBrains Mono',monospace;">${s.ts_code}</td>
+                    <td style="padding: 10px;">${s.name}</td>
+                    <td style="padding: 10px; font-family:'JetBrains Mono',monospace;">¥${cost.toFixed(2)}</td>
+                    <td style="padding: 10px; font-family:'JetBrains Mono',monospace;">${shares}</td>
+                    <td id="price-${s.ts_code.replace('.', '_')}" style="padding: 10px; font-family:'JetBrains Mono',monospace;">—</td>
+                    <td id="val-${s.ts_code.replace('.', '_')}" style="padding: 10px; font-family:'JetBrains Mono',monospace;">—</td>
+                    <td id="pnl-${s.ts_code.replace('.', '_')}" style="padding: 10px; font-family:'JetBrains Mono',monospace;">—</td>
+                    <td id="score-${s.ts_code.replace('.', '_')}" style="padding: 10px; font-family:'JetBrains Mono',monospace;">—</td>
+                    <td id="sugg-${s.ts_code.replace('.', '_')}" style="padding: 10px;">—</td>
+                    <td style="padding: 10px; text-align: center;">
+                        <button class="btn btn-danger btn-sm" onclick="deletePortfolioItem('${s.ts_code}')">删除</button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    let searchTimeout = null;
+    async function searchStockForPortfolio() {
+        const q = document.getElementById('port-code').value.trim();
+        const suggBox = document.getElementById('port-autocomplete');
+        if (!q || q.length < 2) {
+            suggBox.style.display = 'none';
+            return;
+        }
+
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(async () => {
+            try {
+                const data = await fetchAPI(`/api/stock/search?q=${q}`);
+                if (data.stocks && data.stocks.length > 0) {
+                    suggBox.innerHTML = data.stocks.map(s => `
+                        <div class="autocomplete-item" onclick="selectStockForPort('${s.ts_code}', '${s.name}')">
+                            <strong>${s.ts_code}</strong> - ${s.name} <span style="font-size:0.75rem;color:var(--text-muted)">(${s.industry})</span>
+                        </div>
+                    `).join('');
+                    suggBox.style.display = 'block';
+                } else {
+                    suggBox.style.display = 'none';
+                }
+            } catch(e) {
+                console.error(e);
+            }
+        }, 150);
+    }
+
+    function selectStockForPort(code, name) {
+        document.getElementById('port-code').value = code;
+        document.getElementById('port-name').value = name;
+        document.getElementById('port-autocomplete').style.display = 'none';
+    }
+
+    async function addPortfolioItem() {
+        const code = document.getElementById('port-code').value.trim();
+        const cost = parseFloat(document.getElementById('port-cost').value);
+        const shares = parseInt(document.getElementById('port-shares').value);
+
+        if (!code || isNaN(cost) || isNaN(shares) || cost <= 0 || shares <= 0) {
+            showToast('请正确填写股票代码、成本价和持股数', 'error');
+            return;
+        }
+
+        try {
+            await fetchAPI('/api/portfolio', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ts_code: code, cost, shares })
+            });
+            showToast('持仓添加成功', 'success');
+            document.getElementById('port-code').value = '';
+            document.getElementById('port-name').value = '';
+            document.getElementById('port-cost').value = '';
+            document.getElementById('port-shares').value = '';
+            loadPortfolio();
+        } catch(e) {
+            showToast('添加失败: ' + e.message, 'error');
+        }
+    }
+
+    async function deletePortfolioItem(code) {
+        if (!confirm(`确定要从持仓股票池中删除 ${code} 吗？`)) return;
+        try {
+            await fetchAPI(`/api/portfolio/${code}`, { method: 'DELETE' });
+            showToast('持仓已删除', 'success');
+            loadPortfolio();
+        } catch(e) {
+            showToast('删除失败: ' + e.message, 'error');
+        }
+    }
+
+    async function runPortfolioAnalysis() {
+        try {
+            showToast('🔍 正在启动策略智能体检分析...', 'info');
+            const data = await fetchAPI('/api/portfolio/analyze');
+            if (data.status === 'success') {
+                showToast('📊 策略分析完成', 'success');
+                data.results.forEach(r => {
+                    const cleanCode = r.ts_code.replace('.', '_');
+                    const priceEl = document.getElementById(`price-${cleanCode}`);
+                    const valEl = document.getElementById(`val-${cleanCode}`);
+                    const pnlEl = document.getElementById(`pnl-${cleanCode}`);
+                    const scoreEl = document.getElementById(`score-${cleanCode}`);
+                    const suggEl = document.getElementById(`sugg-${cleanCode}`);
+
+                    if (priceEl) priceEl.textContent = '¥' + r.current_price.toFixed(2);
+                    
+                    // We need to fetch shares value from the tbody rows
+                    // Find matching row and column
+                    const tbody = document.getElementById('portfolio-table-body');
+                    let shares = 0;
+                    for (let i = 0; i < tbody.rows.length; i++) {
+                        const row = tbody.rows[i];
+                        if (row.cells[0] && row.cells[0].textContent === r.ts_code) {
+                            shares = parseInt(row.cells[3].textContent) || 0;
+                            break;
+                        }
+                    }
+
+                    if (valEl) valEl.textContent = '¥' + (r.current_price * shares).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                    
+                    if (pnlEl) {
+                        const pct = r.pnl_pct;
+                        const pctStr = pct > 0 ? `+${pct.toFixed(2)}%` : `${pct.toFixed(2)}%`;
+                        const color = pct > 0 ? 'var(--emerald-400)' : (pct < 0 ? 'var(--red-400)' : 'inherit');
+                        pnlEl.innerHTML = `<span style="color: ${color}">${pctStr}</span>`;
+                    }
+                    if (scoreEl) {
+                        const score = r.score;
+                        const color = score >= 80 ? 'var(--red-400)' : (score >= 60 ? 'var(--amber-400)' : 'var(--blue-400)');
+                        scoreEl.innerHTML = `<span style="color: ${color}; font-weight:bold;">${score}</span>`;
+                    }
+                    if (suggEl) {
+                        suggEl.textContent = r.suggestion + ' (' + r.reason + ')';
+                    }
+                });
+            }
+        } catch(e) {
+            showToast('策略分析失败: ' + e.message, 'error');
+        }
+    }
+
+    async function loadPortfolioStocks() {
+        await loadPortfolio();
+    }
+
+    // Close autocomplete when clicking outside
+    document.addEventListener('click', function(e) {
+        const autocomplete = document.getElementById('port-autocomplete');
+        const codeInput = document.getElementById('port-code');
+        if (e.target !== autocomplete && e.target !== codeInput) {
+            autocomplete.style.display = 'none';
+        }
+    });
+
 
     /* ── Init ── */
     window.onload = () => {

@@ -22,12 +22,20 @@ sys.path.insert(0, ROOT_DIR)
 
 # 配置日志
 import logging
+import sys
+
+# 解决 Windows GBK 终端下打印 Emoji 导致的 UnicodeEncodeError
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8')
+if hasattr(sys.stderr, 'reconfigure'):
+    sys.stderr.reconfigure(encoding='utf-8')
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler(os.path.join(ROOT_DIR, 'logs', f'fetch_daily_{datetime.now().strftime("%Y%m%d")}.log')),
-        logging.StreamHandler()
+        logging.FileHandler(os.path.join(ROOT_DIR, 'logs', f'fetch_daily_{datetime.now().strftime("%Y%m%d")}.log'), encoding='utf-8'),
+        logging.StreamHandler(sys.stdout)
     ]
 )
 log = logging.getLogger(__name__)
@@ -205,10 +213,76 @@ def batch_fetch(stock_df: pd.DataFrame, start_date: str, end_date: str,
         'elapsed': elapsed
     }
 
+def fetch_by_date_range(conn: sqlite3.Connection, start_date: str, end_date: str) -> dict:
+    """按日期批量拉取全市场日线数据 (优化版)"""
+    start_ts = time.time()
+    log.info(f"[DATE] 正在获取交易日历：{start_date} ~ {end_date}")
+    
+    try:
+        # 获取交易日历
+        df_cal = pro.trade_cal(start_date=start_date, end_date=end_date, is_open='1')
+        if df_cal.empty:
+            log.info("[DATE] 未找到任何交易日，跳过拉取")
+            return {'total': 0, 'new_rows': 0, 'skipped': 0, 'errors': 0, 'elapsed': time.time() - start_ts}
+            
+        trade_dates = sorted(df_cal['cal_date'].tolist())
+    except Exception as e:
+        log.error(f"[ERROR] 获取交易日历失败: {e}")
+        return {'total': 0, 'new_rows': 0, 'skipped': 0, 'errors': 1, 'elapsed': time.time() - start_ts}
+
+    log.info(f"[DATE] 共有 {len(trade_dates)} 个交易日需要检查: {trade_dates}")
+    
+    new_rows = 0
+    skipped = 0
+    errors = 0
+    
+    for t_date in trade_dates:
+        try:
+            # 检查数据库中该日期的数据量
+            cursor = conn.cursor()
+            cursor.execute("SELECT COUNT(*) FROM daily_prices WHERE trade_date = ?", (t_date,))
+            count = cursor.fetchone()[0]
+            
+            if count >= 4000:
+                log.info(f"[DATE] 日期 {t_date} 已经有 {count} 条数据，无需拉取")
+                skipped += 1
+                continue
+                
+            log.info(f"[DATE] 正在拉取 {t_date} 的全市场日线数据...")
+            df = pro.daily(trade_date=t_date,
+                          fields='ts_code,trade_date,open,high,low,close,pre_close,'
+                                 'change,pct_chg,vol,amount')
+            time.sleep(RATE_LIMIT_SLEEP)
+            
+            if df is not None and not df.empty:
+                with DB_LOCK:
+                    conn.execute("DELETE FROM daily_prices WHERE trade_date = ?", (t_date,))
+                    df.to_sql('daily_prices', conn, if_exists='append', index=False)
+                    conn.commit()
+                new_rows += len(df)
+                log.info(f"[OK] {t_date} 成功导入 {len(df)} 行日线数据")
+            else:
+                log.info(f"[WARNING] {t_date} 未拉取到有效数据，可能未开盘或接口无返回")
+                skipped += 1
+        except Exception as e:
+            log.error(f"[ERROR] 拉取 {t_date} 数据失败: {e}")
+            errors += 1
+            
+    elapsed = time.time() - start_ts
+    log.info(f"\n[FINISH] 日期批量拉取完成！耗时 {elapsed:.1f} 秒 | 处理 {len(trade_dates)} 天 | 新增 {new_rows} 行 | 跳过 {skipped} 天 | 错误 {errors} 天")
+    
+    return {
+        'total': len(trade_dates),
+        'new_rows': new_rows,
+        'skipped': skipped,
+        'errors': errors,
+        'elapsed': elapsed
+    }
+
 def parse_args():
     """解析命令行参数"""
     import argparse
-    parser = argparse.ArgumentParser(description="Tushare 全市场数据拉取 v2.4")
+    parser = argparse.ArgumentParser(description="Tushare 全市场数据拉取 v2.5")
     
     today = datetime.now().strftime("%Y%m%d")
     parser.add_argument("--start", default="20200101", help="起始日期 YYYYMMDD")
@@ -228,7 +302,7 @@ def main():
     args = parse_args()
     
     log.info("=" * 60)
-    log.info("  StockAI · 日线数据批量拉取 v2.4")
+    log.info("  StockAI · 日线数据批量拉取 v2.5 (优化版)")
     log.info(f"  日期范围：{args.start} ~ {args.end}")
     log.info(f"  数据库：{DB_PATH}")
     log.info("=" * 60)
@@ -244,26 +318,26 @@ def main():
     stock_df = fetch_stock_list(conn)
     
     if args.code:
+        # 指定股票代码时，使用传统的 stock-by-stock 模式
         mask = stock_df["ts_code"] == args.code
         stock_df = stock_df[mask] if mask.any() else pd.DataFrame(
             [{"ts_code": args.code, "name": args.code}]
         )
         log.info(f"🔍 调试模式：仅拉取 {args.code}")
-    
+        incremental = args.incremental or not args.full_update
+        result = batch_fetch(
+            stock_df,
+            args.start, args.end,
+            max_workers      = args.workers,
+            incremental      = incremental,
+            fetch_money      = not args.skip_moneyflow,
+            fetch_holder     = not args.skip_holder,
+        )
+    else:
+        # 默认模式下，使用超级高效的按日期批量拉取模式
+        result = fetch_by_date_range(conn, args.start, args.end)
+        
     conn.close()
-    
-    # 确定更新模式
-    incremental = args.incremental or not args.full_update
-    
-    result = batch_fetch(
-        stock_df,
-        args.start, args.end,
-        max_workers      = args.workers,
-        incremental      = incremental,
-        fetch_money      = not args.skip_moneyflow,
-        fetch_holder     = not args.skip_holder,
-    )
-    
     log.info("✅ 全部完成！数据库路径：%s", DB_PATH)
 
 if __name__ == "__main__":
