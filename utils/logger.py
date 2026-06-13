@@ -38,3 +38,24 @@ if not collect_log.handlers:
     file_handler.setLevel(logging.INFO)
     file_handler.setFormatter(formatter)
     collect_log.addHandler(file_handler)
+
+
+# 初始化全局调度日志器
+scheduler_log = logging.getLogger("scheduler")
+
+if not scheduler_log.handlers:
+    scheduler_log.setLevel(logging.INFO)
+    formatter = logging.Formatter(LOG_FORMAT)
+    
+    # 1. 控制台输出 Handler
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.INFO)
+    console_handler.setFormatter(formatter)
+    scheduler_log.addHandler(console_handler)
+    
+    # 2. 本地文件输出 Handler
+    sch_log_path = os.path.join(LOG_DIR, "scheduler.log")
+    file_handler = logging.FileHandler(sch_log_path, encoding="utf-8")
+    file_handler.setLevel(logging.INFO)
+    file_handler.setFormatter(formatter)
+    scheduler_log.addHandler(file_handler)
