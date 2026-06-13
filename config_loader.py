@@ -185,6 +185,23 @@ POS_ATTACK = MACRO_SCORE_CFG.get("pos_attack", 0.8)
 POS_CAUTIOUS = MACRO_SCORE_CFG.get("pos_cautious", 0.5)
 POS_DEFEND = MACRO_SCORE_CFG.get("pos_defend", 0.3)
 
+# ====================== 新增：一票否决 & 环境健康度 配置 ======================
+MACRO_VETO_CFG = _loaded_config.get("macro_veto", {})
+# 流动性枯竭
+AMOUNT_DROP_RATIO = MACRO_VETO_CFG.get("amount_drop_ratio", 0.3)
+NORTH_NET_OUT_THRESHOLD = MACRO_VETO_CFG.get("north_net_out_threshold", 500000000)
+# 情绪崩塌
+LIMIT_DOWN_THRESHOLD = MACRO_VETO_CFG.get("limit_down_threshold", 100)
+MAX_BOARD_THRESHOLD = MACRO_VETO_CFG.get("max_board_threshold", 2)
+# 外围系统性冲击
+US_INDEX_DROP_THRESHOLD = MACRO_VETO_CFG.get("us_index_drop", 3.0)
+VIX_RISK_THRESHOLD = MACRO_VETO_CFG.get("vix_risk_threshold", 40)
+# 外围盘中闪崩
+FOREIGN_INDEX_DROP = MACRO_VETO_CFG.get("foreign_index_drop", 3.0)
+A_OPEN_DROP = MACRO_VETO_CFG.get("a_open_drop", 1.5)
+# 涨跌家数比基准
+UP_DOWN_RATIO_STANDARD = MACRO_VETO_CFG.get("up_down_ratio_standard", 1.0)
+
 
 if __name__ == "__main__":
     import sys
