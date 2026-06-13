@@ -209,6 +209,20 @@ FOREIGN_BOARD_DROP = INTRADAY_REVISE_CFG.get("foreign_board_drop", 3.0)
 ACCEPT_RATIO_THRESHOLD = INTRADAY_REVISE_CFG.get("accept_ratio_threshold", 0.3)
 EMOTION_DEVIATE_RATIO = INTRADAY_REVISE_CFG.get("emotion_deviate_ratio", 0.10)
 
+# ====================== 新增：板块打分&优先级&虹吸规则配置 ======================
+BOARD_RULE_CFG = _loaded_config.get("board_rule", {})
+TOP_BOARD_COUNT = BOARD_RULE_CFG.get("top_board_count", 5)
+BOARD_SCORE_FULL = BOARD_RULE_CFG.get("score_full", 1.0)
+BOARD_SCORE_HALF = BOARD_RULE_CFG.get("score_half", 0.5)
+BOARD_SCORE_ZERO = BOARD_RULE_CFG.get("score_zero", 0.0)
+FLOW_5D_100B = BOARD_RULE_CFG.get("flow_5d_100b", 10000000000)
+FLOW_5D_50B = BOARD_RULE_CFG.get("flow_5d_50b", 5000000000)
+COVER_FULL = BOARD_RULE_CFG.get("cover_full", 0.12)
+COVER_HALF = BOARD_RULE_CFG.get("cover_half", 0.08)
+RETREAT_3M = BOARD_RULE_CFG.get("retreat_3m", 0.15)
+WEEK_RISE_LIMIT = BOARD_RULE_CFG.get("week_rise_limit", 0.05)
+SIPHON_MULTIPLE = BOARD_RULE_CFG.get("siphon_multiple", 2.0)
+
 
 if __name__ == "__main__":
     import sys
