@@ -40,22 +40,28 @@ if not collect_log.handlers:
     collect_log.addHandler(file_handler)
 
 
-# 初始化全局调度日志器
+# ====================== 新增：定时任务专属日志器 ======================
 scheduler_log = logging.getLogger("scheduler")
+scheduler_log.setLevel(logging.INFO)
 
+# 定时任务日志文件处理器
+scheduler_file_handler = logging.FileHandler(
+    filename="logs/scheduler.log",
+    encoding="utf-8"
+)
+scheduler_file_handler.setFormatter(logging.Formatter(
+    "%(asctime)s %(levelname)s (%(name)s) %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S"
+))
+
+# 控制台输出处理器
+scheduler_console_handler = logging.StreamHandler()
+scheduler_console_handler.setFormatter(logging.Formatter(
+    "%(asctime)s %(levelname)s (%(name)s) %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S"
+))
+
+# 绑定处理器，避免重复添加
 if not scheduler_log.handlers:
-    scheduler_log.setLevel(logging.INFO)
-    formatter = logging.Formatter(LOG_FORMAT)
-    
-    # 1. 控制台输出 Handler
-    console_handler = logging.StreamHandler()
-    console_handler.setLevel(logging.INFO)
-    console_handler.setFormatter(formatter)
-    scheduler_log.addHandler(console_handler)
-    
-    # 2. 本地文件输出 Handler
-    sch_log_path = os.path.join(LOG_DIR, "scheduler.log")
-    file_handler = logging.FileHandler(sch_log_path, encoding="utf-8")
-    file_handler.setLevel(logging.INFO)
-    file_handler.setFormatter(formatter)
-    scheduler_log.addHandler(file_handler)
+    scheduler_log.addHandler(scheduler_file_handler)
+    scheduler_log.addHandler(scheduler_console_handler)
