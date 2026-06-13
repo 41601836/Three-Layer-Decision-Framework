@@ -250,6 +250,14 @@ LOW_POS_GAIN = ROTATION_CFG.get("low_position_gain", 0.05)
 STRONG_ROTATE_NUM = ROTATION_CFG.get("strong_rotate_num", 2)
 MID_ROTATE_NUM = ROTATION_CFG.get("mid_rotate_num", 1)
 
+# ====================== 新增：大类板块仓位管控配置 ======================
+POSITION_CFG = _loaded_config.get("board_position", {})
+STYLE_MAX_POS = POSITION_CFG.get("style_max_pos", 0.4)
+MARKET_MAX_POS = POSITION_CFG.get("market_max_pos", 0.8)
+WARN_RATIO = POSITION_CFG.get("warn_ratio", 0.8)
+STRONG_COEFF = POSITION_CFG.get("strong_coeff", 1.1)
+WEAK_COEFF = POSITION_CFG.get("weak_coeff", 0.9)
+
 
 if __name__ == "__main__":
     import sys
