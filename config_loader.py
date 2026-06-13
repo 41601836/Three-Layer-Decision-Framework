@@ -239,6 +239,17 @@ CROSS_STRONG = BOARD_STYLE_CFG.get("cross_day_strength", {}).get("strong_thresho
 CROSS_WEAK = BOARD_STYLE_CFG.get("cross_day_strength", {}).get("weak_threshold", 0.35)
 CROSS_DAYS = BOARD_STYLE_CFG.get("cross_day_days", 3)
 
+# ====================== 新增：板块轮动配置 ======================
+ROTATION_CFG = _loaded_config.get("board_rotation", {})
+INTRADAY_AMPLITUDE = ROTATION_CFG.get("intraday_amplitude", 0.08)
+PULL_BACK_RATIO = ROTATION_CFG.get("pull_back_ratio", 0.05)
+CROSS_DAYS = ROTATION_CFG.get("cross_days", 3)
+HOT_SWITCH_FREQ = ROTATION_CFG.get("hot_switch_freq", 2)
+HIGH_POS_GAIN = ROTATION_CFG.get("high_position_gain", 0.20)
+LOW_POS_GAIN = ROTATION_CFG.get("low_position_gain", 0.05)
+STRONG_ROTATE_NUM = ROTATION_CFG.get("strong_rotate_num", 2)
+MID_ROTATE_NUM = ROTATION_CFG.get("mid_rotate_num", 1)
+
 
 if __name__ == "__main__":
     import sys
