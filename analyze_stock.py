@@ -1195,9 +1195,9 @@ def call_ollama(prompt: str, model: str = None) -> tuple:
     if model is None:
         try:
             from config_loader import get_config
-            model = get_config("ollama.model", "qwen2.5:7b-instruct-q6_K")
+            model = get_config("ollama.model", "qwen2.5:1.5b")
         except ImportError:
-            model = "qwen2.5:7b-instruct-q6_K"
+            model = "qwen2.5:1.5b"
 
     try:
         resp = requests.post(
@@ -1205,7 +1205,7 @@ def call_ollama(prompt: str, model: str = None) -> tuple:
             json={"model": model,
                   "messages": [{"role": "user", "content": prompt}],
                   "stream": True},
-            stream=True, timeout=(10, None)
+            stream=True, timeout=(10, 300)
         )
         resp.raise_for_status()
         content = ""
@@ -1277,7 +1277,27 @@ if __name__ == "__main__":
         ai_output, ai_confidence = call_ollama(prompt)
         print("\n### 🤖 Ollama 深度解读\n")
         print(ai_output)
-        print(f"\n🔵 信心指数: {ai_confidence}/100 ({'\u63a8送' if ai_confidence >= 70 else '过滤，信心不足'})") 
+        print(f"\n🔵 信心指数: {ai_confidence}/100") 
+        
+        print("\n⏳ 正在推送飞书卡片...")
+        from scripts.feishu_bot import _post
+        card = {
+            "config": {"wide_screen_mode": True},
+            "header": {
+                "title": {"tag": "plain_text", "content": f"🎯 手动深度分析 · {ts_code}"},
+                "template": "blue" if ai_confidence < 70 else "red"
+            },
+            "elements": [
+                {"tag": "markdown", "content": report},
+                {"tag": "hr"},
+                {"tag": "markdown", "content": f"### 🤖 AI 深度解读\n**信心指数: {ai_confidence}/100**\n\n{ai_output}"},
+                {"tag": "note", "elements": [{"tag": "plain_text", "content": f"触发时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} (StockAI v3.0)"}]}
+            ]
+        }
+        if _post({"msg_type": "interactive", "card": card}):
+            print("✅ 飞书推送成功！")
+        else:
+            print("❌ 飞书推送失败，请检查 Webhook 配置。")
 
     analyzer.close()
     print(f"\n🏁 所有标的分析完成！（{ver}）")

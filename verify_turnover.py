@@ -1,6 +1,6 @@
 import sqlite3
 import pandas as pd
-conn = sqlite3.connect("d:/StockAI/db/stock_daily.db")
+conn = sqlite3.connect("db/stock_daily.db")
 
 print("=== 验证换手率计算 ===")
 

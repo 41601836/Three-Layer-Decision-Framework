@@ -1,7 +1,7 @@
 import sqlite3
 import pandas as pd
 
-DB_PATH = "d:/StockAI/db/stock_daily.db"
+DB_PATH = "db/stock_daily.db"
 
 def fetch_daily_data(ts_code, days=250):
     try:

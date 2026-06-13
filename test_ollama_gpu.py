@@ -29,7 +29,7 @@ def test_ollama_gpu():
     start_time = time.time()
     
     payload = {
-        "model": "qwen2.5:7b-instruct-q6_K",
+        "model": "qwen2.5:7b",
         "prompt": "你好",
         "stream": False
     }

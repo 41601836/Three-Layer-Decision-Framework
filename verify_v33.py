@@ -1,5 +1,6 @@
 import sys
-sys.path.insert(0, 'd:/StockAI')
+import os
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from analyze_stock import StockAnalyzer
 
 a = StockAnalyzer()

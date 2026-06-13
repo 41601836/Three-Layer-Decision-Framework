@@ -1,5 +1,5 @@
 import sqlite3
-conn = sqlite3.connect(r'd:\StockAI\db\stock_daily.db')
+conn = sqlite3.connect('db/stock_daily.db')
 
 # 数据覆盖范围
 r = conn.execute("SELECT MIN(trade_date), MAX(trade_date), COUNT(DISTINCT trade_date) FROM daily_prices").fetchone()

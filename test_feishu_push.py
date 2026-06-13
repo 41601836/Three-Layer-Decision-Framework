@@ -142,6 +142,8 @@ def get_stock_detail(conn, ts_code):
         detail['hsgt_change'] = 0
     
     # 4. 股东户数（stk_holdernumber）
+    detail['holder_num'] = 0
+    detail['holder_change'] = 0
     try:
         rows = conn.execute("""
             SELECT end_date, holder_num

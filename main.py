@@ -31,20 +31,25 @@ import io
 import os
 import sys
 import time
+import json
 import sqlite3
 import logging
 import concurrent.futures
+import numpy as np
 from datetime import datetime, timedelta
 from typing import List, Dict, Tuple, Optional
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, ROOT_DIR)
 
-# Windows GBK 控制台 → 强制 UTF-8
-if hasattr(sys.stdout, "buffer"):
-    sys.stdout = io.TextIOWrapper(
-        sys.stdout.buffer, encoding="utf-8", errors="replace", line_buffering=True
-    )
+# Windows GBK 控制台 → 强制 UTF-8（仅在直接运行时启用）
+if hasattr(sys.stdout, "buffer") and not hasattr(sys, 'frozen') and __name__ == '__main__':
+    try:
+        sys.stdout = io.TextIOWrapper(
+            sys.stdout.buffer, encoding="utf-8", errors="replace", line_buffering=True
+        )
+    except:
+        pass
 
 # ── ANSI 颜色（用于控制台红色/绿色报错提示）─────────────────────────────────
 # Windows 10+ 支持 ANSI，兼容性兜底：若不支持则回退为普通文本
@@ -88,16 +93,16 @@ try:
     MAX_CONCURRENT   = AI_CONFIG.get("max_concurrent", 3)
     TOP_N            = FILTER_CONFIG.get("top_n", 50)
 except ImportError:
-    AI_TRIGGER_SCORE = 80
+    AI_TRIGGER_SCORE = 50    # 降低AI触发门槛
     MAX_CONCURRENT   = 3
-    TOP_N            = 50
+    TOP_N            = 100   # 扩大候选范围
     DB_PATH          = os.path.join(ROOT_DIR, "db", "stock_daily.db")
 
 # pre_screen 筛选阈值（可按需调整）
-PRE_SCREEN_PCT_MIN   = 1.0    # 涨幅下限（%），低于此值跳过 → 过滤死水股
+PRE_SCREEN_PCT_MIN   = -2.0   # 涨幅下限（%），允许小幅下跌
 PRE_SCREEN_PCT_MAX   = 9.5    # 涨幅上限（%），高于此值为涨停，跳过追高风险
-PRE_SCREEN_TURN_MIN  = 2.0    # 换手率下限（%），低于此值视为不活跃
-PRE_SCREEN_AMOUNT    = 50000  # 成交额下限（千元 = 5000万），Tushare 单位
+PRE_SCREEN_TURN_MIN  = 0.5    # 换手率下限（%），降低活跃度要求
+PRE_SCREEN_AMOUNT    = 20000  # 成交额下限（千元 = 2000万），降低流动性要求
 SCORE_WORKERS        = 8      # 打分阶段线程数（根据 CPU 核心数调整）
 
 OLLAMA_HOST = "http://localhost:11434"  # Ollama 服务地址
@@ -136,7 +141,7 @@ def check_ollama(exit_on_fail: bool = True) -> bool:
 
         # 检查模型是否已加载（/api/tags 返回 {"models": [...]}）
         models = [m.get("name", "") for m in data.get("models", [])]
-        target_model = "qwen2.5:7b-instruct-q4_K_M"
+        target_model = AI_CONFIG.get("model", "qwen2.5:1.5b")
 
         if not models:
             _cprint(_YELLOW, f"  ⚠️  Ollama 已启动但尚未加载任何模型")
@@ -615,7 +620,9 @@ def push_to_feishu(
     trade_date: str = "",
 ) -> None:
     """将 AI 分析结果推送为飞书交互卡片（汇总卡片 + 个股详情卡片）。"""
-    from scripts.feishu_bot import send_daily_summary, send_stock_report
+    from scripts.feishu_bot import send_daily_summary, send_stock_report_v2
+    import sqlite3
+    import os
 
     # 获取 trade_date（从第一条结果获取）
     if not trade_date and filter_results:
@@ -643,13 +650,107 @@ def push_to_feishu(
     )
     time.sleep(0.5)
 
+    # 1.5 市场全局与板块汇总卡片
+    db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "db", "stock_daily.db")
+    try:
+        conn = sqlite3.connect(db_path)
+    except:
+        conn = None
+
+    if conn:
+        try:
+            from scripts.feishu_bot import send_market_summary_card, send_sector_summary_card
+            
+            # 大盘指数（由于缺少 daily_index 表，计算全市场总成交额）
+            sh_index = 3000.0
+            sh_pct = 0.0
+            total_amount_row = conn.execute(f"SELECT SUM(amount) FROM daily_prices WHERE trade_date='{trade_date}'").fetchone()
+            turnover = (total_amount_row[0] / 100000) if total_amount_row and total_amount_row[0] else 0.0
+            
+            # 涨跌分布
+            counts = conn.execute(f"SELECT COUNT(*), SUM(CASE WHEN pct_chg>0 THEN 1 ELSE 0 END), SUM(CASE WHEN pct_chg<0 THEN 1 ELSE 0 END), SUM(CASE WHEN pct_chg>=9.5 THEN 1 ELSE 0 END), SUM(CASE WHEN pct_chg<=-9.5 THEN 1 ELSE 0 END) FROM daily_prices WHERE trade_date='{trade_date}'").fetchone()
+            total_stocks = counts[0] if counts and counts[0] else 0
+            up_count = counts[1] if counts and counts[1] else 0
+            down_count = counts[2] if counts and counts[2] else 0
+            limit_up_count = counts[3] if counts and counts[3] else 0
+            limit_down_count = counts[4] if counts and counts[4] else 0
+            
+            # 板块排行
+            try:
+                sectors = conn.execute("SELECT industry, composite_score FROM industry_rank WHERE tier='main' ORDER BY composite_score DESC LIMIT 3").fetchall()
+            except Exception:
+                sectors = []
+            main_sectors = [{"name": s[0], "current": s[1], "sum_5": 0, "sum_10": 0, "sum_20": 0} for s in sectors]
+            
+            send_market_summary_card(
+                trade_date=trade_date,
+                market_mode="进攻" if sh_pct > 0 else "防守",
+                sh_index=sh_index,
+                sh_pct=sh_pct,
+                up_count=up_count,
+                down_count=down_count,
+                total_stocks=total_stocks,
+                turnover=turnover,
+                limit_up_count=limit_up_count,
+                limit_down_count=limit_down_count,
+                main_sectors=main_sectors,
+            )
+            time.sleep(0.5)
+            
+            sector_data = [{"name": s[0], "limit_up_count": 0, "consecutive_count": 0, "signal_count": 0, "money_flow": s[1]} for s in sectors]
+            if sector_data:
+                send_sector_summary_card(sectors=sector_data, trade_date=trade_date)
+                time.sleep(0.5)
+        except Exception as e:
+            log.warning("发送市场/板块汇总卡片失败: %s", e)
+    time.sleep(0.5)
+
     # 2. 个股详情卡片
+    db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "db", "stock_daily.db")
+    try:
+        conn = sqlite3.connect(db_path)
+    except:
+        conn = None
+
     for r in push_list:
         filter_data = next(
             (f for f in filter_results if f["ts_code"] == r["ts_code"]), {}
         )
+        
+        # 从数据库中提取真实数据
+        main_money = 0.0
+        holder_chg = 0.0
+        holder_current = 0
+        holder_prev = 0
+        hsgt_5d = 0.0
+        total_volume = float(filter_data.get("amount_w", 0)) * 100
+        
+        if conn:
+            try:
+                # 查资金
+                mf = conn.execute("SELECT buy_elg_amount, buy_lg_amount, sell_elg_amount, sell_lg_amount FROM moneyflow WHERE ts_code=? ORDER BY trade_date DESC LIMIT 1", (r["ts_code"],)).fetchone()
+                if mf:
+                    main_money = (mf[0] + mf[1] - mf[2] - mf[3])
+                # 查筹码
+                holders = conn.execute("SELECT holder_num FROM stk_holdernumber WHERE ts_code=? ORDER BY end_date DESC LIMIT 2", (r["ts_code"],)).fetchall()
+                if len(holders) >= 1 and holders[0][0]:
+                    holder_current = int(holders[0][0])
+                if len(holders) >= 2 and holders[1][0] and holders[1][0] > 0:
+                    holder_prev = int(holders[1][0])
+                    holder_chg = (holder_current - holder_prev) / holder_prev * 100
+                # 查北向
+                hsgt = conn.execute("SELECT north_money FROM hsgt_moneyflow ORDER BY trade_date DESC LIMIT 5").fetchall()
+                if hsgt:
+                    hsgt_5d = sum([h[0] for h in hsgt if h[0]])
+                # 查总成交额（万元）
+                amt = conn.execute("SELECT amount FROM daily_prices WHERE ts_code=? ORDER BY trade_date DESC LIMIT 1", (r["ts_code"],)).fetchone()
+                if amt and amt[0]:
+                    total_volume = amt[0] / 10 # tushare amount 为千元，/10 为万元
+            except Exception as e:
+                log.warning("提取补充数据失败: %s", e)
+
         try:
-            send_stock_report(
+            send_stock_report_v2(
                 ts_code=r["ts_code"], name=r["name"],
                 total_score=r["total_score"],
                 python_score=r.get("python_score", 0),
@@ -660,11 +761,21 @@ def push_to_feishu(
                 pct_chg=filter_data.get("pct_chg", 0.0),
                 session_name=session_name,
                 trade_date=trade_date,
+                score_details=filter_data.get("details", {}),
+                main_money=main_money,
+                holder_chg=holder_chg,
+                holder_current=holder_current,
+                holder_prev=holder_prev,
+                total_volume=total_volume,
+                hsgt_5d=hsgt_5d,
             )
             log.info("  推送：%s %s（%d分）", r["ts_code"], r["name"], r["total_score"])
         except Exception as e:
             log.warning("  推送失败 %s：%s", r["ts_code"], e)
         time.sleep(0.5)
+
+    if conn:
+        conn.close()
 
 
 # =============================================================================
@@ -676,6 +787,8 @@ def main(
     market_volume_status: str = "放量",
     sector_risk: str = "正常",
     industry_filter: List[str] = None,   # v4.0 新增：行业白名单（None=全市场）
+    no_ai: bool = False,                # v4.0 新增：无 AI 模式
+    output_path: str = None,             # v4.0 新增：输出文件路径
 ) -> bool:
     """
     v4.0 完整三层漏斗流程：
@@ -745,32 +858,38 @@ def main(
     # ──────────────────────────────────────────────────────────────────────────
     # 步骤 3：Ollama 健康检查（仅当有股票需要 AI 分析时执行）
     # ──────────────────────────────────────────────────────────────────────────
-    above_threshold = sum(1 for s in scored_stocks if s.get("score", 0) >= AI_TRIGGER_SCORE)
-
-    if above_threshold > 0:
-        _cprint(_BOLD, f"[步骤 3] Ollama 健康检查（{above_threshold} 只股票需要 AI 分析）...")
-        # exit_on_fail=True：Ollama 未启动时直接 sys.exit(1)，避免空转
-        check_ollama(exit_on_fail=True)
-        _cprint(_GREEN, "  ✅ Ollama 就绪\n")
+    if no_ai:
+        _cprint(_YELLOW, f"[步骤 3] 无 AI 模式：跳过 Ollama 健康检查\n")
+        ai_results = []
+        push_candidates = scored_stocks[:5]  # 无AI模式下取Top-5打分结果
+        above_threshold = 0
     else:
-        _cprint(_YELLOW, f"[步骤 3] 无股票达到 AI 门槛（≥{AI_TRIGGER_SCORE}分），跳过 Ollama 检查\n")
+        above_threshold = sum(1 for s in scored_stocks if s.get("score", 0) >= AI_TRIGGER_SCORE)
 
-    # ──────────────────────────────────────────────────────────────────────────
-    # 步骤 4：AI 并发分析
-    # ──────────────────────────────────────────────────────────────────────────
-    _cprint(_BOLD, f"[步骤 4] AI 深度分析（门槛 ≥{AI_TRIGGER_SCORE}分，并发 {MAX_CONCURRENT}）...")
-    ai_results, skipped_count = run_ai_analysis_parallel(
-        candidates=scored_stocks,
-        market_volume_status=market_volume_status,
-        sector_risk=sector_risk,
-    )
+        if above_threshold > 0:
+            _cprint(_BOLD, f"[步骤 3] Ollama 健康检查（{above_threshold} 只股票需要 AI 分析）...")
+            # exit_on_fail=True：Ollama 未启动时直接 sys.exit(1)，避免空转
+            check_ollama(exit_on_fail=True)
+            _cprint(_GREEN, "  ✅ Ollama 就绪\n")
+        else:
+            _cprint(_YELLOW, f"[步骤 3] 无股票达到 AI 门槛（≥{AI_TRIGGER_SCORE}分），跳过 Ollama 检查\n")
 
-    # 强制推送前5名，不允许零推送
-    sorted_results = sorted(ai_results, key=lambda x: x.get("total_score", 0), reverse=True)
-    push_candidates = sorted_results[:5]  # 强制取前5名
-    _cprint(_GREEN,
-            f"  AI \u5206\u6790\u5b8c\u6210\uff1a{above_threshold} \u53ea\u8fdb\u5165\u5206\u6790 \u2192 "
-            f"{len(push_candidates)} \u53ea\u6765\u81ea\u6700\u9AD8\u5206\u6392\u540D\n")
+        # ──────────────────────────────────────────────────────────────────────────
+        # 步骤 4：AI 并发分析
+        # ──────────────────────────────────────────────────────────────────────────
+        _cprint(_BOLD, f"[步骤 4] AI 深度分析（门槛 ≥{AI_TRIGGER_SCORE}分，并发 {MAX_CONCURRENT}）...")
+        ai_results, skipped_count = run_ai_analysis_parallel(
+            candidates=scored_stocks,
+            market_volume_status=market_volume_status,
+            sector_risk=sector_risk,
+        )
+
+        # 强制推送前5名，不允许零推送
+        sorted_results = sorted(ai_results, key=lambda x: x.get("total_score", 0), reverse=True)
+        push_candidates = sorted_results[:5]  # 强制取前5名
+        _cprint(_GREEN,
+                f"  AI \u5206\u6790\u5b8c\u6210\uff1a{above_threshold} \u53ea\u8fdb\u5165\u5206\u6790 \u2192 "
+                f"{len(push_candidates)} \u53ea\u6765\u81ea\u6700\u9AD8\u5206\u6392\u540D\n")
 
     # ── v4.0 新增：将精选结果暴露为模块级变量，供 scheduler 步骤4读取 ─────────
     global _last_selected_candidates
@@ -778,7 +897,7 @@ def main(
         {
             "ts_code":        r["ts_code"],
             "name":           r.get("name", ""),
-            "total_score":    r["total_score"],
+            "total_score":    r.get("total_score", r.get("score", 0)),
             "score_card":     r.get("score_card", {}),   # 供 trade_plan 计算仓位
             "ai_confidence":  r.get("ai_confidence", -1),  # 供 scheduler 信心过滤
         }
@@ -786,17 +905,75 @@ def main(
     ]
 
     # ──────────────────────────────────────────────────────────────────────────
-    # 步骤 5：飞书推送
+    # 步骤 5：无 AI 模式结果保存 / 正常模式飞书推送
     # ──────────────────────────────────────────────────────────────────────────
-    _cprint(_BOLD, "[步骤 5] 飞书交互卡片推送...")
-    push_to_feishu(
-        ai_results=ai_results,
-        filter_results=scored_stocks,
-        session_name=session_name,
-        total_scanned=total_scanned,
-        trade_date=trade_date,
-    )
-    _cprint(_GREEN, f"  推送完成：{len(push_candidates) + 1} 张卡片\n")
+    if no_ai:
+        # 无 AI 模式：将结果保存到 JSON 文件
+        _cprint(_BOLD, "[步骤 5] 无 AI 模式：保存分析结果...")
+        import json
+        
+        # 构建输出数据
+        output_data = {
+            "session_name": session_name,
+            "trade_date": trade_date,
+            "total_scanned": total_scanned,
+            "prescreened_count": len(prescreened),
+            "candidates_count": len(scored_stocks),
+            "top_candidates": [
+                {
+                    "ts_code": r["ts_code"],
+                    "name": r.get("name", ""),
+                    "industry": r.get("industry", ""),
+                    "score": r.get("score", 0),
+                    "details": r.get("details", {}),
+                    "close": r.get("close", 0),
+                    "pct_chg": r.get("pct_chg", 0),
+                    "rsi": r.get("rsi", 0),
+                    "macd_dif": r.get("macd_dif", 0),
+                    "macd_dea": r.get("macd_dea", 0),
+                }
+                for r in scored_stocks[:10]  # 保存 Top-10
+            ],
+            "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        }
+        
+        # 确定输出路径
+        if not output_path:
+            output_dir = os.path.join(ROOT_DIR, "data", "filter_results")
+            os.makedirs(output_dir, exist_ok=True)
+            output_path = os.path.join(output_dir, f"filter_result_{trade_date}.json")
+        
+        # 写入文件（处理 numpy 类型）
+        def default(obj):
+            if isinstance(obj, (np.integer, np.floating)):
+                return float(obj)
+            raise TypeError(f'Object of type {obj.__class__.__name__} is not JSON serializable')
+        
+        with open(output_path, "w", encoding="utf-8") as f:
+            json.dump(output_data, f, ensure_ascii=False, indent=2, default=default)
+        
+        _cprint(_GREEN, f"  ✅ 结果已保存到: {output_path}\n")
+        
+        # 控制台输出 Top-5
+        _cprint(_BOLD, "📊 无 AI 模式 - Top 5 候选股：")
+        for i, stock in enumerate(scored_stocks[:5], 1):
+            _cprint(_GREEN, f"  {i}. {stock['ts_code']} {stock.get('name','')} - {stock.get('score',0):.1f}分")
+            if stock.get('details'):
+                details = stock['details']
+                detail_str = ", ".join([f"{k}: {v:.1f}" for k, v in details.items() if isinstance(v, (int, float))])
+                _cprint(_YELLOW, f"     明细: {detail_str}")
+        _cprint(_BOLD, "")
+    else:
+        # 正常模式：飞书推送
+        _cprint(_BOLD, "[步骤 5] 飞书交互卡片推送...")
+        push_to_feishu(
+            ai_results=ai_results,
+            filter_results=scored_stocks,
+            session_name=session_name,
+            total_scanned=total_scanned,
+            trade_date=trade_date,
+        )
+        _cprint(_GREEN, f"  推送完成：{len(push_candidates) + 1} 张卡片\n")
 
     # ── 总结 ──────────────────────────────────────────────────────────────────
     elapsed_total = time.time() - t_start
@@ -831,13 +1008,17 @@ if __name__ == "__main__":
     parser.add_argument("--threshold", type=int, default=None,
                         help=f"覆盖 AI 触发门槛（默认 {AI_TRIGGER_SCORE} 分）")
     parser.add_argument("--pct-min",   type=float, default=PRE_SCREEN_PCT_MIN,
-                        help=f"pre_screen 涨幅下限（默认 {PRE_SCREEN_PCT_MIN}%）")
+                        help=f"pre_screen 涨幅下限（默认 {PRE_SCREEN_PCT_MIN}%%）")
     parser.add_argument("--pct-max",   type=float, default=PRE_SCREEN_PCT_MAX,
-                        help=f"pre_screen 涨幅上限（默认 {PRE_SCREEN_PCT_MAX}%）")
+                        help=f"pre_screen 涨幅上限（默认 {PRE_SCREEN_PCT_MAX}%%）")
     parser.add_argument("--turn-min",  type=float, default=PRE_SCREEN_TURN_MIN,
-                        help=f"pre_screen 换手率下限（默认 {PRE_SCREEN_TURN_MIN}%）")
+                        help=f"pre_screen 换手率下限（默认 {PRE_SCREEN_TURN_MIN}%%）")
     parser.add_argument("--check-ollama", action="store_true",
                         help="仅执行 Ollama 健康检查，不运行完整流程")
+    parser.add_argument("--no-ai", action="store_true",
+                        help="无 AI 模式：跳过 Ollama 健康检查和 AI 分析，仅输出打分结果")
+    parser.add_argument("--output", default=None,
+                        help="无 AI 模式下指定输出文件路径（默认输出到 data/filter_results/）")
     args = parser.parse_args()
 
     # 覆盖全局参数
@@ -858,5 +1039,7 @@ if __name__ == "__main__":
         session_name=args.session,
         market_volume_status=args.market,
         sector_risk=args.sector,
+        no_ai=args.no_ai,
+        output_path=args.output,
     )
     sys.exit(0 if ok else 1)

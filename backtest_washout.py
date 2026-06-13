@@ -5,12 +5,13 @@ import os
 from datetime import datetime, timedelta
 from collections import defaultdict
 
-DB_PATH = "d:/StockAI/db/stock_daily.db"
-REPORT_DIR = "d:/StockAI/reports"
+DB_PATH = "db/stock_daily.db"
+REPORT_DIR = "reports"
 
 # 导入洗盘分析核心函数
 import sys
-sys.path.append("d:/StockAI")
+import os
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from washout_analyst import (
     fetch_daily_data, 
     step1_detect_bottom_pattern, 

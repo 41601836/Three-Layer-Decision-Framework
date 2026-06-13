@@ -1,24 +1,22 @@
 # -*- coding: utf-8 -*-
 """
-industry_strength.py —— StockAI v4.0 行业强度锁定模块
+industry_strength.py —— StockAI v4.0 行业强度与热度综合计算模块 (A股优化版)
 =====================================================================
-每日盘后运行一次，计算申万行业（按 stock_list.industry 字段聚合）强度。
+每日盘后或按需运行，计算行业（按 stock_list.industry 字段聚合）的热度与资金持续性。
 
-计算方法（无需额外 Tushare 接口权限）：
-  1. 从 daily_prices 取全市场最近 5 个交易日行情
-  2. 从 moneyflow 取近 5 日主力资金数据
-  3. 按 stock_list.industry 分组，计算：
-       - avg_pct_chg    ：行业近5日平均涨跌幅（等权）
-       - net_mf_amount  ：行业近5日主力净流入总额（亿元）
-       - stock_count    ：覆盖股票数量
-  4. 综合得分 = avg_pct_chg 标准化(60%) + net_mf_amount 标准化(40%)
-  5. 涨幅前5且净流入>0 → 主线行业
-     第6-10名          → 备选行业
-     其余              → 回避
+计算指标：
+  1. 资金强度（money_flow_intensity）：板块主力净流入额（亿元，由 moneyflow.net_mf_amount 聚合）。
+  2. 资金持续性（money_flow_dur）：N个交易日内，板块整体主力资金呈净流入的天数。
+  3. 成交占比（volume_ratio）：板块成交额占全市场的比例（%，由 daily_prices.amount 聚合）。
+  4. 上涨家数占比（rise_ratio）：板块内日均上涨股票数占比（%）。
+
+归一化评分算法（0.0 ~ 1.0）：
+  综合评分 = 资金强度(30%) + 资金持续性(30%) + 成交占比(20%) + 上涨家数占比(20%)
+  按评分排序分层：前5名且资金强度>=0为 [主线行业]；第6-10名为 [备选行业]；其余为 [回避行业]。
 
 结果写入：
-  - SQLite 表 industry_rank（每次 INSERT OR REPLACE）
-  - industry_rank.json（供快速读取，无需查DB）
+  - SQLite 表 industry_rank（每次 INSERT OR REPLACE 近5日主线排行）
+  - industry_rank.json（缓存日、周、月三个维度的热度数据）
 """
 
 import os
@@ -36,9 +34,9 @@ RANK_JSON    = os.path.join(ROOT_DIR, "industry_rank.json")
 
 log = logging.getLogger(__name__)
 
-# 主线行业入选阈值
-MAIN_TOP_N   = 5   # 综合得分前5为主线
-BACKUP_TOP_N = 10  # 第6-10名为备选
+# 主线/备选行业数量划分
+MAIN_TOP_N   = 5
+BACKUP_TOP_N = 10
 
 
 # =============================================================================
@@ -66,15 +64,12 @@ def _init_industry_rank_table(conn: sqlite3.Connection) -> None:
 
 
 # =============================================================================
-# 核心计算
+# 核心数据加载
 # =============================================================================
 
 def _get_recent_trade_dates(conn: sqlite3.Connection, n: int = 5,
                             target_date: str = None) -> List[str]:
-    """
-    取最近 n 个有效交易日日期。
-    target_date: 若传入，只取 <= target_date 的日期（履测历史截断）。
-    """
+    """获取最近 n 个有效交易日日期。"""
     if target_date:
         rows = conn.execute(
             """SELECT DISTINCT trade_date FROM daily_prices
@@ -93,13 +88,13 @@ def _get_recent_trade_dates(conn: sqlite3.Connection, n: int = 5,
 
 def _load_price_data(conn: sqlite3.Connection,
                      trade_dates: List[str]) -> pd.DataFrame:
-    """加载近几日全市场日线数据（仅取需要的字段）。"""
+    """加载近几日全市场日线行情数据（包含成交额）。"""
     placeholders = ",".join("?" * len(trade_dates))
     return pd.read_sql(
-        f"""SELECT dp.ts_code, dp.trade_date, dp.pct_chg
-            FROM daily_prices dp
-            WHERE dp.trade_date IN ({placeholders})
-              AND dp.pct_chg IS NOT NULL""",
+        f"""SELECT ts_code, trade_date, pct_chg, amount
+            FROM daily_prices
+            WHERE trade_date IN ({placeholders})
+              AND pct_chg IS NOT NULL""",
         conn, params=trade_dates
     )
 
@@ -110,10 +105,7 @@ def _load_moneyflow_data(conn: sqlite3.Connection,
     placeholders = ",".join("?" * len(trade_dates))
     try:
         return pd.read_sql(
-            f"""SELECT ts_code, trade_date,
-                       buy_elg_amount, sell_elg_amount,
-                       buy_lg_amount,  sell_lg_amount,
-                       net_mf_amount
+            f"""SELECT ts_code, trade_date, net_mf_amount
                 FROM moneyflow
                 WHERE trade_date IN ({placeholders})""",
             conn, params=trade_dates
@@ -124,7 +116,7 @@ def _load_moneyflow_data(conn: sqlite3.Connection,
 
 
 def _load_stock_industry(conn: sqlite3.Connection) -> pd.DataFrame:
-    """加载股票-行业映射表。"""
+    """加载股票-行业映射。"""
     return pd.read_sql(
         """SELECT ts_code, industry FROM stock_list
            WHERE industry IS NOT NULL AND industry != ''""",
@@ -133,126 +125,143 @@ def _load_stock_industry(conn: sqlite3.Connection) -> pd.DataFrame:
 
 
 def _normalize_series(s: pd.Series) -> pd.Series:
-    """Min-Max 标准化到 [0, 1]，若全为相同值返回0.5。"""
+    """Min-Max 标准化到 [0, 1]，若全为相同值返回 0.5。"""
     mn, mx = s.min(), s.max()
     if mx == mn:
         return pd.Series([0.5] * len(s), index=s.index)
     return (s - mn) / (mx - mn)
 
 
-def calc_industry_strength(conn: sqlite3.Connection,
-                           target_date: str = None) -> pd.DataFrame:
-    """
-    计算各行业综合强度得分。
+# =============================================================================
+# 热度计算引擎
+# =============================================================================
 
-    参数：
-        conn        SQLite 连接
-        target_date 如果传入（YYYYMMDD），只取 <= target_date 的近 5 日数据
-                    （回测模式：严禁使用未来数据）。不传则取全库最新。
-
-    返回 DataFrame，列：
-        industry, avg_pct_chg, net_mf_amount, stock_count,
-        composite_score, tier
+def calc_industry_strength_for_period(conn: sqlite3.Connection, n_days: int = 5,
+                                      target_date: str = None, block_type: str = "industry") -> pd.DataFrame:
     """
-    trade_dates = _get_recent_trade_dates(conn, n=5, target_date=target_date)
+    计算特定周期下的行业/板块综合热度与资金持续性。
+    支持按行业 (industry) 统计，具备极佳的扩展性。
+    """
+    trade_dates = _get_recent_trade_dates(conn, n=n_days, target_date=target_date)
     if not trade_dates:
-        log.warning("calc_industry_strength: 无有效交易日数据 (target_date=%s)", target_date)
+        log.warning("calc_industry_strength_for_period: 无有效交易日数据 (n_days=%d)", n_days)
         return pd.DataFrame()
 
-    log.debug("calc_industry_strength | target=%s | 日期: %s ~ %s",
-              target_date or 'latest', trade_dates[-1], trade_dates[0])
-
-    # 加载数据
-    df_price   = _load_price_data(conn, trade_dates)
-    df_money   = _load_moneyflow_data(conn, trade_dates)
-    df_ind     = _load_stock_industry(conn)
+    df_price = _load_price_data(conn, trade_dates)
+    df_money = _load_moneyflow_data(conn, trade_dates)
+    df_ind   = _load_stock_industry(conn)
 
     if df_price.empty or df_ind.empty:
-        log.warning("价格或行业数据为空，无法计算行业强度")
+        log.warning("价格行情或板块映射为空，无法计算热度")
         return pd.DataFrame()
 
-    # ── 涨跌幅按行业聚合 ────────────────────────────────────────────────────
-    df_price_ind = df_price.merge(df_ind, on="ts_code", how="left")
-    df_price_ind = df_price_ind.dropna(subset=["industry"])
+    # 聚合核心关系
+    df_p = df_price.merge(df_ind, on="ts_code", how="inner")
 
-    price_group = df_price_ind.groupby("industry").agg(
-        avg_pct_chg  = ("pct_chg", "mean"),
-        stock_count  = ("ts_code", "nunique"),
-    ).reset_index()
-
-    # 过滤覆盖股票数 < 3 的小众行业（避免噪声）
-    price_group = price_group[price_group["stock_count"] >= 3]
-
-    # ── 资金流向按行业聚合 ──────────────────────────────────────────────────
+    # 1. 资金强度与持续性计算
     if not df_money.empty:
-        # 计算主力净流入（大单 + 特大单）
-        for col in ["buy_elg_amount", "sell_elg_amount",
-                    "buy_lg_amount",  "sell_lg_amount"]:
-            if col not in df_money.columns:
-                df_money[col] = 0.0
-        df_money["net_main"] = (
-            (df_money["buy_elg_amount"].fillna(0) + df_money["buy_lg_amount"].fillna(0))
-            - (df_money["sell_elg_amount"].fillna(0) + df_money["sell_lg_amount"].fillna(0))
-        )
-        # 若有 net_mf_amount 字段，优先用全市场资金（更准确）
-        if "net_mf_amount" in df_money.columns:
-            df_money["net_main"] = df_money["net_mf_amount"].fillna(df_money["net_main"])
+        df_m = df_money.merge(df_ind, on="ts_code", how="inner")
+        # 1.1 资金强度：个股主力净流入和。单位万元 -> 亿元
+        money_intensity = df_m.groupby("industry")["net_mf_amount"].sum().reset_index()
+        money_intensity["net_mf_amount"] = money_intensity["net_mf_amount"].fillna(0.0) / 10000.0
 
-        df_money_ind = df_money.merge(df_ind, on="ts_code", how="left")
-        df_money_ind = df_money_ind.dropna(subset=["industry"])
-
-        money_group = df_money_ind.groupby("industry").agg(
-            net_mf_amount = ("net_main", "sum")
-        ).reset_index()
-        # 转换单位：万元 → 亿元
-        money_group["net_mf_amount"] = money_group["net_mf_amount"] / 10000
+        # 1.2 资金持续性：统计N天中该行业每日整体资金流入为正的天数
+        daily_mf = df_m.groupby(["industry", "trade_date"])["net_mf_amount"].sum().reset_index()
+        daily_mf["is_positive"] = daily_mf["net_mf_amount"] > 0
+        money_dur = daily_mf.groupby("industry")["is_positive"].sum().reset_index()
+        money_dur.rename(columns={"is_positive": "money_flow_dur"}, inplace=True)
     else:
-        money_group = pd.DataFrame(columns=["industry", "net_mf_amount"])
+        money_intensity = pd.DataFrame(columns=["industry", "net_mf_amount"])
+        money_dur = pd.DataFrame(columns=["industry", "money_flow_dur"])
 
-    # ── 合并 & 计算综合得分 ──────────────────────────────────────────────────
-    df_result = price_group.merge(money_group, on="industry", how="left")
-    df_result["net_mf_amount"] = df_result["net_mf_amount"].fillna(0.0)
+    # 2. 成交额及占比计算
+    market_total_amount = df_p["amount"].sum()
+    if market_total_amount <= 0:
+        market_total_amount = 1.0
 
-    # Min-Max 标准化 → 综合得分（涨幅权重60%，资金权重40%）
-    df_result["score_pct"] = _normalize_series(df_result["avg_pct_chg"])
-    df_result["score_mf"]  = _normalize_series(df_result["net_mf_amount"])
-    df_result["composite_score"] = (
-        df_result["score_pct"] * 0.60 + df_result["score_mf"] * 0.40
-    )
+    ind_amount = df_p.groupby("industry")["amount"].sum().reset_index()
+    # 2.1 成交额占比（百分比）
+    ind_amount["volume_ratio"] = (ind_amount["amount"] / market_total_amount) * 100.0
+    # 2.2 板块日均成交额（单位为“亿元”，amount单位为千元）
+    ind_amount["avg_amount_yi"] = (ind_amount["amount"] / len(trade_dates)) / 100000.0
+
+    # 3. 日均上涨家数占比
+    df_p["is_rise"] = df_p["pct_chg"] > 0
+    df_p["is_trade"] = df_p["pct_chg"].notna()
+    
+    daily_rise = df_p.groupby(["industry", "trade_date"]).agg(
+        rise_cnt = ("is_rise", "sum"),
+        trade_cnt = ("is_trade", "sum")
+    ).reset_index()
+    
+    daily_rise["rise_ratio"] = daily_rise["rise_cnt"] / daily_rise["trade_cnt"].replace(0, 1)
+    avg_rise = daily_rise.groupby("industry")["rise_ratio"].mean().reset_index()
+    # 换算为百分比
+    avg_rise["rise_ratio"] = avg_rise["rise_ratio"] * 100.0
+
+    # 覆盖个股数与均值涨幅
+    stock_count = df_p.groupby("industry")["ts_code"].nunique().reset_index()
+    stock_count.rename(columns={"ts_code": "stock_count"}, inplace=True)
+
+    avg_pct = df_p.groupby("industry")["pct_chg"].mean().reset_index()
+    avg_pct.rename(columns={"pct_chg": "avg_pct_chg"}, inplace=True)
+
+    # 4. 合并所有维度
+    df_res = stock_count.merge(avg_pct, on="industry", how="left")
+    df_res = df_res.merge(money_intensity, on="industry", how="left")
+    df_res = df_res.merge(money_dur, on="industry", how="left")
+    df_res = df_res.merge(ind_amount, on="industry", how="left")
+    df_res = df_res.merge(avg_rise, on="industry", how="left")
+
+    df_res["net_mf_amount"]  = df_res["net_mf_amount"].fillna(0.0)
+    df_res["money_flow_dur"] = df_res["money_flow_dur"].fillna(0)
+    df_res["volume_ratio"]   = df_res["volume_ratio"].fillna(0.0)
+    df_res["avg_amount_yi"]  = df_res["avg_amount_yi"].fillna(0.0)
+    df_res["rise_ratio"]     = df_res["rise_ratio"].fillna(0.0)
+
+    # 过滤股票数过少的小行业，确保统计稳健
+    df_res = df_res[df_res["stock_count"] >= 3]
+    if df_res.empty:
+        return pd.DataFrame()
+
+    # 5. 归一化评分 (评分分配：资金强度30%，资金持续性30%，成交占比20%，上涨占比20%)
+    s_mf   = _normalize_series(df_res["net_mf_amount"])
+    s_dur  = _normalize_series(df_res["money_flow_dur"].astype(float))
+    s_vol  = _normalize_series(df_res["volume_ratio"])
+    s_rise = _normalize_series(df_res["rise_ratio"])
+
+    df_res["composite_score"] = s_mf * 0.3 + s_dur * 0.3 + s_vol * 0.2 + s_rise * 0.2
 
     # 排序
-    df_result = df_result.sort_values("composite_score", ascending=False).reset_index(drop=True)
-    df_result["rank"] = df_result.index + 1
+    df_res = df_res.sort_values("composite_score", ascending=False).reset_index(drop=True)
+    df_res["rank"] = df_res.index + 1
 
-    # ── 分层：主线 / 备选 / 回避 ────────────────────────────────────────────
+    # 6. 分层标记
     def _assign_tier(row) -> str:
         if row["rank"] <= MAIN_TOP_N and row["net_mf_amount"] >= 0:
-            return "main"       # 主线
+            return "main"
         elif row["rank"] <= BACKUP_TOP_N:
-            return "backup"     # 备选
+            return "backup"
         else:
-            return "avoid"      # 回避
+            return "avoid"
 
-    df_result["tier"] = df_result.apply(_assign_tier, axis=1)
+    df_res["tier"] = df_res.apply(_assign_tier, axis=1)
+    return df_res
 
-    # 清理中间列
-    df_result = df_result.drop(columns=["score_pct", "score_mf", "rank"])
 
-    log.info("行业强度计算完成：共 %d 个行业 | 主线 %d | 备选 %d",
-             len(df_result),
-             (df_result["tier"] == "main").sum(),
-             (df_result["tier"] == "backup").sum())
-
-    return df_result
+def calc_industry_strength(conn: sqlite3.Connection,
+                           target_date: str = None) -> pd.DataFrame:
+    """维持旧接口兼容：默认计算 5 日周期行业强度。"""
+    return calc_industry_strength_for_period(conn, n_days=5, target_date=target_date)
 
 
 # =============================================================================
-# 持久化
+# 持久化与缓存机制
 # =============================================================================
 
 def _save_to_db(conn: sqlite3.Connection,
                 df: pd.DataFrame, calc_date: str) -> None:
-    """将行业强度结果写入 industry_rank 表。"""
+    """将近5日行业主线排行保存到 SQLite。"""
     _init_industry_rank_table(conn)
     rows = [
         (calc_date, row["industry"], row["avg_pct_chg"],
@@ -271,73 +280,83 @@ def _save_to_db(conn: sqlite3.Connection,
     log.info("industry_rank 表已更新：%d 行（日期 %s）", len(rows), calc_date)
 
 
-def _save_to_json(df: pd.DataFrame, calc_date: str) -> None:
-    """将行业强度结果写入 industry_rank.json。"""
-    main_list   = df[df["tier"] == "main"]["industry"].tolist()
-    backup_list = df[df["tier"] == "backup"]["industry"].tolist()
-
-    # 完整排行榜（前20名）
-    top20 = []
+def _format_list_for_json(df: pd.DataFrame) -> list:
+    """格式化 DataFrame 为前端标准 JSON 格式。"""
+    if df.empty:
+        return []
+    result = []
     for _, row in df.head(20).iterrows():
-        top20.append({
-            "industry":       row["industry"],
-            "avg_pct_chg":    round(float(row["avg_pct_chg"]), 3),
-            "net_mf_amount":  round(float(row["net_mf_amount"]), 2),
-            "stock_count":    int(row["stock_count"]),
-            "composite_score": round(float(row["composite_score"]), 4),
-            "tier":           row["tier"],
+        result.append({
+            "name":            row["industry"],
+            "change":          round(float(row["avg_pct_chg"]), 2),
+            "volume":          round(float(row["avg_amount_yi"]), 2),
+            "score":           int(round(row["composite_score"] * 100)),
+            "stock_count":     int(row["stock_count"]),
+            "tier":            row["tier"],
+            "net_mf_amount":   round(float(row["net_mf_amount"]), 2),
+            "money_flow_dur":  int(row["money_flow_dur"]),
+            "volume_ratio":    round(float(row["volume_ratio"]), 2),
+            "rise_ratio":      round(float(row["rise_ratio"]), 2)
         })
+    return result
+
+
+def _save_to_json(df_day: pd.DataFrame, df_week: pd.DataFrame, df_month: pd.DataFrame, calc_date: str) -> None:
+    """缓存三时区排行到 industry_rank.json。"""
+    day_list   = _format_list_for_json(df_day)
+    week_list  = _format_list_for_json(df_week)
+    month_list = _format_list_for_json(df_month)
+
+    # 主线与备选线沿用周级别（5日）大底子以向下兼容
+    main_list   = df_week[df_week["tier"] == "main"]["industry"].tolist()
+    backup_list = df_week[df_week["tier"] == "backup"]["industry"].tolist()
 
     payload = {
-        "calc_date":   calc_date,
-        "timestamp":   datetime.now().isoformat(),
-        "main_line":   main_list,
-        "backup_line": backup_list,
-        "all_industries": top20,
+        "calc_date":      calc_date,
+        "timestamp":      datetime.now().isoformat(),
+        "main_line":      main_list,
+        "backup_line":    backup_list,
+        "day":            day_list,
+        "week":           week_list,
+        "month":          month_list
     }
 
     with open(RANK_JSON, "w", encoding="utf-8") as f:
         json.dump(payload, f, ensure_ascii=False, indent=2)
-    log.info("industry_rank.json 已更新 → 主线: %s", main_list)
+    log.info("industry_rank.json 缓存已写入（包含日、周、月排行）")
 
 
 # =============================================================================
-# 主接口
+# 主调接口
 # =============================================================================
 
 def get_strong_industries(conn: sqlite3.Connection = None,
-                          db_path: str = DB_PATH,
-                          target_date: str = None,
-                          persist: bool = True) -> Tuple[List[str], List[str]]:
+                           db_path: str = DB_PATH,
+                           target_date: str = None,
+                           persist: bool = True) -> Tuple[List[str], List[str]]:
     """
-    计算并返回当前强势行业列表（同时持久化结果）。
-
-    参数：
-        conn        已有的 SQLite 连接（可选）
-        db_path     数据库路径
-        target_date 如果传入（YYYYMMDD），只取到该日期为止的行业强度
-                    （回测模式：严禁未来数据）
-        persist     是否将结果写入 DB/JSON（回测时设 False 避免污染实盘数据）
-
-    返回：
-        (main_line: List[str], backup_line: List[str])
+    计算并获取日、周、月级强势板块排行（同时持久化）。
     """
     _own_conn = conn is None
     if _own_conn:
         conn = sqlite3.connect(db_path, check_same_thread=False)
 
     try:
-        df = calc_industry_strength(conn, target_date=target_date)
-        if df.empty:
+        # 分别计算 1日、5日、20日 三类排行数据
+        df_day   = calc_industry_strength_for_period(conn, n_days=1, target_date=target_date)
+        df_week  = calc_industry_strength_for_period(conn, n_days=5, target_date=target_date)
+        df_month = calc_industry_strength_for_period(conn, n_days=20, target_date=target_date)
+
+        if df_week.empty:
             return [], []
 
         calc_date = target_date or datetime.now().strftime("%Y%m%d")
         if persist:
-            _save_to_db(conn, df, calc_date)
-            _save_to_json(df, calc_date)
+            _save_to_db(conn, df_week, calc_date)
+            _save_to_json(df_day, df_week, df_month, calc_date)
 
-        main_list   = df[df["tier"] == "main"]["industry"].tolist()
-        backup_list = df[df["tier"] == "backup"]["industry"].tolist()
+        main_list   = df_week[df_week["tier"] == "main"]["industry"].tolist()
+        backup_list = df_week[df_week["tier"] == "backup"]["industry"].tolist()
         return main_list, backup_list
 
     finally:
@@ -346,69 +365,28 @@ def get_strong_industries(conn: sqlite3.Connection = None,
 
 
 def load_strong_industries() -> Tuple[List[str], List[str]]:
-    """
-    从 industry_rank.json 读取缓存的行业列表（供快速调用，不查DB）。
-    若文件不存在或过期（>24小时），返回空列表（不过滤行业）。
-
-    返回：
-        (main_line: List[str], backup_line: List[str])
-    """
+    """从 industry_rank.json 加载缓存的主线/备选行业。"""
     if not os.path.exists(RANK_JSON):
-        log.warning("industry_rank.json 不存在，行业过滤不启用")
+        log.warning("industry_rank.json 不存在")
         return [], []
 
     try:
         with open(RANK_JSON, "r", encoding="utf-8") as f:
             data = json.load(f)
-
-        ts_str = data.get("timestamp", "")
-        if ts_str:
-            ts = datetime.fromisoformat(ts_str)
-            age_hours = (datetime.now() - ts).total_seconds() / 3600
-            if age_hours > 24:
-                log.warning("industry_rank.json 已过期（%.1f 小时）", age_hours)
-
         return data.get("main_line", []), data.get("backup_line", [])
-
     except Exception as e:
         log.warning("读取 industry_rank.json 失败: %s", e)
         return [], []
 
 
-# =============================================================================
-# CLI 独立测试入口
-# =============================================================================
 if __name__ == "__main__":
     import logging as _logging
-    _logging.basicConfig(
-        level=_logging.INFO,
-        format="%(asctime)s [%(levelname)s] %(message)s"
-    )
+    _logging.basicConfig(level=_logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
     print("=" * 60)
-    print("  StockAI v4.0 - Industry Strength Module Test")
+    print("  StockAI v4.0 - Industry Heat & Dur Engine Test")
     print("=" * 60)
 
     main_line, backup_line = get_strong_industries()
-
-    print(f"\n  [MAIN] Top{MAIN_TOP_N} Industries:")
-    for i, ind in enumerate(main_line, 1):
-        print(f"     {i}. {ind}")
-
-    print(f"\n  [BACKUP] Rank {MAIN_TOP_N+1}-{BACKUP_TOP_N} Industries:")
-    for i, ind in enumerate(backup_line, 1):
-        print(f"     {MAIN_TOP_N+i}. {ind}")
-
-    # 加载详细榜单
-    if os.path.exists(RANK_JSON):
-        with open(RANK_JSON, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        print(f"\n  {'Rank':<4} {'Industry':<15} {'5d Avg Chg':<12} {'Net MF(100M)':<14} {'Tier'}")
-        print("  " + "-" * 55)
-        for i, row in enumerate(data.get("all_industries", [])[:15], 1):
-            tier_zh = {"main": "[*] MAIN", "backup": "[+] BACKUP", "avoid": "-"}.get(row["tier"], "")
-            print(f"  {i:<4} {row['industry']:<15} "
-                  f"{row['avg_pct_chg']:>+9.2f}%   "
-                  f"{row['net_mf_amount']:>12.1f}   {tier_zh}")
-
-    print(f"\n  Result saved -> {RANK_JSON}")
+    print(f"\n  [MAIN-LINE] (5d): {main_line}")
+    print(f"  [BACKUP-LINE] (5d): {backup_line}")

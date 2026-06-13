@@ -35,12 +35,16 @@ CIRCUIT_BREAKER_LIMIT = 10
 
 
 def _get_pro():
+    import os
     try:
         from scripts.tokens import TOKEN
     except ImportError:
-        from tokens import TOKEN
-    ts.set_token(TOKEN)
-    return ts.pro_api()
+        try:
+            from tokens import TOKEN
+        except ImportError:
+            TOKEN = os.environ.get('TUSHARE_TOKEN', '')
+    
+    return ts.pro_api(TOKEN)
 
 
 pro = _get_pro()

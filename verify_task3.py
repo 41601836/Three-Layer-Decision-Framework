@@ -1,5 +1,6 @@
 import sys
-sys.path.insert(0, 'd:/StockAI')
+import os
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 # 验证 parse_confidence 函数
 from analyze_stock import parse_confidence, build_ollama_prompt

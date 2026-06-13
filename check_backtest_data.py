@@ -1,7 +1,7 @@
 import sqlite3
 import os
 
-DB_PATH = "d:/StockAI/db/stock_daily.db"
+DB_PATH = "db/stock_daily.db"
 
 def check_data_coverage():
     """检查2025年6月-12月的日线数据完整性"""

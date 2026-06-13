@@ -1,5 +1,5 @@
 import sqlite3
-conn = sqlite3.connect("d:/StockAI/db/stock_daily.db")
+conn = sqlite3.connect("db/stock_daily.db")
 
 print("=== 最新日期白酒行业数据 ===")
 for row in conn.execute("SELECT * FROM industry_rank WHERE industry='白酒' ORDER BY calc_date DESC LIMIT 2"):

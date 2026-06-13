@@ -152,6 +152,22 @@ def update_config(key: str, value) -> bool:
         return False
 
 
+# 加载全局模块级配置，方便外部直接 import *
+try:
+    _loaded_config = load_config()
+except Exception:
+    _loaded_config = {}
+
+ENABLE_AKSHARE = _loaded_config.get("akshare", {}).get("enable", True)
+DATA_DEVIATION_LIMIT = _loaded_config.get("data_factory", {}).get("deviation_limit", _loaded_config.get("akshare", {}).get("deviation_limit", 0.05))
+CRAWL_INTERVAL = _loaded_config.get("crawler", {}).get("interval", 2.0)
+CRAWL_TIMEOUT = _loaded_config.get("crawler", {}).get("timeout", 10.0)
+CRAWL_USER_AGENT = _loaded_config.get("crawler", {}).get("user_agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+DATA_SOURCE_PRIORITY = _loaded_config.get("data_factory", {}).get("priority", ["tushare", "akshare", "crawl"])
+AUTO_SWITCH_SOURCE = _loaded_config.get("data_factory", {}).get("auto_switch", True)
+SOURCE_FAIL_MAX = _loaded_config.get("data_factory", {}).get("fail_max", 3)
+
+
 if __name__ == "__main__":
     import sys
     

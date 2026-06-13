@@ -1,6 +1,6 @@
 import sqlite3
 
-DB_PATH = "d:/StockAI/db/stock_daily.db"
+DB_PATH = "db/stock_daily.db"
 
 def get_circulating_cap(ts_code):
     """从daily_basic获取最新流通股本（亿股）"""

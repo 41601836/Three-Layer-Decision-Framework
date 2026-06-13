@@ -21,7 +21,7 @@ from pathlib import Path
 ROOT_DIR     = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 REPORTS_DIR  = os.path.join(ROOT_DIR, "reports")
 OLLAMA_API   = "http://localhost:11434/api/chat"
-OLLAMA_MODEL = "qwen2.5:7b-instruct-q4_K_M"
+OLLAMA_MODEL = "qwen2.5:1.5b"
 
 # 触发 AI 报告的最低 Python 评分（满分70），由于催化最高30分，需要40分才有机会上70分
 AI_TRIGGER_THRESHOLD = 40

@@ -1,8 +1,7 @@
-import sys, io, time
-sys.path.insert(0, 'd:/StockAI')
+import sys, io, time, os
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-if hasattr(sys.stdout, 'buffer'):
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace', line_buffering=True)
+# Removed stdout redirection for compatibility
 
 print("=" * 65)
 print("  StockAI v3.3 Final — 端到端流程验证")
@@ -11,7 +10,7 @@ print("=" * 65)
 # ─── 检查点1：数据状态 ───────────────────────────────────────────
 print("\n【检查点1】数据状态")
 import sqlite3
-db = sqlite3.connect('d:/StockAI/db/stock_daily.db')
+db = sqlite3.connect('db/stock_daily.db')
 latest_daily = db.execute("SELECT MAX(trade_date) FROM daily_prices").fetchone()[0]
 latest_money = db.execute("SELECT MAX(trade_date) FROM moneyflow").fetchone()[0]
 latest_holder = db.execute("SELECT MAX(ann_date) FROM stk_holdernumber").fetchone()[0]

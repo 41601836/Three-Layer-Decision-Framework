@@ -116,22 +116,29 @@ def analyze_portfolio(portfolio: list) -> list:
                 continue
             
             try:
-                analyzer = StockAnalyzer(ts_code)
+                analyzer = StockAnalyzer()
                 # 使用 analyze_v3_0 分析
-                total_score, python_score, ai_score, grade, report = analyzer.analyze_v3_0(
+                score_card, reasoning = analyzer.analyze_v3_0(
                     ts_code=ts_code,
                     catalyst_score=0,
                     industry_mode="normal"
                 )
+                total_score = score_card.get("total_score", 0)
+                grade = "强信号" if total_score >= 30 else ("中信号" if total_score >= 15 else "无信号")
+                report = "; ".join(reasoning)
                 
                 # 生成操作建议
                 action, reason, stop_loss = generate_position_action(
                     ts_code, total_score, grade, report, cost
                 )
                 
+                # 从数据库获取股票名称
+                row = analyzer.conn.execute("SELECT name FROM stock_list WHERE ts_code=?", (ts_code,)).fetchone()
+                name = row[0] if row else "未知"
+                
                 results.append({
                     "ts_code": ts_code,
-                    "name": analyzer.get_stock_name(),
+                    "name": name,
                     "cost": cost,
                     "score": total_score,
                     "grade": grade,
@@ -153,23 +160,23 @@ def analyze_portfolio(portfolio: list) -> list:
 
 def generate_position_action(ts_code: str, score: int, grade: str, report: str, cost: float) -> tuple:
     """根据分析结果生成持仓操作建议"""
-    # 简化的操作建议逻辑
-    if score >= 80:
+    # 简化的操作建议逻辑 (符合 v3.3 打分体系：≥30强信号，≥15中信号)
+    if score >= 30:
         action = "继续持有"
-        reason = "基本面和技术面表现良好"
+        reason = "策略强信号支持，主力收集筹码中"
         # 从报告中提取止损建议
         stop_loss = extract_stop_loss_from_report(report)
         if stop_loss:
             stop_loss = f"止损上移至 {stop_loss}"
         else:
             stop_loss = ""
-    elif score >= 60:
+    elif score >= 15:
         action = "持有观察"
-        reason = "表现一般，需关注后续走势"
+        reason = "策略中信号，趋势尚可，建议继续观察"
         stop_loss = ""
     else:
         action = "建议减仓"
-        reason = "评分较低，风险较高"
+        reason = "评分较低 (无信号)，风险较高"
         stop_loss = ""
     
     return action, reason, stop_loss
@@ -184,7 +191,7 @@ def extract_stop_loss_from_report(report: str) -> str:
     return ""
 
 
-def run_full_pipeline(session_name: str = "手动触发"):
+def run_full_pipeline(session_name: str = "手动触发", no_feishu: bool = False):
     """
     执行一次完整扫描 → AI报告 → 飞书推送流程（陈明专属精简版）。
     整合功能：
@@ -193,9 +200,15 @@ def run_full_pipeline(session_name: str = "手动触发"):
       3. 持仓体检      → 读取 portfolio.json 进行健康检查
       4. 三层漏斗      → 选股扫描
       5. 精简推送      → 发送"今日操作简报"
+      
+    Args:
+        session_name: 会话名称
+        no_feishu: 是否跳过飞书推送
     """
     from scripts.scanner import is_trade_day
-    from scripts.feishu_bot import send_text, send_daily_brief
+    
+    if not no_feishu:
+        from scripts.feishu_bot import send_text, send_daily_brief
 
     today = datetime.now().strftime("%Y%m%d")
 
@@ -359,6 +372,7 @@ def run_full_pipeline(session_name: str = "手动触发"):
             market_volume_status="放量" if market_mode == "attack" else "缩量",
             sector_risk="正常",
             industry_filter=industry_filter,
+            no_ai=False,
         )
         
         # 获取精选结果
@@ -386,41 +400,73 @@ def run_full_pipeline(session_name: str = "手动触发"):
         log.error("三层漏斗任务异常: %s", e)
 
     # =========================================================================
-    # 步骤5：发送精简版"今日操作简报"
+    # 步骤5：保存候选结果到文件（供前端调用）
     # =========================================================================
     try:
-        log.info("[推送] 发送今日操作简报...")
-        send_daily_brief(
-            market_mode=mode_zh,
-            max_position=max_pos,
-            main_industries=main_line,
-            backup_industries=backup_line,
-            portfolio_status=portfolio_status,
-            selected_stocks=selected_stocks,
-            trade_date=today,
-            data_label=data_label,
-        )
-        log.info("[推送] 今日操作简报发送成功")
+        candidates_file = os.path.join(ROOT_DIR, "last_candidates.json")
+        all_candidates = []
+        if 'candidates' in locals() and candidates:
+            all_candidates = [{
+                "ts_code": c.get("ts_code", ""),
+                "name": c.get("name", ""),
+                "score": c.get("total_score", 0),
+                "industry": c.get("industry", ""),
+                "pct_chg": c.get("pct_chg", 0)
+            } for c in candidates]
+        
+        def default(obj):
+            # 处理 numpy 类型
+            if hasattr(obj, '__class__') and obj.__class__.__name__ in ('int64', 'float64', 'int32', 'float32'):
+                return float(obj)
+            if isinstance(obj, (int, float)):
+                return float(obj)
+            raise TypeError(f'Object of type {obj.__class__.__name__} is not JSON serializable')
+        
+        with open(candidates_file, "w", encoding="utf-8") as f:
+            json.dump(all_candidates, f, ensure_ascii=False, indent=2, default=default)
+        log.info("[结果] 候选股票已保存到 %s", candidates_file)
     except Exception as e:
-        log.error("推送失败: %s", e)
+        log.warning("[结果] 保存候选结果失败: %s", e)
 
     # =========================================================================
-    # 步骤6：持仓健康度分析与独立推送
+    # 步骤6：发送精简版"今日操作简报"（仅在非 no_feishu 模式）
     # =========================================================================
-    try:
-        from portfolio_health import check_portfolio
-        from scripts.feishu_bot import send_portfolio_report
-        
-        log.info("[健康度] 开始分析持仓健康度...")
-        holdings = check_portfolio("portfolio.json")
-        if holdings:
-            log.info("[健康度] 分析完成 %d 只股票，推送持仓健康度报告", len(holdings))
-            send_portfolio_report(holdings, trade_date=today)
-        else:
-            log.info("[健康度] 无持仓，发送空仓提示")
-            send_portfolio_report([], trade_date=today)
-    except Exception as e:
-        log.error("[健康度] 持仓健康度分析失败: %s", e)
+    if not no_feishu:
+        try:
+            log.info("[推送] 发送今日操作简报...")
+            send_daily_brief(
+                market_mode=mode_zh,
+                max_position=max_pos,
+                main_industries=main_line,
+                backup_industries=backup_line,
+                portfolio_status=portfolio_status,
+                selected_stocks=selected_stocks,
+                trade_date=today,
+                data_label=data_label,
+            )
+            log.info("[推送] 今日操作简报发送成功")
+        except Exception as e:
+            log.error("推送失败: %s", e)
+
+        # =====================================================================
+        # 步骤7：持仓健康度分析与独立推送
+        # =====================================================================
+        try:
+            from portfolio_health import check_portfolio
+            from scripts.feishu_bot import send_portfolio_report
+            
+            log.info("[健康度] 开始分析持仓健康度...")
+            holdings = check_portfolio("portfolio.json")
+            if holdings:
+                log.info("[健康度] 分析完成 %d 只股票，推送持仓健康度报告", len(holdings))
+                send_portfolio_report(holdings, trade_date=today)
+            else:
+                log.info("[健康度] 无持仓，发送空仓提示")
+                send_portfolio_report([], trade_date=today)
+        except Exception as e:
+            log.error("[健康度] 持仓健康度分析失败: %s", e)
+    else:
+        log.info("[推送] 跳过飞书推送（--no-feishu 模式）")
 
 
 
@@ -479,6 +525,7 @@ def parse_args():
     p.add_argument("--test", action="store_true", help="仅测试飞书连接")
     p.add_argument("--session", default="手动触发",
                    help="手动触发时的会话名称（v4.0）")
+    p.add_argument("--no-feishu", action="store_true", help="不发送飞书推送")
     return p.parse_args()
 
 
@@ -492,7 +539,7 @@ if __name__ == "__main__":
         log.info("飞书测试: %s", "✅ 成功" if ok else "❌ 失败")
 
     elif args.now:
-        run_full_pipeline(session_name=args.session)
+        run_full_pipeline(session_name=args.session, no_feishu=args.no_feishu)
 
     else:
         main_loop()

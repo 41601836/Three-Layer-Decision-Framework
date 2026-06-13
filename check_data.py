@@ -1,5 +1,5 @@
 import sqlite3
-conn = sqlite3.connect("d:/StockAI/db/stock_daily.db")
+conn = sqlite3.connect("db/stock_daily.db")
 
 print("=== 检查数据库表数据 ===")
 print("\n1. 600519.SH daily_basic 表（近3条）")

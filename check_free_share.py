@@ -1,5 +1,5 @@
 import sqlite3
-conn = sqlite3.connect("d:/StockAI/db/stock_daily.db")
+conn = sqlite3.connect("db/stock_daily.db")
 
 print("=== stock_list 表结构 ===")
 cursor = conn.execute("PRAGMA table_info(stock_list)")

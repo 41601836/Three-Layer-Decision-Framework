@@ -1,5 +1,5 @@
 import sqlite3
-conn = sqlite3.connect("d:/StockAI/db/stock_daily.db")
+conn = sqlite3.connect("db/stock_daily.db")
 
 print("=== 检查白酒行业数据 ===")
 rows = conn.execute("SELECT * FROM industry_rank WHERE industry LIKE '%白酒%'").fetchall()
