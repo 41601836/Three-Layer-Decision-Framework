@@ -223,6 +223,13 @@ RETREAT_3M = BOARD_RULE_CFG.get("retreat_3m", 0.15)
 WEEK_RISE_LIMIT = BOARD_RULE_CFG.get("week_rise_limit", 0.05)
 SIPHON_MULTIPLE = BOARD_RULE_CFG.get("siphon_multiple", 2.0)
 
+# ====================== 新增：板块梯队&中军结构配置 ======================
+BOARD_STRUCT_CFG = _loaded_config.get("board_structure", {})
+LEADER_MIN_BOARD = BOARD_STRUCT_CFG.get("leader_min_board", 3)
+LADDER_BREAK_THRESHOLD = BOARD_STRUCT_CFG.get("ladder_break_threshold", 2)
+MAIN_TURNOVER_RATIO = BOARD_STRUCT_CFG.get("main_turnover_ratio", 0.08)
+MAIN_FLOAT_THRESHOLD = BOARD_STRUCT_CFG.get("main_float_threshold", 5000000000)
+
 
 if __name__ == "__main__":
     import sys
