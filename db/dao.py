@@ -96,3 +96,25 @@ def batch_insert(table_name: str, records: list):
         raise
     finally:
         conn.close()
+
+
+class DAO:
+    """数据库交互通用访问类包装"""
+    def get_conn(self) -> sqlite3.Connection:
+        return get_conn()
+    
+    def delete_by_date(self, table_name: str, trade_date: str):
+        delete_by_date(table_name, trade_date)
+        
+    def delete_by_snapshot_time(self, table_name: str, snapshot_time: str):
+        delete_by_snapshot_time(table_name, snapshot_time)
+        
+    def delete_by_month(self, table_name: str, stat_month: str):
+        delete_by_month(table_name, stat_month)
+        
+    def batch_insert(self, table_name: str, records: list):
+        batch_insert(table_name, records)
+
+# 提供对外的通用数据访问单例
+dao = DAO()
+
