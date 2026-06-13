@@ -258,6 +258,18 @@ WARN_RATIO = POSITION_CFG.get("warn_ratio", 0.8)
 STRONG_COEFF = POSITION_CFG.get("strong_coeff", 1.1)
 WEAK_COEFF = POSITION_CFG.get("weak_coeff", 0.9)
 
+# ====================== 新增：跨板块联动 & 二次资金虹吸配置 ======================
+LINK_SIPHON_CFG = _loaded_config.get("board_link_siphon", {})
+LINK_CORR_STRONG = LINK_SIPHON_CFG.get("link_corr_strong", 0.8)
+LINK_CORR_MID = LINK_SIPHON_CFG.get("link_corr_mid", 0.5)
+SYNC_PROB_STRONG = LINK_SIPHON_CFG.get("sync_prob_strong", 0.7)
+SYNC_PROB_MID = LINK_SIPHON_CFG.get("sync_prob_mid", 0.4)
+FUND_SAME_RATIO = LINK_SIPHON_CFG.get("fund_same_ratio", 0.6)
+SIPHON_ABSORB_STRONG = LINK_SIPHON_CFG.get("siphon_absorb_strong", 0.4)
+SIPHON_ABSORB_MID = LINK_SIPHON_CFG.get("siphon_absorb_mid", 0.2)
+LOSS_RATE_STRONG = LINK_SIPHON_CFG.get("loss_rate_strong", 0.3)
+LOSS_RATE_MID = LINK_SIPHON_CFG.get("loss_rate_mid", 0.15)
+
 
 if __name__ == "__main__":
     import sys
