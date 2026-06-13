@@ -167,6 +167,24 @@ DATA_SOURCE_PRIORITY = _loaded_config.get("data_factory", {}).get("priority", ["
 AUTO_SWITCH_SOURCE = _loaded_config.get("data_factory", {}).get("auto_switch", True)
 SOURCE_FAIL_MAX = _loaded_config.get("data_factory", {}).get("fail_max", 3)
 
+# 宏观打分配置
+MACRO_SCORE_CFG = _loaded_config.get("macro_score", {})
+DIM_SCORE_GREEN = MACRO_SCORE_CFG.get("dim_score_green", 1.0)
+DIM_SCORE_YELLOW = MACRO_SCORE_CFG.get("dim_score_yellow", 0.5)
+DIM_SCORE_RED = MACRO_SCORE_CFG.get("dim_score_red", 0.0)
+
+CAPITAL_DYNAMIC_THRESHOLD = MACRO_SCORE_CFG.get("capital_dynamic_threshold", 30000000000)
+WEIGHT_CAPITAL_NORMAL = MACRO_SCORE_CFG.get("weight_capital_normal", 1.0)
+WEIGHT_CAPITAL_HIGH = MACRO_SCORE_CFG.get("weight_capital_high", 1.5)
+
+SCORE_ATTACK = MACRO_SCORE_CFG.get("score_attack", 4.0)
+SCORE_CAUTIOUS_LOW = MACRO_SCORE_CFG.get("score_cautious_low", 2.5)
+SCORE_CAUTIOUS_HIGH = MACRO_SCORE_CFG.get("score_cautious_high", 3.5)
+
+POS_ATTACK = MACRO_SCORE_CFG.get("pos_attack", 0.8)
+POS_CAUTIOUS = MACRO_SCORE_CFG.get("pos_cautious", 0.5)
+POS_DEFEND = MACRO_SCORE_CFG.get("pos_defend", 0.3)
+
 
 if __name__ == "__main__":
     import sys
