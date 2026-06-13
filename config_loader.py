@@ -230,6 +230,15 @@ LADDER_BREAK_THRESHOLD = BOARD_STRUCT_CFG.get("ladder_break_threshold", 2)
 MAIN_TURNOVER_RATIO = BOARD_STRUCT_CFG.get("main_turnover_ratio", 0.08)
 MAIN_FLOAT_THRESHOLD = BOARD_STRUCT_CFG.get("main_float_threshold", 5000000000)
 
+# ====================== 新增：板块风格&热度配置 ======================
+BOARD_STYLE_CFG = _loaded_config.get("board_style", {})
+STYLE_MAP = BOARD_STYLE_CFG.get("style_map", {})
+INTRA_STRONG = BOARD_STYLE_CFG.get("intraday_strength", {}).get("strong_threshold", 0.7)
+INTRA_WEAK = BOARD_STYLE_CFG.get("intraday_strength", {}).get("weak_threshold", 0.3)
+CROSS_STRONG = BOARD_STYLE_CFG.get("cross_day_strength", {}).get("strong_threshold", 0.65)
+CROSS_WEAK = BOARD_STYLE_CFG.get("cross_day_strength", {}).get("weak_threshold", 0.35)
+CROSS_DAYS = BOARD_STYLE_CFG.get("cross_day_days", 3)
+
 
 if __name__ == "__main__":
     import sys
