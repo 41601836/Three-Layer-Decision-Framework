@@ -202,6 +202,13 @@ A_OPEN_DROP = MACRO_VETO_CFG.get("a_open_drop", 1.5)
 # 涨跌家数比基准
 UP_DOWN_RATIO_STANDARD = MACRO_VETO_CFG.get("up_down_ratio_standard", 1.0)
 
+# ====================== 新增：盘中实时修正配置 ======================
+INTRADAY_REVISE_CFG = _loaded_config.get("intraday_revise", {})
+VOLUME_SHRINK_RATIO = INTRADAY_REVISE_CFG.get("volume_shrink_ratio", 0.15)
+FOREIGN_BOARD_DROP = INTRADAY_REVISE_CFG.get("foreign_board_drop", 3.0)
+ACCEPT_RATIO_THRESHOLD = INTRADAY_REVISE_CFG.get("accept_ratio_threshold", 0.3)
+EMOTION_DEVIATE_RATIO = INTRADAY_REVISE_CFG.get("emotion_deviate_ratio", 0.10)
+
 
 if __name__ == "__main__":
     import sys
