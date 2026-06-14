@@ -303,6 +303,33 @@ SCORE_EXCELLENT = STOCK_SCORE_CFG.get("score_excellent", 0.8)
 SCORE_GOOD = STOCK_SCORE_CFG.get("score_good", 0.6)
 SCORE_NORMAL = STOCK_SCORE_CFG.get("score_normal", 0.4)
 
+# ====================== 新增：个股入场/止损止盈/动态仓位配置 ======================
+STOCK_TRADE_CFG = _loaded_config.get("stock_trade_risk", {})
+SUPPORT_PROXIMITY = STOCK_TRADE_CFG.get("support_proximity", 0.03)
+PRESSURE_PROXIMITY = STOCK_TRADE_CFG.get("pressure_proximity", 0.04)
+
+FIXED_STOP_LOSS = STOCK_TRADE_CFG.get("fixed_stop_loss", 0.05)
+TRAILING_STEP = STOCK_TRADE_CFG.get("trailing_step", 0.02)
+FIRST_TAKE_PROFIT = STOCK_TRADE_CFG.get("first_take_profit", 0.08)
+SECOND_TAKE_PROFIT = STOCK_TRADE_CFG.get("second_take_profit", 0.15)
+DEFENSE_STOP_ADJUST = STOCK_TRADE_CFG.get("defense_stop_adjust", 0.02)
+DEFENSE_PROFIT_ADJUST = STOCK_TRADE_CFG.get("defense_profit_adjust", 0.03)
+
+BASE_POSITION = STOCK_TRADE_CFG.get("base_position", 0.12)
+SINGLE_MAX_POS = STOCK_TRADE_CFG.get("single_max_pos", 0.20)
+
+COEFF_EXCELLENT = STOCK_TRADE_CFG.get("coeff_excellent", 1.2)
+COEFF_GOOD = STOCK_TRADE_CFG.get("coeff_good", 1.0)
+COEFF_NORMAL = STOCK_TRADE_CFG.get("coeff_normal", 0.8)
+COEFF_WEAK = STOCK_TRADE_CFG.get("coeff_weak", 0.6)
+
+COEFF_BOARD_STRONG = STOCK_TRADE_CFG.get("coeff_board_strong", 1.1)
+COEFF_BOARD_WEAK = STOCK_TRADE_CFG.get("coeff_board_weak", 0.8)
+
+COEFF_ATTACK = STOCK_TRADE_CFG.get("coeff_attack", 1.1)
+COEFF_CAUTIOUS = STOCK_TRADE_CFG.get("coeff_cautious", 0.9)
+COEFF_DEFEND = STOCK_TRADE_CFG.get("coeff_defend", 0.5)
+
 
 if __name__ == "__main__":
     import sys
