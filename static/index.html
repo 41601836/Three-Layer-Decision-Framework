@@ -2312,6 +2312,102 @@
             </div>
         </div>
 
+        <!-- ═══ 三层决策整合工作流面板 ═══ -->
+        <div class="strategy-board" id="decision-workflow-panel" style="margin-top: 24px; background: rgba(13,17,23,0.4); border: 1px solid rgba(139,92,246,0.2);">
+            <div class="strategy-board-header">
+                <div class="strategy-board-title">
+                    <div class="strategy-board-icon" style="background: linear-gradient(135deg, rgba(124,58,237,0.2), rgba(59,130,246,0.15)); border-color: rgba(124,58,237,0.3);">🌐</div>
+                    <div>
+                        <h2>三层量化决策框架 · 全流程整合控制台</h2>
+                        <p>一键串联全链路 [第一层宏观诊断 → 第二层板块轮动 → 第三层个股执行] · 状态透传与终止拦截</p>
+                    </div>
+                </div>
+                <div class="strategy-header-right">
+                    <button class="strategy-trigger-btn" id="decision-workflow-trigger-btn" onclick="runDecisionWorkflow()" style="background: linear-gradient(135deg, #7c3aed 0%, #3b82f6 100%); border-color: rgba(59,130,246,0.5); box-shadow: 0 4px 15px rgba(59,130,246,0.3)">
+                        <span class="btn-bolt" id="decision-btn-bolt">⚡</span>
+                        启动全流程整合工作流
+                    </button>
+                </div>
+            </div>
+
+            <!-- 摘要网格 -->
+            <div class="strategy-grid" style="grid-template-columns: repeat(4, 1fr); border-bottom: 1px solid var(--glass-border); padding-bottom: 20px; gap: 16px;">
+                <div class="s-cell">
+                    <div class="s-cell-title">
+                        <span class="s-dot" id="wf-macro-dot" style="background:var(--text-muted)"></span>
+                        第一层：大盘模式
+                    </div>
+                    <div style="font-size: 1.4rem; font-weight: 700; color: var(--text-primary); margin-top: 5px;" id="wf-macro-mode">—</div>
+                    <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 5px;" id="wf-macro-score">加权综合评分：—</div>
+                </div>
+                <div class="s-cell">
+                    <div class="s-cell-title">
+                        <span class="s-dot" style="background:var(--blue-500)"></span>
+                        第二层：主线风格
+                    </div>
+                    <div style="font-size: 1.05rem; font-weight: 700; color: var(--blue-400); margin-top: 8px; line-height: 1.4;" id="wf-board-style">—</div>
+                    <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 5px;" id="wf-board-rotate">轮动强度：—</div>
+                </div>
+                <div class="s-cell">
+                    <div class="s-cell-title">
+                        <span class="s-dot" style="background:var(--violet-500)"></span>
+                        第二层：风控度
+                    </div>
+                    <div style="font-size: 1.2rem; font-weight: 700; color: var(--violet-400); margin-top: 5px;" id="wf-siphon-level">—</div>
+                    <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 5px;" id="wf-market-pos">全市场仓位：—</div>
+                </div>
+                <div class="s-cell">
+                    <div class="s-cell-title">
+                        <span class="s-dot" style="background:var(--amber-500)"></span>
+                        执行决策状态
+                    </div>
+                    <div style="font-size: 1.2rem; font-weight: 700; color: var(--text-primary); margin-top: 5px;" id="wf-total-status">—</div>
+                    <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 5px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;" id="wf-terminate-reason" title="">原因：—</div>
+                </div>
+            </div>
+
+            <!-- 警告与缺失展示面板 (默认隐藏) -->
+            <div id="wf-alert-container" style="padding: 16px 24px; display: none; flex-direction: column; gap: 10px;">
+                <div id="wf-risk-alert" style="padding: 10px 14px; background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.25); border-radius: var(--radius-sm); font-size: 0.78rem; color: var(--red-400); display: none;">
+                    <strong>⚠️ 全局风控警告：</strong> <span id="wf-risk-content"></span>
+                </div>
+                <div id="wf-missing-alert" style="padding: 10px 14px; background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.25); border-radius: var(--radius-sm); font-size: 0.78rem; color: var(--amber-400); display: none;">
+                    <strong>⚠️ 数据缺失清单：</strong> <span id="wf-missing-content"></span>
+                </div>
+            </div>
+
+            <!-- 交易指令表格 -->
+            <div style="padding: 20px 24px;">
+                <div style="font-size: 0.8rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 12px; letter-spacing: 0.05em; text-transform: uppercase;">✅ 最终可执行交易指令 (标准化防风分配)</div>
+                <div class="candidates-table-container" style="border: 1px solid rgba(255,255,255,0.05); border-radius: var(--radius-sm); background: rgba(0,0,0,0.15); max-height: 400px; overflow-y: auto;">
+                    <table class="candidates-table" id="wf-trade-table" style="margin-bottom: 0;">
+                        <thead>
+                            <tr>
+                                <th>代码</th>
+                                <th>股票名称</th>
+                                <th>评级</th>
+                                <th>入场分区</th>
+                                <th>强支撑 / 短期压力</th>
+                                <th>固定止损 / 一二档止盈</th>
+                                <th>建议持仓</th>
+                                <th>交易约束及系数明细</th>
+                            </tr>
+                        </thead>
+                        <tbody id="wf-trade-body">
+                            <tr>
+                                <td colspan="8" class="empty-state">暂无交易指令，请先启动全流程决策</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="strategy-footer" style="background: rgba(0,0,0,0.15)">
+                <span style="color: var(--text-muted)">第一层宏观诊断 → 第二层板块风格 → 第三层个股执行风控</span>
+                <span id="wf-timestamp">未执行</span>
+            </div>
+        </div>
+
         <!-- ═══ METRICS ROW ═══ -->
         <div class="metrics-row">
             <div class="metric-card">
@@ -3260,6 +3356,157 @@
             // 接口未实现时静默处理
         }
     }
+
+    /* ── 三层决策整合工作流执行 ── */
+    window.runDecisionWorkflow = async function() {
+        const btn = document.getElementById('decision-workflow-trigger-btn');
+        const bolt = document.getElementById('decision-btn-bolt');
+        const statusEl = document.getElementById('wf-total-status');
+        const timestampEl = document.getElementById('wf-timestamp');
+        
+        // 1. 设置运行中状态
+        btn.disabled = true;
+        btn.style.opacity = '0.7';
+        btn.style.cursor = 'not-allowed';
+        const originalBoltText = bolt.textContent;
+        bolt.textContent = '⏳';
+        bolt.style.display = 'inline-block';
+        bolt.style.animation = 'spin 1.5s linear infinite';
+        
+        statusEl.textContent = '决策计算中...';
+        statusEl.style.color = 'var(--amber-400)';
+        
+        try {
+            const res = await fetchAPI('/api/run_total');
+            if (res.code !== 200) {
+                throw new Error(res.msg || '未知服务器错误');
+            }
+            
+            const data = res.data;
+            
+            // 2. 更新大盘模式
+            const macroMode = data.macro_summary.operate_mode;
+            const macroModeEl = document.getElementById('wf-macro-mode');
+            macroModeEl.textContent = macroMode;
+            
+            const macroDot = document.getElementById('wf-macro-dot');
+            if (macroMode === '进攻') {
+                macroDot.style.background = 'var(--emerald-500)';
+                macroModeEl.style.color = 'var(--emerald-400)';
+            } else if (macroMode === '谨慎') {
+                macroDot.style.background = 'var(--amber-500)';
+                macroModeEl.style.color = 'var(--amber-400)';
+            } else { // 防守
+                macroDot.style.background = 'var(--red-500)';
+                macroModeEl.style.color = 'var(--red-400)';
+            }
+            
+            // 3. 更新大盘总分和修正说明
+            document.getElementById('wf-macro-score').textContent = `综合得分：${data.macro_summary.total_score}分 | ${data.macro_summary.revise_desc || '无修正'}`;
+            
+            // 4. 更新主线风格与轮动强度
+            document.getElementById('wf-board-style').textContent = data.board_summary.main_style || '无';
+            document.getElementById('wf-board-rotate').textContent = `轮动强度：${data.board_summary.rotate_strength || '—'}`;
+            
+            // 5. 更新风控度与全市场仓位
+            document.getElementById('wf-siphon-level').textContent = data.board_summary.siphon_level || '无';
+            document.getElementById('wf-market-pos').textContent = `全市场仓位：${data.board_summary.market_position || '0.0%'}`;
+            
+            // 6. 更新决策流状态
+            statusEl.textContent = data.total_flow_status;
+            if (data.total_flow_status === '正常完成') {
+                statusEl.style.color = 'var(--emerald-400)';
+            } else if (data.total_flow_status === '中途终止') {
+                statusEl.style.color = 'var(--amber-400)';
+            } else {
+                statusEl.style.color = 'var(--red-400)';
+            }
+            
+            const reasonEl = document.getElementById('wf-terminate-reason');
+            reasonEl.textContent = data.terminate_reason ? `原因：${data.terminate_reason}` : '原因：无';
+            reasonEl.title = data.terminate_reason || '';
+            
+            // 7. 异常警告与数据缺失展示
+            const alertContainer = document.getElementById('wf-alert-container');
+            const riskAlert = document.getElementById('wf-risk-alert');
+            const riskContent = document.getElementById('wf-risk-content');
+            const missingAlert = document.getElementById('wf-missing-alert');
+            const missingContent = document.getElementById('wf-missing-content');
+            
+            let hasAlert = false;
+            
+            // 风险警示展示
+            if (data.global_risk_list && data.global_risk_list.length > 0) {
+                riskContent.textContent = data.global_risk_list.join('；');
+                riskAlert.style.display = 'block';
+                hasAlert = true;
+            } else {
+                riskAlert.style.display = 'none';
+            }
+            
+            // 数据缺失清单展示
+            if (data.all_data_missing && data.all_data_missing.length > 0) {
+                missingContent.textContent = data.all_data_missing.join('，');
+                missingAlert.style.display = 'block';
+                hasAlert = true;
+            } else {
+                missingAlert.style.display = 'none';
+            }
+            
+            alertContainer.style.display = hasAlert ? 'flex' : 'none';
+            
+            // 8. 填充交易表格
+            const tradeBody = document.getElementById('wf-trade-body');
+            if (data.final_trade_list && data.final_trade_list.length > 0) {
+                let html = '';
+                data.final_trade_list.forEach(item => {
+                    const isCore = item.stock_level === '核心标的';
+                    const suggestPosPercent = (item.suggest_position * 100).toFixed(1) + '%';
+                    
+                    html += `
+                        <tr>
+                            <td><span style="font-family:'JetBrains Mono',monospace;color:var(--text-secondary)">${item.stock_code}</span></td>
+                            <td><strong>${item.stock_name}</strong></td>
+                            <td><span class="badge ${isCore ? 'badge-live' : ''}" style="${!isCore ? 'background:rgba(255,255,255,0.05);color:var(--text-muted)' : ''}">${item.stock_level}</span></td>
+                            <td><span style="color:var(--amber-400)">${item.entry_zone}</span></td>
+                            <td><span style="font-family:'JetBrains Mono',monospace">${item.support_price}</span> / <span style="font-family:'JetBrains Mono',monospace">${item.pressure_price}</span></td>
+                            <td><span style="color:var(--red-400);font-family:'JetBrains Mono',monospace">${item.stop_loss_price}</span> / <span style="color:var(--emerald-400);font-family:'JetBrains Mono',monospace">${item.first_profit_price} (${item.second_profit_price})</span></td>
+                            <td><span style="color:var(--emerald-400);font-weight:700;font-family:'JetBrains Mono',monospace">${suggestPosPercent}</span></td>
+                            <td style="font-size:0.75rem;color:var(--text-muted)" title="${item.risk_tip || ''}">${item.risk_tip || '—'}</td>
+                        </tr>
+                    `;
+                });
+                tradeBody.innerHTML = html;
+            } else {
+                tradeBody.innerHTML = `
+                    <tr>
+                        <td colspan="8" class="empty-state" style="color: var(--text-muted)">
+                            ${data.total_flow_status === '中途终止' ? '⚠️ 全流程因风控拦截提前终止，无最终交易指令' : '暂无交易指令（没有标的满足全部筛选打分标准）'}
+                        </td>
+                    </tr>
+                `;
+            }
+            
+            // 9. 更新时间戳
+            const now = new Date();
+            timestampEl.textContent = `执行时间：${now.toLocaleString('zh-CN')}`;
+            showToast('全流程决策分析计算成功', 'success');
+            
+        } catch (err) {
+            console.error(err);
+            statusEl.textContent = '执行失败';
+            statusEl.style.color = 'var(--red-400)';
+            document.getElementById('wf-terminate-reason').textContent = `异常: ${err.message}`;
+            showToast('全流程执行异常：' + err.message, 'error');
+        } finally {
+            btn.disabled = false;
+            btn.style.opacity = '';
+            btn.style.cursor = '';
+            bolt.textContent = originalBoltText;
+            bolt.style.display = '';
+            bolt.style.animation = '';
+        }
+    };
 
     /* ── Init ── */
     window.onload = () => {

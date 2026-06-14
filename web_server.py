@@ -9,6 +9,15 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+# 导入三层决策框架全局单例与日志
+from decision_framework.workflow_total import total_workflow
+from decision_framework.macro_score import macro_score
+from decision_framework.macro_veto import macro_veto
+from decision_framework.macro_revise import macro_revise
+from decision_framework.board_link_siphon import board_link_siphon
+from decision_framework.stock_trade_risk import stock_trade_risk
+from decision_framework.decision_log import decision_log
+
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 SCRIPTS_DIR = os.path.join(ROOT_DIR, "scripts")
 STATIC_DIR = os.path.join(ROOT_DIR, "static")
@@ -1736,6 +1745,60 @@ def get_report_content(filename: str):
         return {"content": content}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"读取报告失败: {e}")
+
+
+# ──────────────────────────────────────────────────────────────
+# 三层量化决策框架 API 接口
+# ──────────────────────────────────────────────────────────────
+
+@app.get("/api/run_total")
+def api_run_total():
+    try:
+        result = total_workflow.run()
+        return {"code": 200, "msg": "success", "data": result}
+    except Exception as e:
+        decision_log.error(f"全流程接口异常: {str(e)}")
+        return {"code": 500, "msg": f"服务异常: {str(e)}", "data": None}
+
+@app.get("/api/get_macro")
+def api_get_macro():
+    try:
+        s_res = macro_score.run()
+        v_res = macro_veto.run()
+        pre_expect = {
+            "up_down_ratio": 1.0,
+            "top_board_change": 2.0,
+            "limit_up_num": 15
+        }
+        r_res = macro_revise.run(s_res, pre_expect)
+        data = {
+            "score_result": s_res,
+            "veto_result": v_res,
+            "revise_result": r_res
+        }
+        return {"code": 200, "msg": "success", "data": data}
+    except Exception as e:
+        decision_log.error(f"宏观接口异常: {str(e)}")
+        return {"code": 500, "msg": f"服务异常: {str(e)}", "data": None}
+
+@app.get("/api/get_board")
+def api_get_board():
+    try:
+        result = board_link_siphon.run()
+        return {"code": 200, "msg": "success", "data": result}
+    except Exception as e:
+        decision_log.error(f"板块接口异常: {str(e)}")
+        return {"code": 500, "msg": f"服务异常: {str(e)}", "data": None}
+
+@app.get("/api/get_stock")
+def api_get_stock():
+    try:
+        result = stock_trade_risk.run()
+        return {"code": 200, "msg": "success", "data": result}
+    except Exception as e:
+        decision_log.error(f"个股接口异常: {str(e)}")
+        return {"code": 500, "msg": f"服务异常: {str(e)}", "data": None}
+
 
 if __name__ == "__main__":
     import uvicorn
