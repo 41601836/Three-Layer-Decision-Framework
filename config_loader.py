@@ -270,6 +270,14 @@ SIPHON_ABSORB_MID = LINK_SIPHON_CFG.get("siphon_absorb_mid", 0.2)
 LOSS_RATE_STRONG = LINK_SIPHON_CFG.get("loss_rate_strong", 0.3)
 LOSS_RATE_MID = LINK_SIPHON_CFG.get("loss_rate_mid", 0.15)
 
+# ====================== 新增：个股初筛配置 ======================
+STOCK_FILTER_CFG = _loaded_config.get("stock_filter", {})
+MA_PERIOD = STOCK_FILTER_CFG.get("ma_period", 20)
+TURNOVER_MIN = STOCK_FILTER_CFG.get("turnover_min", 0.02)
+TURNOVER_MAX = STOCK_FILTER_CFG.get("turnover_max", 0.15)
+STAGE_GAIN_LIMIT = STOCK_FILTER_CFG.get("stage_gain_limit", 0.25)
+VOLUME_RATIO = STOCK_FILTER_CFG.get("volume_ratio", 1.2)
+
 
 if __name__ == "__main__":
     import sys

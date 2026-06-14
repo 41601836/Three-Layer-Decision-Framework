@@ -540,9 +540,9 @@ class BoardLinkSiphon:
 
     def run(
         self,
-        style_result: Dict[str, Any],
-        rotation_result: Dict[str, Any],
-        position_result: Dict[str, Any],
+        style_result: Optional[Dict[str, Any]] = None,
+        rotation_result: Optional[Dict[str, Any]] = None,
+        position_result: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """
         收官决策工作流统一主入口。
@@ -551,7 +551,30 @@ class BoardLinkSiphon:
         data_missing_list = []
         flow_status = "继续"
 
+        if style_result is None or rotation_result is None or position_result is None:
+            from decision_framework.board_rank import board_rank
+            from decision_framework.board_style import board_style
+            from decision_framework.board_rotation import board_rotation
+            from decision_framework.board_position import board_position
+            try:
+                board_res = board_rank.run()
+                if style_result is None:
+                    style_result = board_style.run(board_res)
+                if rotation_result is None:
+                    rotation_result = board_rotation.run(style_result)
+                if position_result is None:
+                    position_result = board_position.run(style_result, rotation_result)
+            except Exception as ex:
+                decision_log.error(f"❌ [BoardLinkSiphon] 自动运行前置模块异常: {ex}")
+
         try:
+            if not style_result:
+                style_result = {"style_group": []}
+            if not rotation_result:
+                rotation_result = {"rotate_strength": "弱轮动"}
+            if not position_result:
+                position_result = {"market_total_pos": 0.0, "style_position": []}
+
             style_group = style_result.get("style_group", [])
             rotate_strength = rotation_result.get("rotate_strength", "弱轮动")
             market_total_pos = position_result.get("market_total_pos", 0.0)
