@@ -278,6 +278,31 @@ TURNOVER_MAX = STOCK_FILTER_CFG.get("turnover_max", 0.15)
 STAGE_GAIN_LIMIT = STOCK_FILTER_CFG.get("stage_gain_limit", 0.25)
 VOLUME_RATIO = STOCK_FILTER_CFG.get("volume_ratio", 1.2)
 
+# ====================== 新增：个股多维度打分配置 ======================
+STOCK_SCORE_CFG = _loaded_config.get("stock_score", {})
+WEIGHT_FUNDAMENTAL = STOCK_SCORE_CFG.get("weight_fundamental", 0.4)
+WEIGHT_CAPITAL = STOCK_SCORE_CFG.get("weight_capital", 0.35)
+WEIGHT_CHIP = STOCK_SCORE_CFG.get("weight_chip", 0.25)
+
+PROFIT_HIGH = STOCK_SCORE_CFG.get("profit_high", 0.3)
+PROFIT_MID = STOCK_SCORE_CFG.get("profit_mid", 0.1)
+
+VAL_LOW = STOCK_SCORE_CFG.get("val_low", 0.2)
+VAL_MID = STOCK_SCORE_CFG.get("val_mid", 0.6)
+
+NET_IN_HIGH = STOCK_SCORE_CFG.get("net_in_high", 0.03)
+NET_IN_MID = STOCK_SCORE_CFG.get("net_in_mid", 0.0)
+
+BIG_ORDER_HIGH = STOCK_SCORE_CFG.get("big_order_high", 0.2)
+BIG_ORDER_MID = STOCK_SCORE_CFG.get("big_order_mid", 0.1)
+
+TURNOVER_STABLE = STOCK_SCORE_CFG.get("turnover_stable", 0.2)
+TURNOVER_MID = STOCK_SCORE_CFG.get("turnover_mid", 0.4)
+
+SCORE_EXCELLENT = STOCK_SCORE_CFG.get("score_excellent", 0.8)
+SCORE_GOOD = STOCK_SCORE_CFG.get("score_good", 0.6)
+SCORE_NORMAL = STOCK_SCORE_CFG.get("score_normal", 0.4)
+
 
 if __name__ == "__main__":
     import sys
