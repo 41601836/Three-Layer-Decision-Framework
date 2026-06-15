@@ -1,1 +1,11 @@
-[]
+[
+  {
+    "ts_code": "002371.SZ",
+    "name": "北方华创",
+    "quantity": 100,
+    "cost": 369.99,
+    "current_price": 369.99,
+    "signal": "持有",
+    "shares": 100
+  }
+]

@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>量化决策系统 - 宏观诊断</title>
+    <!-- 外部CDN资源 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+
+    <!-- 本地公共样式 -->
+    <link rel="stylesheet" href="css/common.css">
+</head>
+<body>
+<!-- 左侧固定侧边栏 -->
+<div class="sidebar">
+    <h4 class="text-center text-white mb-4 pt-2">量化决策系统</h4>
+    <nav class="nav flex-column">
+        <a href="index.html" class="nav-link">📊 总控仪表盘</a>
+        <a href="macro.html" class="nav-link active">📈 宏观诊断</a>
+        <a href="board.html" class="nav-link">🏷️ 板块分析</a>
+        <a href="stock.html" class="nav-link">📋 个股交易</a>
+        <a href="system.html" class="nav-link">⚙️ 系统设置</a>
+    </nav>
+</div>
+
+<!-- 顶部状态栏 -->
+<div class="top-bar">
+    <div class="system-info">
+        <span>系统状态：<span class="text-success">运行正常</span></span>
+        <span class="ms-4">上证指数：<span class="rise">3200.00 +0.80%</span></span>
+        <span class="ms-4">深证成指：<span class="rise">10500.00 +0.50%</span></span>
+    </div>
+    <div class="operate-group">
+        <span id="loadingTip" class="text-warning ms-2 d-none">数据加载中...</span>
+    </div>
+</div>
+
+<!-- 右侧主内容区 -->
+<div class="main-content">
+    <!-- 模块1：大盘核心状态 -->
+    <div class="row g-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">大盘操作模式</div>
+                <div class="card-body" id="marketModeBox">--</div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">一票否决 & 风控原因</div>
+                <div class="card-body text-warning" id="vetoBox">无风控拦截</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 模块2：宏观维度雷达图 -->
+    <div class="card mt-4">
+        <div class="card-header">六大宏观维度得分雷达图</div>
+        <div class="card-body">
+            <div id="macroRadarChart" style="height: 380px;"></div>
+        </div>
+    </div>
+
+    <!-- 模块3：市场情绪指标 -->
+    <div class="row g-4 mt-4">
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-header">上涨家数</div>
+                <div class="card-body" id="riseCount">--</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-header">下跌家数</div>
+                <div class="card-body" id="fallCount">--</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-header">跌停数量</div>
+                <div class="card-body text-danger" id="limitDownCount">--</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-header">涨跌比值</div>
+                <div class="card-body" id="riseFallRatio">--</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 模块4：大盘指数K线 & 20日均线 -->
+    <div class="card mt-4">
+        <div class="card-header">大盘走势（含20日均线）</div>
+        <div class="card-body">
+            <div id="indexKlineChart" style="height: 380px;"></div>
+        </div>
+    </div>
+
+    <!-- 数据缺失汇总 -->
+    <div class="card mt-4">
+        <div class="card-header">数据缺失 & 异常汇总</div>
+        <div class="card-body text-warning" id="macroMissBox">无数据缺失</div>
+    </div>
+</div>
+
+<!-- 引入公共脚本 -->
+<script src="js/api.js"></script>
+<script src="js/common.js"></script>
+<script src="js/chart.js"></script>
+
+<script>
+    // XSS 转义方法，防止前端注入
+    function escapeHtml(str) {
+        if (!str && str !== 0) return "";
+        return String(str).replace(/&/g, "&amp;")
+                  .replace(/</g, "&lt;")
+                  .replace(/>/g, "&gt;")
+                  .replace(/\"/g, "&quot;")
+                  .replace(/'/g, "&#039;");
+    }
+
+    // 初始化图表实例
+    const macroRadarChart = echarts.init(document.getElementById('macroRadarChart'));
+    const indexKlineChart = echarts.init(document.getElementById('indexKlineChart'));
+
+    $(function () {
+        // 使用 common.js 导航激活
+        try{ if(window.activateNav) activateNav(); }catch(e){}
+        // 页面加载自动请求宏观数据
+        loadMacroData();
+
+        // 图表窗口自适应
+        window.addEventListener('resize', function () {
+            macroRadarChart.resize();
+            indexKlineChart.resize();
+        });
+    });
+
+    /**
+     * 加载宏观诊断数据
+     */
+    function loadMacroData() {
+        try{ if(window.showLoading) showLoading('加载中...'); }catch(e){}
+        api.getMacro(function (res) {
+            try{ if(window.hideLoading) hideLoading(); }catch(e){}
+            if(!res){ showTip && showTip('接口返回为空','error'); return; }
+            if (res.code !== 200) {
+                showTip && showTip('宏观数据请求异常：' + (res.msg || '未知错误'), 'error');
+                return;
+            }
+            const data = res.data || {};
+            renderMacroData(data);
+        });
+    }
+
+    /**
+     * 渲染宏观页面所有数据
+     * @param {Object} data 接口返回宏观数据
+     */
+    function renderMacroData(data) {
+        // 1. 大盘模式 & 否决信息
+        $('#marketModeBox').text(escapeHtml((data.operate_mode) || '未知'));
+        $('#vetoBox').text(escapeHtml(data.veto_trigger ? ('已触发一票否决：' + (data.veto_desc || '')) : '无风控拦截'));
+
+        // 2. 市场情绪指标
+        $('#riseCount').text(escapeHtml(data.rise_count != null ? data.rise_count : '--'));
+        $('#fallCount').text(escapeHtml(data.fall_count != null ? data.fall_count : '--'));
+        $('#limitDownCount').text(escapeHtml(data.limit_down_count != null ? data.limit_down_count : '--'));
+        $('#riseFallRatio').text(escapeHtml(data.rise_fall_ratio != null ? data.rise_fall_ratio : '--'));
+
+        // 3. 宏观雷达图（适配六大维度）
+        const radarData = Array.isArray(data.macro_dim_score) ? data.macro_dim_score : [];
+        const radarName = [
+            { name: '市场情绪', max: 10 }, { name: '流动性', max: 10 }, { name: '政策面', max: 10 },
+            { name: '海外环境', max: 10 }, { name: '估值水平', max: 10 }, { name: '资金流向', max: 10 }
+        ];
+        try{
+            const vals = radarData.length ? radarData : [0,0,0,0,0,0];
+            chartUtil.renderRadar(macroRadarChart, radarName, vals, {name: '宏观得分'});
+        }catch(e){ console.warn('radar render error', e); }
+
+        // 4. 大盘K线图表（若无k线则显示占位）
+        const klineSeries = Array.isArray(data.index_kline) ? data.index_kline : [];
+        if(klineSeries.length){
+            try{
+                // 简化：用柱状图展示收盘价趋势作为占位（后续可接入 K 线组件）
+                const dates = klineSeries.map(d=>d[0]);
+                const closes = klineSeries.map(d=>d[2]);
+                chartUtil.renderBar(indexKlineChart, dates, closes);
+            }catch(e){ console.warn('kline render error', e); }
+        }else{
+            indexKlineChart.clear();
+            indexKlineChart.setOption({
+                title:{ text: '无可用K线数据', left:'center', textStyle:{ color: '#94a3b8' } }
+            });
+        }
+
+        // 5. 数据缺失汇总
+        const missList = Array.isArray(data.data_missing_list) ? data.data_missing_list : [];
+        if (missList.length > 0) {
+            $('#macroMissBox').html(escapeHtml(missList.join('；')));
+        } else {
+            $('#macroMissBox').text('无数据缺失');
+        }
+    }
+</script>
+</body>
+</html>

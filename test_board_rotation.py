@@ -37,14 +37,27 @@ mem_conn = None
 
 
 
+def setup_global_mem_db():
+    """
+    建立内存隔离数据库连接并劫持真实连接
+    """
+    global original_get_conn, mem_conn
+    if original_get_conn is None:
+        original_get_conn = dao.get_conn
+
+    raw_conn = sqlite3.connect(":memory:")
+    mem_conn = MemConnWrapper(raw_conn)
+    dao.get_conn = lambda: mem_conn
+
+
 def init_db_tables():
     """
-    初始化测试所需的临时表和必要字段
+    在内存隔离库中初始化测试所需的临时表和必要字段
     """
     conn = dao.get_conn()
     cursor = conn.cursor()
     try:
-        # A. 临时建第一层板块表并写数据以过前置
+        # A. 内存建第一层板块表
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS board_money_flow (
                 board_name TEXT, trade_date TEXT, net_amount REAL, limit_up_count INTEGER,
@@ -52,16 +65,26 @@ def init_db_tables():
                 flow_5d REAL, cover_ratio REAL, tier_status TEXT, sentry_status TEXT, retreat_ratio REAL, week_rise REAL
             )
         """)
+        # B. 内存建 stock_list 表
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS stock_list (
+                ts_code TEXT, name TEXT, industry TEXT, list_date TEXT
+            )
+        """)
+        # C. 内存建 daily_prices 表
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS daily_prices (
+                ts_code TEXT, trade_date TEXT, open REAL, high REAL, low REAL, close REAL, pre_close REAL, change REAL, pct_chg REAL, vol REAL, amount REAL, adj_factor REAL
+            )
+        """)
         conn.commit()
     except Exception as e:
         print(f"[InitDB] 失败: {e}")
-    finally:
-        conn.close()
 
 
 def clean_db_tables():
     """
-    清理临时表以及测试插入的垃圾数据
+    卸载内存数据库，完全恢复物理数据库连接
     """
     global original_get_conn, mem_conn
     
@@ -70,20 +93,8 @@ def clean_db_tables():
         dao.get_conn = original_get_conn
         original_get_conn = None
         
-    if mem_conn is not None:
-        mem_conn = None
-        
-    conn = dao.get_conn()
-    cursor = conn.cursor()
-    try:
-        cursor.execute("DROP TABLE IF EXISTS board_money_flow")
-        cursor.execute("DELETE FROM stock_list WHERE ts_code IN ('000001.SZ', '000002.SZ', '000003.SZ', '000004.SZ', 'DUMMY_STOCK')")
-        cursor.execute("DELETE FROM daily_prices WHERE ts_code IN ('000001.SZ', '000002.SZ', '000003.SZ', '000004.SZ', 'DUMMY_STOCK')")
-        conn.commit()
-    except Exception as e:
-        print(f"[CleanDB] 失败: {e}")
-    finally:
-        conn.close()
+    mem_conn = None
+    # 物理数据库无需执行 DROP TABLE 或 DELETE，内存库直接丢弃，保障物理库安全
 
 
 
@@ -113,8 +124,11 @@ def run_one_test(scenario_name: str, setup_func) -> dict:
     """
     print(f"\n=================== 运行测试: {scenario_name} ===================")
     clean_db_tables()
-    init_db_tables()
-    insert_base_stocks()
+    
+    if scenario_name != "数据缺失降级与缺失项搜集测试":
+        setup_global_mem_db()
+        init_db_tables()
+        insert_base_stocks()
     
     # 执行具体场景的 mock 数据注入
     setup_func()
@@ -430,9 +444,11 @@ def setup_scenario_8():
 
 class MemConnWrapper:
     def __init__(self, conn):
-        self.conn = conn
+        self.__dict__['conn'] = conn
     def __getattr__(self, name):
         return getattr(self.conn, name)
+    def __setattr__(self, name, value):
+        setattr(self.conn, name, value)
     def close(self):
         # 拦截 close 调用，什么都不做，留待测试框架结束后自动销毁
         pass

@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>量化决策系统 - 个股交易</title>
+    <!-- 外部CDN资源 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <!-- SheetJS Excel 导出库 -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+    <!-- 本地公共样式 -->
+    <link rel="stylesheet" href="css/common.css">
+</head>
+<body>
+<!-- 左侧固定侧边栏 -->
+<div class="sidebar">
+    <h4 class="text-center text-white mb-4 pt-2">量化决策系统</h4>
+    <nav class="nav flex-column">
+        <a href="index.html" class="nav-link">📊 总控仪表盘</a>
+        <a href="macro.html" class="nav-link">📈 宏观诊断</a>
+        <a href="board.html" class="nav-link">🏷️ 板块分析</a>
+        <a href="stock.html" class="nav-link active">📋 个股交易</a>
+        <a href="system.html" class="nav-link">⚙️ 系统设置</a>
+    </nav>
+</div>
+
+<!-- 顶部状态栏 -->
+<div class="top-bar">
+    <div class="system-info">
+        <span>系统状态：<span class="text-success">运行正常</span></span>
+        <span class="ms-4">上证指数：<span class="rise">3200.00 +0.80%</span></span>
+        <span class="ms-4">深证成指：<span class="rise">10500.00 +0.50%</span></span>
+    </div>
+    <div class="operate-group">
+        <span id="loadingTip" class="text-warning ms-2 d-none">数据加载中...</span>
+    </div>
+</div>
+
+<!-- 右侧主内容区 -->
+<div class="main-content">
+    <!-- 模块1：个股多维度打分雷达图 -->
+    <div class="card">
+        <div class="card-header">个股多维度打分雷达图（示例：第一个候选股）</div>
+        <div class="card-body">
+            <div id="stockRadarChart" style="height: 320px;"></div>
+        </div>
+    </div>
+
+    <!-- 模块2：风控参数明细 -->
+    <div class="row g-4 mt-4">
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-header">固定止损</div>
+                <div class="card-body" id="fixStopBox">--</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-header">动态止盈</div>
+                <div class="card-body" id="dynamicProfitBox">--</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-header">动态仓位</div>
+                <div class="card-body" id="dynamicPosBox">--</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-header">入场区间类型</div>
+                <div class="card-body" id="entryTypeBox">--</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 模块3：全量个股交易指令明细表 -->
+    <div class="card mt-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span>✅ 全量个股交易指令明细</span>
+            <button id="exportStockTableBtn" class="btn btn-sm btn-outline-success" disabled>📥 导出Excel</button>
+        </div>
+        <div class="card-body">
+            <table class="table table-dark table-striped table-hover table-sm">
+                <thead>
+                    <tr>
+                        <th class="sortable-header" data-sort="stock_code">个股代码</th>
+                        <th class="sortable-header" data-sort="stock_name">个股名称</th>
+                        <th class="sortable-header" data-sort="stock_level">综合评级</th>
+                        <th class="sortable-header" data-sort="entry_zone">入场区间</th>
+                        <th class="sortable-header" data-sort="stop_loss_price">固定止损</th>
+                        <th>第一止盈</th>
+                        <th class="sortable-header" data-sort="suggest_position">建议仓位</th>
+                        <th>筛选拦截原因</th>
+                    </tr>
+                </thead>
+                <tbody id="stockTableBody">
+                    <tr><td colspan="8" class="text-center">请加载数据...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 数据缺失汇总 -->
+    <div class="card mt-4">
+        <div class="card-header">数据缺失 & 异常汇总</div>
+        <div class="card-body text-warning" id="stockMissBox">无数据缺失</div>
+    </div>
+</div>
+
+<!-- 引入公共脚本 -->
+<script src="js/api.js"></script>
+<script src="js/common.js"></script>
+<script src="js/chart.js"></script>
+
+<script>
+    // XSS 转义方法
+    function escapeHtml(str) {
+        if (!str && str !== 0) return "";
+        return String(str).replace(/&/g, "&amp;")
+                  .replace(/</g, "&lt;")
+                  .replace(/>/g, "&gt;")
+                  .replace(/\"/g, "&quot;")
+                  .replace(/'/g, "&#039;");
+    }
+
+    /**
+     * 判断拦截原因的规则类型，返回对应高亮类和说明文本
+     */
+    function classifyReason(reason) {
+        if(!reason) return {className: 'intercept-normal', title: ''};
+        
+        // 均线/量能类规则
+        if(reason.includes('均线') || reason.includes('量能') || reason.includes('量比')) {
+            return {className: 'intercept-ma', title: '均线/量能类过滤'};
+        }
+        // 涨幅/换手率类规则
+        if(reason.includes('涨幅') || reason.includes('换手')) {
+            return {className: 'intercept-vol', title: '涨幅/换手率类过滤'};
+        }
+        // 风控禁入区规则
+        if(reason.includes('禁入') || reason.includes('风控') || reason.includes('压力位')) {
+            return {className: 'intercept-risk', title: '风控禁入区过滤'};
+        }
+        // 其他过滤规则
+        if(reason.includes('过滤') || reason.includes('拦截')) {
+            return {className: 'intercept-other', title: '其他筛选规则过滤'};
+        }
+        // 正常通过
+        return {className: 'intercept-normal', title: ''};
+    }
+
+    // 初始化图表实例
+    const stockRadarChart = echarts.init(document.getElementById('stockRadarChart'));
+
+    /**
+     * 个股表格排序状态管理
+     */
+    const stockTableSort = {
+        currentField: null,
+        isAsc: true,
+        data: []
+    };
+
+    /**
+     * 排序个股表格数据并重新渲染
+     * @param {string} field 要排序的字段名
+     */
+    function sortStockTable(field) {
+        if (!stockTableSort.data || stockTableSort.data.length === 0) return;
+
+        // 如果点击同一个字段，切换升降序
+        if (stockTableSort.currentField === field) {
+            stockTableSort.isAsc = !stockTableSort.isAsc;
+        } else {
+            stockTableSort.currentField = field;
+            stockTableSort.isAsc = true;
+        }
+
+        // 排序逻辑
+        const sorted = [...stockTableSort.data].sort((a, b) => {
+            let aVal = a[field];
+            let bVal = b[field];
+
+            // 数字字段转换为数值
+            if (field === 'suggest_position' || field === 'stop_loss_price') {
+                aVal = typeof aVal === 'number' ? aVal : 0;
+                bVal = typeof bVal === 'number' ? bVal : 0;
+                return stockTableSort.isAsc ? aVal - bVal : bVal - aVal;
+            }
+
+            // 文本字段按字符串排序
+            aVal = String(aVal || '').toLowerCase();
+            bVal = String(bVal || '').toLowerCase();
+            if (stockTableSort.isAsc) {
+                return aVal.localeCompare(bVal, 'zh-CN');
+            } else {
+                return bVal.localeCompare(aVal, 'zh-CN');
+            }
+        });
+
+        // 更新排序箭头指示符
+        $('th[data-sort]').removeClass('sort-asc sort-desc');
+        const activeHeader = $(`th[data-sort="${field}"]`);
+        activeHeader.addClass(stockTableSort.isAsc ? 'sort-asc' : 'sort-desc');
+
+        // 重新渲染表格（使用排序后的数据）
+        renderStockTable(sorted);
+    }
+
+    $(function () {
+        // 导航菜单自动高亮
+        try{ if(window.activateNav) activateNav(); }catch(e){}
+        
+        // 表头排序点击事件
+        $(document).on('click', 'th.sortable-header[data-sort]', function () {
+            const field = $(this).data('sort');
+            sortStockTable(field);
+        });
+        
+        // Excel 导出按钮点击事件
+        $('#exportStockTableBtn').on('click', function () {
+            exportStockTableToExcel();
+        });
+        
+        // 页面加载自动请求个股数据
+        loadStockData();
+
+        // 图表窗口自适应
+        window.addEventListener('resize', function () {
+            stockRadarChart.resize();
+        });
+    });
+
+    /**
+     * 加载个股交易数据
+     */
+    function loadStockData() {
+        try{ if(window.showLoading) showLoading('加载中...'); }catch(e){}
+        api.getStock(function (res) {
+            try{ if(window.hideLoading) hideLoading(); }catch(e){}
+            if(!res){ showTip && showTip('接口返回为空','error'); return; }
+            if (res.code !== 200) {
+                showTip && showTip('个股数据请求异常：' + (res.msg || '未知错误'), 'error');
+                return;
+            }
+            const data = res.data || {};
+            renderStockData(data);
+        });
+    }
+
+    /**
+     * 渲染个股页面所有数据
+     * @param {Object} data 接口返回个股数据
+     */
+    function renderStockData(data) {
+        // 1. 第一只股票的多维度打分雷达图
+        const stocks = Array.isArray(data.stock_list) ? data.stock_list : [];
+        
+        // 保存原始数据用于排序
+        if (!window.stockSortInitialized && stocks && stocks.length > 0) {
+            stockTableSort.data = stocks;
+            window.stockSortInitialized = true;
+        }
+        
+        if(stocks.length > 0){
+            const firstStock = stocks[0];
+            const radarDims = [
+                { name: '基本面', max: 10 }, { name: '资金面', max: 10 }, { name: '筹码结构', max: 10 }
+            ];
+            const radarVals = [
+                (firstStock.fundamental_score || 0),
+                (firstStock.capital_score || 0),
+                (firstStock.chip_score || 0)
+            ];
+            try{
+                chartUtil.renderRadar(stockRadarChart, radarDims, radarVals, {name: firstStock.stock_name || '打分'});
+            }catch(e){ console.warn('stock radar error', e); }
+
+            // 2. 风控参数（使用第一只股票）
+            $('#fixStopBox').text(escapeHtml(firstStock.fix_stop_loss || '--'));
+            $('#dynamicProfitBox').text(escapeHtml(firstStock.dynamic_profit || '--'));
+            $('#dynamicPosBox').text(escapeHtml(firstStock.dynamic_position ? (firstStock.dynamic_position*100).toFixed(1)+'%' : '--'));
+            $('#entryTypeBox').text(escapeHtml(firstStock.entry_type || '--'));
+        }
+
+        // 3. 交易指令表格
+        renderStockTable(stocks);
+
+        // 4. 数据缺失汇总
+        const missList = Array.isArray(data.data_missing_list) ? data.data_missing_list : [];
+        if (missList.length > 0) {
+            $('#stockMissBox').html(escapeHtml(missList.join('；')));
+        } else {
+            $('#stockMissBox').text('无数据缺失');
+        }
+    }
+
+    /**
+     * 渲染个股交易表格
+     * @param {Array} stocks 股票列表
+     */
+    function renderStockTable(stocks) {
+        let tableHtml = '';
+        if(!stocks || stocks.length === 0){
+            tableHtml = '<tr><td colspan="8" class="text-center text-warning">暂无候选个股（筛选规则过滤）</td></tr>';
+        }else{
+            stocks.forEach(item => {
+                const reasons = (Array.isArray(item.intercept_reasons) && item.intercept_reasons.length>0) ? item.intercept_reasons.join('；') : (item.risk_tip || '正常通过');
+                const typeInfo = classifyReason(reasons);
+                const tooltipAttr = typeInfo.title ? `title="${typeInfo.title}"` : '';
+                tableHtml += `
+                <tr>
+                    <td>${escapeHtml(item.stock_code || '')}</td>
+                    <td>${escapeHtml(item.stock_name || '')}</td>
+                    <td>${escapeHtml(item.stock_level || '')}</td>
+                    <td>${escapeHtml(item.entry_zone || '')}</td>
+                    <td>${item.stop_loss_price != null ? escapeHtml(item.stop_loss_price) : ''}</td>
+                    <td>${item.first_profit_price != null ? escapeHtml(item.first_profit_price) : ''}</td>
+                    <td>${typeof item.suggest_position === 'number' ? (item.suggest_position*100).toFixed(1) + '%' : ''}</td>
+                    <td class="${typeInfo.className}" ${tooltipAttr}>${escapeHtml(reasons)}</td>
+                </tr>
+                `;
+            });
+        }
+        $('#stockTableBody').html(tableHtml);
+    }
+</script>
+</body>
+</html>

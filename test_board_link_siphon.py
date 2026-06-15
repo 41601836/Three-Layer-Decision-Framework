@@ -29,16 +29,31 @@ mem_conn = None
 
 class MemConnWrapper:
     def __init__(self, conn):
-        self.conn = conn
+        self.__dict__['conn'] = conn
     def __getattr__(self, name):
         return getattr(self.conn, name)
+    def __setattr__(self, name, value):
+        setattr(self.conn, name, value)
     def close(self):
         pass
 
 
+def setup_global_mem_db():
+    """
+    建立内存隔离数据库连接并劫持真实连接
+    """
+    global original_get_conn, mem_conn
+    if original_get_conn is None:
+        original_get_conn = dao.get_conn
+
+    raw_conn = sqlite3.connect(":memory:")
+    mem_conn = MemConnWrapper(raw_conn)
+    dao.get_conn = lambda: mem_conn
+
+
 def init_db_tables():
     """
-    建立测试需要的临时表并填充基础个股定义
+    在内存隔离库中建立测试需要的表并填充基础个股定义
     """
     conn = dao.get_conn()
     cursor = conn.cursor()
@@ -51,45 +66,41 @@ def init_db_tables():
                 flow_5d REAL, cover_ratio REAL, tier_status TEXT, sentry_status TEXT, retreat_ratio REAL, week_rise REAL
             )
         """)
+        # B. 确保 stock_list 表存在
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS stock_list (
+                ts_code TEXT, name TEXT, industry TEXT, list_date TEXT
+            )
+        """)
+        # C. 确保 daily_prices 表存在
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS daily_prices (
+                ts_code TEXT, trade_date TEXT, open REAL, high REAL, low REAL, close REAL, pre_close REAL, change REAL, pct_chg REAL, vol REAL, amount REAL, adj_factor REAL
+            )
+        """)
         
-        # B. 注入测试个股定义
-        # 半导体 (科技)
+        # D. 注入测试个股定义
         cursor.execute("INSERT OR REPLACE INTO stock_list (ts_code, name, industry) VALUES ('000001.SZ', '半导体A', '半导体')")
         cursor.execute("INSERT OR REPLACE INTO stock_list (ts_code, name, industry) VALUES ('000002.SZ', '半导体B', '半导体')")
-        # 人工智能 (科技)
         cursor.execute("INSERT OR REPLACE INTO stock_list (ts_code, name, industry) VALUES ('000003.SZ', 'AI_A', '人工智能')")
-        # 白酒 (消费)
         cursor.execute("INSERT OR REPLACE INTO stock_list (ts_code, name, industry) VALUES ('000004.SZ', '白酒A', '白酒')")
         
         conn.commit()
     except Exception as e:
         print(f"[InitDB] 异常: {e}")
-    finally:
-        conn.close()
 
 
 def clean_db_tables():
     """
-    清除测试注入的脏数据
+    卸载内存数据库并恢复真实连接
     """
     global original_get_conn, mem_conn
     if original_get_conn is not None:
         dao.get_conn = original_get_conn
         original_get_conn = None
-    if mem_conn is not None:
-        mem_conn = None
+    mem_conn = None
+    # 物理数据库无需清理，保障物理数据库完好
 
-    conn = dao.get_conn()
-    cursor = conn.cursor()
-    try:
-        cursor.execute("DROP TABLE IF EXISTS board_money_flow")
-        cursor.execute("DELETE FROM stock_list WHERE ts_code IN ('000001.SZ', '000002.SZ', '000003.SZ', '000004.SZ')")
-        cursor.execute("DELETE FROM daily_prices WHERE ts_code IN ('000001.SZ', '000002.SZ', '000003.SZ', '000004.SZ')")
-        conn.commit()
-    except Exception as e:
-        print(f"[CleanDB] 失败: {e}")
-    finally:
-        conn.close()
 
 
 # ==========================================
@@ -158,8 +169,11 @@ def run_one_test(scenario_name: str, setup_func) -> dict:
     """
     print(f"\n=================== 运行测试: {scenario_name} ===================")
     clean_db_tables()
-    init_db_tables()
     
+    if scenario_name != "历史数据缺失降级兜底测试":
+        setup_global_mem_db()
+        init_db_tables()
+        
     setup_func()
     
     try:

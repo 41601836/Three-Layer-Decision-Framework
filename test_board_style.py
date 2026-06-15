@@ -4,6 +4,24 @@ from db.dao import dao
 from decision_framework.board_style import board_style
 from decision_framework.board_rank import board_rank
 
+original_get_conn = None
+mem_conn = None
+
+
+class MemConnWrapper:
+
+    def __init__(self, conn):
+        self.__dict__['conn'] = conn
+
+    def __getattr__(self, name):
+        return getattr(self.conn, name)
+
+    def __setattr__(self, name, value):
+        setattr(self.conn, name, value)
+
+    def close(self):
+        pass
+
 
 def setup_mock_style_data():
     """
@@ -22,11 +40,14 @@ def setup_mock_style_data():
        - 昨日 (20260612)、前日 (20260611)、大前日 (20260610)：
          均按上文比例写入，保证这 4 天科技风格在量能、涨停数和连板高度上都维持极高热度 (日内与跨日热度均强势)
     """
-    print("\n[MockDB] 正在临时注入 4 天历史数据以供跨日热度验证...")
-    conn = dao.get_conn()
-    cursor = conn.cursor()
+    global original_get_conn, mem_conn
+    print("\n[MockDB] 正在启用内存隔离数据库并注入 4 天历史数据以供跨日热度验证...")
+    original_get_conn = dao.get_conn
+
+    raw_conn = sqlite3.connect(":memory:")
+    cursor = raw_conn.cursor()
     try:
-        # A. 临时建第一层板块表并写数据以过前置
+        # A. 创建测试需要的全部表结构
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS board_money_flow (
                 board_name TEXT, trade_date TEXT, net_amount REAL, limit_up_count INTEGER,
@@ -34,13 +55,25 @@ def setup_mock_style_data():
                 flow_5d REAL, cover_ratio REAL, tier_status TEXT, sentry_status TEXT, retreat_ratio REAL, week_rise REAL
             )
         """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS stock_list (
+                ts_code TEXT, name TEXT, industry TEXT, list_date TEXT
+            )
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS daily_prices (
+                ts_code TEXT, trade_date TEXT, open REAL, high REAL, low REAL, close REAL, pre_close REAL, change REAL, pct_chg REAL, vol REAL, amount REAL, adj_factor REAL
+            )
+        """)
+
+        # B. 注入 board_money_flow 数据
         cursor.execute("INSERT OR REPLACE INTO board_money_flow VALUES ('半导体', '20260613', 12000000000.0, 3, 4, 1, 0.20, 1, 12000000000.0, 0.15, '完整', '未消耗', 0.18, 0.02)")
         
-        # B. 注入成份股
+        # C. 注入成份股
         cursor.execute("INSERT OR REPLACE INTO stock_list (ts_code, name, industry) VALUES ('000001.SZ', '半导体权重', '半导体')")
         cursor.execute("INSERT OR REPLACE INTO stock_list (ts_code, name, industry) VALUES ('000002.SZ', '半导体龙头', '半导体')")
         
-        # C. 注入 4 天价格及成交额 (T, T-1, T-2, T-3)
+        # D. 注入 4 天价格及成交额 (T, T-1, T-2, T-3)
         dates = ["20260613", "20260612", "20260611", "20260610"]
         for dt in dates:
             # 1. 中军 30 亿成交
@@ -62,33 +95,27 @@ def setup_mock_style_data():
                 VALUES ('DUMMY_STOCK', ?, 0.5, 6800000000.0, 8.0)
             """, (dt,))
             
-        conn.commit()
-        print("[MockDB] 注入成功。")
+        raw_conn.commit()
+        mem_conn = MemConnWrapper(raw_conn)
+        dao.get_conn = lambda: mem_conn
+        print("[MockDB] 内存隔离数据库注入成功。")
     except Exception as e:
         print(f"[MockDB] 注入失败: {e}")
-        conn.rollback()
-    finally:
-        conn.close()
+        if original_get_conn is not None:
+            dao.get_conn = original_get_conn
 
 
 def teardown_mock_style_data():
     """
-    清理临时注入的数据表及价格历史
+    清理临时注入的内存隔离库，还原物理数据库连接
     """
-    print("\n[MockDB] 正在清理临时注入的第二层测试数据...")
-    conn = dao.get_conn()
-    cursor = conn.cursor()
-    try:
-        cursor.execute("DROP TABLE IF EXISTS board_money_flow")
-        cursor.execute("DELETE FROM stock_list WHERE ts_code IN ('000001.SZ', '000002.SZ')")
-        cursor.execute("DELETE FROM daily_prices WHERE ts_code IN ('000001.SZ', '000002.SZ', 'DUMMY_STOCK')")
-        conn.commit()
-        print("[MockDB] 清理成功。")
-    except Exception as e:
-        print(f"[MockDB] 清理异常: {e}")
-        conn.rollback()
-    finally:
-        conn.close()
+    global original_get_conn, mem_conn
+    print("\n[MockDB] 正在清理内存隔离数据库并恢复真实连接...")
+    if original_get_conn is not None:
+        dao.get_conn = original_get_conn
+        original_get_conn = None
+    mem_conn = None
+    print("[MockDB] 恢复物理连接成功。")
 
 
 def main():

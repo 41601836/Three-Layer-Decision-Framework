@@ -4,9 +4,28 @@ from db.dao import dao
 from decision_framework.board_rank import board_rank
 
 
+original_get_conn = None
+mem_conn = None
+
+
+class MemConnWrapper:
+
+    def __init__(self, conn):
+        self.__dict__['conn'] = conn
+
+    def __getattr__(self, name):
+        return getattr(self.conn, name)
+
+    def __setattr__(self, name, value):
+        setattr(self.conn, name, value)
+
+    def close(self):
+        pass
+
+
 def setup_mock_board_data():
     """
-    往 SQLite 数据库中建表并注入 mock 板块资金流向记录，用于自测试。
+    往 SQLite 内存数据库中建表并注入 mock 板块资金流向记录，用于自测试。
     
     注入6个板块：
     1. 半导体 (A)：流入 120 亿，5日 120 亿。涨停 3，高度 4，完整。年涨幅 20%，回撤 18%，周涨幅 2%。中军未消耗。
@@ -14,16 +33,19 @@ def setup_mock_board_data():
     2. 软件 (B)：流入 40 亿，5日 60 亿。涨停 2，高度 3，基本完整。年涨幅 10%，回撤 16%，周涨幅 1%。中军消耗走强。
        - 应通过初筛。总分：3.0。第二优先级。
     3. 光伏 (C)：流入 30 亿，5日 20 亿。涨停 2，高度 3，断层。年涨幅 5%，回撤 12%，周涨幅 6%。中军消耗且断板。
-       - 应通过初筛。总分：0.0。第三优先级。
+       - 应通过初筛. 总分：0.0。第三优先级。
     4. 锂电 (D)：流入 8 亿。资金排第六，初筛截取前5时被过滤。
     5. 券商 (E)：流入 80 亿。年内涨幅 60%，超 50% 透支，初筛被剔除。
     6. 医药 (F)：流入 50 亿。涨停数 1，投机度不足，初筛被剔除。
     
     虹吸：半导体(120亿) / 软件(40亿) = 3.0 > 2.0 倍。将触发虹吸风险，锁定软件和光伏策略B暂停。
     """
-    print("\n[MockDB] 正在临时创建 board_money_flow 表并注入测试数据...")
-    conn = dao.get_conn()
-    cursor = conn.cursor()
+    global original_get_conn, mem_conn
+    print("\n[MockDB] 正在启用内存隔离数据库并注入测试数据...")
+    original_get_conn = dao.get_conn
+
+    raw_conn = sqlite3.connect(":memory:")
+    cursor = raw_conn.cursor()
     try:
         # 1. 创建表结构
         cursor.execute("""
@@ -44,7 +66,23 @@ def setup_mock_board_data():
                 week_rise REAL
             )
         """)
-        
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS daily_prices (
+                ts_code TEXT,
+                trade_date TEXT,
+                open REAL,
+                high REAL,
+                low REAL,
+                close REAL,
+                pre_close REAL,
+                change REAL,
+                pct_chg REAL,
+                vol REAL,
+                amount REAL,
+                adj_factor REAL
+            )
+        """)
+
         # 2. 插入6个测试板块
         mock_records = [
             ("半导体", "20260613", 12000000000.0, 3, 4, 1, 0.20, 1, 12000000000.0, 0.15, "完整", "未消耗", 0.18, 0.02),
@@ -54,7 +92,7 @@ def setup_mock_board_data():
             ("券商", "20260613", 8000000000.0, 3, 4, 1, 0.60, 1, 9000000000.0, 0.15, "完整", "未消耗", 0.10, 0.02),
             ("医药", "20260613", 5000000000.0, 1, 2, 1, 0.12, 1, 4000000000.0, 0.05, "基本完整", "未消耗", 0.18, 0.02)
         ]
-        
+
         cursor.executemany("""
             INSERT INTO board_money_flow (
                 board_name, trade_date, net_amount, limit_up_count, leader_height, 
@@ -62,37 +100,31 @@ def setup_mock_board_data():
                 tier_status, sentry_status, retreat_ratio, week_rise
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, mock_records)
-        
-        # 3. 注入对应快照表与价格表记录以逃避宏观“防守模式”阻断，使流程可以顺利进到板块层
-        # 我们往 daily_prices 里写一条 20260529 (因为 macro_score 里的最新日期是这个) 的记录
+
+        # 3. 注入对应价格表记录
         cursor.execute("INSERT OR REPLACE INTO daily_prices (ts_code, trade_date, amount) VALUES ('DUMMY_STOCK', '20260529', 1000000000.0)")
-        
-        conn.commit()
-        print("[MockDB] 注入成功。")
+
+        raw_conn.commit()
+        mem_conn = MemConnWrapper(raw_conn)
+        dao.get_conn = lambda: mem_conn
+        print("[MockDB] 内存隔离数据库注入成功。")
     except Exception as e:
         print(f"[MockDB] 注入失败: {e}")
-        conn.rollback()
-    finally:
-        conn.close()
+        if original_get_conn is not None:
+            dao.get_conn = original_get_conn
 
 
 def teardown_mock_board_data():
     """
-    清理临时创建的表与注入记录
+    清理临时创建的内存隔离库，还原物理数据库连接
     """
-    print("\n[MockDB] 开始清理临时测试数据...")
-    conn = dao.get_conn()
-    cursor = conn.cursor()
-    try:
-        cursor.execute("DROP TABLE IF EXISTS board_money_flow")
-        cursor.execute("DELETE FROM daily_prices WHERE ts_code = 'DUMMY_STOCK' AND trade_date = '20260529'")
-        conn.commit()
-        print("[MockDB] 清理成功。")
-    except Exception as e:
-        print(f"[MockDB] 清理异常: {e}")
-        conn.rollback()
-    finally:
-        conn.close()
+    global original_get_conn, mem_conn
+    print("\n[MockDB] 开始清理内存隔离数据库并还原物理连接...")
+    if original_get_conn is not None:
+        dao.get_conn = original_get_conn
+        original_get_conn = None
+    mem_conn = None
+    print("[MockDB] 恢复物理连接成功。")
 
 
 def main():

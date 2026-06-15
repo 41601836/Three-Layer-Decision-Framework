@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>系统设置 & 运维面板 - 三层量化决策系统</title>
+    <!-- 外部CDN资源 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+
+    <!-- 本地公共样式 -->
+    <link rel="stylesheet" href="css/common.css">
+    
+    <style>
+        /* 针对日志展示区的高亮样式 */
+        .log-error { color: #ef4444 !important; font-weight: 500; }
+        .log-warning { color: #fbbf24 !important; font-weight: 500; }
+        .log-info { color: #e2e8f0 !important; }
+        
+        /* 强制显示公共 Toast 弹窗（修复 Bootstrap 5 样式隐藏缺陷） */
+        #toastContainer .toast {
+            display: block !important;
+            opacity: 1 !important;
+        }
+        
+        /* 表格行 hover 状态强化 */
+        .table-dark tbody tr {
+            transition: background-color 0.15s ease;
+        }
+        .table-dark tbody tr:hover {
+            background-color: rgba(14, 165, 233, 0.12) !important;
+            cursor: pointer;
+        }
+        
+        /* 调参卡片内部细节优化 */
+        .param-badge {
+            background-color: #334155;
+            color: #38bdf8;
+            font-family: monospace;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+        
+        .market-scheme {
+            background-color: rgba(30, 41, 59, 0.7);
+            border-left: 4px solid #0ea5e9;
+            padding: 12px;
+            margin-top: 10px;
+            border-radius: 0 4px 4px 0;
+        }
+
+        .pulse-green {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background-color: #22c55e;
+            border-radius: 50%;
+            margin-right: 6px;
+            box-shadow: 0 0 8px #22c55e;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+        }
+    </style>
+</head>
+<body>
+<!-- 左侧固定侧边栏 -->
+<div class="sidebar">
+    <h4 class="text-center text-white mb-4 pt-2">量化决策系统</h4>
+    <nav class="nav flex-column">
+        <a href="index.html" class="nav-link">📊 总控仪表盘</a>
+        <a href="macro.html" class="nav-link">📈 宏观诊断</a>
+        <a href="board.html" class="nav-link">🏷️ 板块分析</a>
+        <a href="stock.html" class="nav-link">📋 个股交易</a>
+        <a href="system.html" class="nav-link active">⚙️ 系统设置</a>
+    </nav>
+</div>
+
+<!-- 顶部状态栏 -->
+<div class="top-bar">
+    <div class="system-info">
+        <span class="pulse-green"></span>
+        <span>系统状态：<span class="text-success" id="overallSystemStatus">运行正常</span></span>
+    </div>
+    <div class="operate-group d-flex align-items-center">
+        <!-- 加载状态提示器 -->
+        <span id="loading" class="d-none me-2 text-info" style="font-size: 0.9rem;"></span>
+        <button id="topRefreshBtn" class="btn btn-sm btn-outline-light">🔄 刷新状态</button>
+    </div>
+</div>
+
+<!-- 右侧主内容区 -->
+<div class="main-content">
+    
+    <!-- 模块1：系统概览卡片 -->
+    <div class="card">
+        <div class="card-header">🖥️ 系统运维概览</div>
+        <div class="card-body">
+            <div class="row text-center py-2">
+                <div class="col-md-4 border-end border-secondary">
+                    <div class="text-muted mb-1">FastAPI 服务状态</div>
+                    <h3 class="text-success font-monospace" id="serviceStatusVal">检测中...</h3>
+                </div>
+                <div class="col-md-4 border-end border-secondary">
+                    <div class="text-muted mb-1">系统累计运行时长</div>
+                    <h3 class="text-info font-monospace" id="runTimeVal">检测中...</h3>
+                </div>
+                <div class="col-md-4">
+                    <div class="text-muted mb-1">数据库累计行情量</div>
+                    <h3 class="text-warning font-monospace" id="dbDataCountVal">检测中...</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 模块2：进程状态监控卡片 -->
+    <div class="card mt-4">
+        <div class="card-header">📊 核心进程状态监控</div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <div class="p-3 rounded border border-secondary" style="background-color: rgba(30, 41, 59, 0.5);">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h5 class="mb-1">📊 数据拉取进程 (fetch_daily.py)</h5>
+                                <small class="text-muted">负责每日收盘行情、资金流、持股人等增量拉取</small>
+                            </div>
+                            <span id="fetcherStatusBadge" class="badge bg-secondary px-3 py-2">检测中...</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="p-3 rounded border border-secondary" style="background-color: rgba(30, 41, 59, 0.5);">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h5 class="mb-1">⏱️ 定时调度器进程 (scheduler.py)</h5>
+                                <small class="text-muted">执行定时数据拉取、自动跑宏观板块与推送策略</small>
+                            </div>
+                            <span id="schedulerStatusBadge" class="badge bg-secondary px-3 py-2">检测中...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 模块3：快捷操作区 -->
+    <div class="card mt-4">
+        <div class="card-header">🚀 快捷运维操作</div>
+        <div class="card-body">
+            <div class="d-flex flex-wrap gap-3">
+                <button id="refreshProcessBtn" class="btn btn-primary px-4 py-2">
+                    🔄 刷新进程状态
+                </button>
+                <button id="restartSchedulerBtn" class="btn btn-warning px-4 py-2">
+                    ⚡ 重启定时调度器
+                </button>
+                <button id="manualFetchBtn" class="btn btn-outline-info px-4 py-2">
+                    📥 手动拉取最新数据
+                </button>
+                <button id="manualScanBtn" class="btn btn-outline-success px-4 py-2">
+                    🎯 触发一次全流程扫描
+                </button>
+            </div>
+            <div id="operationMsg" class="mt-3"></div>
+        </div>
+    </div>
+
+    <!-- 模块4：运行日志展示卡片 -->
+    <div class="card mt-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span>📝 运行日志诊断面板（最近50行）</span>
+            <div class="d-flex gap-2 align-items-center">
+                <input type="text" id="logSearchInput" class="form-control form-control-sm bg-dark text-white border-secondary" placeholder="🔍 检索关键字..." style="width: 180px;">
+                <button id="clearLogBtn" class="btn btn-sm btn-outline-danger py-0 px-2" style="font-size: 0.85rem; height: 31px;">🗑️ 清空显示</button>
+            </div>
+        </div>
+        <div class="card-body">
+            <div id="logBox" style="height: 350px; overflow-y: auto; background-color: #0b0f19; padding: 16px; border-radius: 6px; border: 1px solid #334155; font-family: 'Courier New', Courier, monospace;">
+                <div id="logContent" style="margin: 0; white-space: pre-wrap; word-wrap: break-word; font-size: 13px; line-height: 1.6;">
+                    正在获取日志...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 模块5：核心参数调参指引卡片 -->
+    <div class="card mt-4">
+        <div class="card-header">📖 核心参数配置与行情调参指南 (config.json)</div>
+        <div class="card-body">
+            <p class="text-muted-weak mb-4">
+                为解决「个股筛选数量偏少」或「在特定行情下选不出股票」的核心痛点，本系统设计了灵活的参数调节体系。您可以根据当前大盘走势直接编辑服务器上的 <span class="param-badge">config.json</span> 阈值字段，调节后定时调度器将在下一次执行时自动应用。
+            </p>
+
+            <div class="accordion" id="configGuideAccordion">
+                
+                <!-- 板块筛选调参 -->
+                <div class="accordion-item" style="border-color: #334155; background-color: #1e293b;">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#guideBoard" style="color: #e2e8f0; background-color: #273444;">
+                            🏷️ 第一类：分板块筛选调参 (Board Select Parameters)
+                        </button>
+                    </h2>
+                    <div id="guideBoard" class="accordion-collapse collapse show" data-bs-parent="#configGuideAccordion">
+                        <div class="accordion-body text-white-50">
+                            <table class="table table-dark table-striped table-bordered mt-2">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 25%">配置字段</th>
+                                        <th style="width: 15%">默认值</th>
+                                        <th style="width: 60%">功能说明与调参技巧</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><span class="param-badge">min_board_money_ratio</span></td>
+                                        <td><code>0.02</code> (2%)</td>
+                                        <td>板块日成交额占全市场总成交额的比例下限。<strong>在存量博弈弱市行情中，建议下调至 0.01</strong>，否则大部分板块都会被过滤。</td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="param-badge">limit_up_num_filter</span></td>
+                                        <td><code>3</code> 家</td>
+                                        <td>板块内日内涨停的个股家数。<strong>如果市场赚钱效应较差、无主线题材时，可下调至 1-2 家</strong>。</td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="param-badge">siphon_ratio_threshold</span></td>
+                                        <td><code>2.0</code> 倍</td>
+                                        <td>第一名板块资金超第二名板块的倍数阈值，触发则锁定软件等非主线板块的仓位。<strong>如果想宽泛交易，可将此倍数上调至 3.0 或 5.0，降低虹吸风控的敏感度</strong>。</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 个股初筛调参 -->
+                <div class="accordion-item" style="border-color: #334155; background-color: #1e293b;">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#guideStock" style="color: #e2e8f0; background-color: #273444;">
+                            🔍 第二类：个股初筛与技术面调参 (Stock Selection Parameters)
+                        </button>
+                    </h2>
+                    <div id="guideStock" class="accordion-collapse collapse" data-bs-parent="#configGuideAccordion">
+                        <div class="accordion-body text-white-50">
+                            <table class="table table-dark table-striped table-bordered mt-2">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 25%">配置字段</th>
+                                        <th style="width: 15%">默认值</th>
+                                        <th style="width: 60%">功能说明与调参技巧</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><span class="param-badge">ma_period</span></td>
+                                        <td><code>20</code></td>
+                                        <td>个股收盘价必须站上的均线周期。<strong>若想扩大候选池，可在弱市行情下调为 10 均线；强震荡或单边市建议维持 20 均线</strong>。</td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="param-badge">turnover_min</span></td>
+                                        <td><code>1.5</code> %</td>
+                                        <td>个股日换手率最小值。<strong>若选股偏少，在大盘缩量或蓝筹白马行情中，可下调至 0.8% ~ 1.0%</strong>。</td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="param-badge">volume_ratio</span></td>
+                                        <td><code>1.2</code></td>
+                                        <td>量比下限，判定是否放量启动。<strong>在极度缩量的阴跌市场中，可调低至 0.8 - 1.0，以寻找休整期企稳的个股</strong>。</td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="param-badge">stage_gain_limit</span></td>
+                                        <td><code>15.0</code> %</td>
+                                        <td>个股近3日累计涨幅上限。<strong>用于防范追高，但在高热度题材连板市中，可放宽至 25% ~ 30% 防止将龙头龙头误杀</strong>。</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 风控配置调参 -->
+                <div class="accordion-item" style="border-color: #334155; background-color: #1e293b;">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#guideRisk" style="color: #e2e8f0; background-color: #273444;">
+                            🛡️ 第三类：风控入场阈值与仓位调参 (Risk & Position Parameters)
+                        </button>
+                    </h2>
+                    <div id="guideRisk" class="accordion-collapse collapse" data-bs-parent="#configGuideAccordion">
+                        <div class="accordion-body text-white-50">
+                            <table class="table table-dark table-striped table-bordered mt-2">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 25%">配置字段</th>
+                                        <th style="width: 15%">默认值</th>
+                                        <th style="width: 60%">功能说明与调参技巧</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><span class="param-badge">pressure_proximity</span></td>
+                                        <td><code>10.0</code> %</td>
+                                        <td>距离前高/历史重成交阻力区的比例限制。<strong>如果行情亢奋上行阻力较小，可将该字段压缩到 5.0%，允许个股在上行无阻时做突破；弱市中放宽到 15.0% 避免碰到阻力就被割韭菜</strong>。</td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="param-badge">max_single_position</span></td>
+                                        <td><code>20.0</code> %</td>
+                                        <td>单只个股入场的推荐仓位上限。<strong>大盘强势且主线高度聚集时，可提调至 30.0%；熊市行情建议控制在 10.0% 以内</strong>。</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 不同行情的配置方案说明 -->
+                <div class="accordion-item" style="border-color: #334155; background-color: #1e293b;">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#guideMarket" style="color: #e2e8f0; background-color: #273444;">
+                            💡 行情适配调参方案 (Adaptation Strategies)
+                        </button>
+                    </h2>
+                    <div id="guideMarket" class="accordion-collapse collapse" data-bs-parent="#configGuideAccordion">
+                        <div class="accordion-body text-white-50">
+                            <div class="market-scheme">
+                                <h6 class="text-warning">📉 方案 A：弱势阴跌/存量博弈行情（解决“过滤过狠、没有股票可买”的痛点）</h6>
+                                <p class="mb-1 text-light">市场总成交额低，主线极其匮乏。为了获取交易标的，应大幅放宽初筛标准：</p>
+                                <ul class="mb-0">
+                                    <li>下调 <span class="param-badge">turnover_min</span> 到 <code>0.8</code> (甚至 0.5) —— 缩量行情下允许低换手个股入选</li>
+                                    <li>下调 <span class="param-badge">min_board_money_ratio</span> 到 <code>0.01</code> —— 允许成交额较小的冷门板块入围</li>
+                                    <li>缩短 <span class="param-badge">ma_period</span> 到 <code>10</code> —— 跟踪超跌后反弹的短线机会</li>
+                                    <li>降低风控仓位：将推荐单股仓位调低到 10%，做好风控隔离</li>
+                                </ul>
+                            </div>
+                            
+                            <div class="market-scheme mt-3" style="border-left-color: #fbbf24;">
+                                <h6 class="text-warning">🔄 方案 B：高热度题材连板行情（解决“好股被提前过滤掉”的痛点）</h6>
+                                <p class="mb-1 text-light">当市场题材疯狂，连板个股层出不穷时，传统的均线、防追高规则会把高位龙头给过滤掉：</p>
+                                <ul class="mb-0">
+                                    <li>上调 <span class="param-badge">stage_gain_limit</span> 到 <code>25.0% - 30.0%</code> —— 允许入选短期暴涨的超级牛股</li>
+                                    <li>上调 <span class="param-badge">turnover_max</span> 到 <code>25.0%</code> —— 允许高位爆量换手接力的妖股</li>
+                                    <li>下调 <span class="param-badge">pressure_proximity</span> 到 <code>5.0%</code> —— 忽略由于前高产生的压制，因为高热度题材更容易突破</li>
+                                </ul>
+                            </div>
+
+                            <div class="market-scheme mt-3" style="border-left-color: #22c55e;">
+                                <h6 class="text-success">⚖️ 方案 C：稳健成长/震荡修复行情（默认的均衡配置）</h6>
+                                <p class="mb-1 text-light">当大盘大体在MA20附近震荡，风格轮动健康时，使用系统默认值即能起到良好效果：</p>
+                                <ul class="mb-0">
+                                    <li>维持 <span class="param-badge">ma_period</span> = <code>20</code>，确保上涨趋势稳健</li>
+                                    <li>维持 <span class="param-badge">turnover_min</span> = <code>1.5</code>，确保基本流动性</li>
+                                    <li>风控侧 <span class="param-badge">pressure_proximity</span> = <code>10.0%</code>，留出合理的上涨阻力缓冲</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- 引入公共脚本 -->
+<script src="js/api.js"></script>
+<script src="js/common.js"></script>
+<script src="js/chart.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    // XSS 安全转义
+    function escapeHtml(str) {
+        if (!str && str !== 0) return "";
+        return String(str).replace(/&/g, "&amp;")
+                  .replace(/</g, "&lt;")
+                  .replace(/>/g, "&gt;")
+                  .replace(/\"/g, "&quot;")
+                  .replace(/'/g, "&#039;");
+    }
+
+    // 数字千分位格式化
+    function formatNumber(num) {
+        if (num === null || num === undefined || isNaN(num)) return "0";
+        return Number(num).toLocaleString('zh-CN');
+    }
+
+    $(function () {
+        // 自动激活侧边栏高亮
+        if (window.activateNav) activateNav();
+
+        // 初始加载系统状态与日志
+        loadStatus();
+        loadLogs();
+
+        // 点击顶部“刷新状态”按钮
+        $('#topRefreshBtn').on('click', function () {
+            loadStatus();
+            loadLogs();
+        });
+
+        // 快捷按钮1：刷新进程状态
+        $('#refreshProcessBtn').on('click', function () {
+            if (window.showLoading) showLoading("刷新状态中...");
+            loadStatus();
+            setTimeout(function() {
+                if (window.hideLoading) hideLoading();
+                if (window.showTip) showTip("进程与服务状态刷新成功！", "success");
+            }, 500);
+        });
+
+        // 快捷按钮2：一键重启调度器
+        $('#restartSchedulerBtn').on('click', function () {
+            const $btn = $(this);
+            $btn.prop('disabled', true);
+            if (window.showLoading) showLoading("调度器重启中，请稍后...");
+            
+            $.get("/api/decision/restart_scheduler", function (res) {
+                if (res && res.code === 200) {
+                    if (window.showTip) showTip("🎉 定时调度器已成功重启并于后台拉起！", "success");
+                } else {
+                    if (window.showTip) showTip("❌ 重启调度器失败：" + (res.msg || "未知原因"), "error");
+                }
+            }).fail(function () {
+                if (window.showTip) showTip("❌ 请求重启调度器接口失败", "error");
+            }).always(function () {
+                $btn.prop('disabled', false);
+                if (window.hideLoading) hideLoading();
+                // 稍微延迟 1.5 秒重新拉状态
+                setTimeout(loadStatus, 1500);
+            });
+        });
+
+        // 快捷按钮3：手动拉取最新数据
+        $('#manualFetchBtn').on('click', function () {
+            const $btn = $(this);
+            $btn.prop('disabled', true);
+            if (window.showLoading) showLoading("拉取进程启动中...");
+            
+            $.post("/api/fetch", JSON.stringify({workers: 3, mode: "incremental"}), function(res){
+                if (window.showTip) showTip("✅ 数据增量拉取任务已在后台成功启动！", "success");
+            }, "json").fail(function(){
+                if (window.showTip) showTip("❌ 启动数据拉取任务失败", "error");
+            }).always(function() {
+                $btn.prop('disabled', false);
+                if (window.hideLoading) hideLoading();
+                setTimeout(loadStatus, 1000);
+            });
+        });
+
+        // 快捷按钮4：触发全流程扫描
+        $('#manualScanBtn').on('click', function () {
+            const $btn = $(this);
+            $btn.prop('disabled', true);
+            if (window.showLoading) showLoading("三层漏斗策略扫描执行中...");
+            
+            $.post("/api/scan", JSON.stringify({session_name: "系统页手动触发"}), function(res){
+                if (window.showTip) showTip("🎉 全流程选股扫描完成，候选集已写入文件！", "success");
+                loadLogs();
+            }, "json").fail(function(){
+                if (window.showTip) showTip("❌ 扫描执行失败，请检查日志", "error");
+            }).always(function() {
+                $btn.prop('disabled', false);
+                if (window.hideLoading) hideLoading();
+            });
+        });
+
+        // 绑定日志搜索过滤
+        $('#logSearchInput').on('input', function() {
+            const filterVal = $(this).val().trim();
+            renderLogs(filterVal);
+        });
+
+        // 绑定清空日志显示
+        $('#clearLogBtn').on('click', function() {
+            loadedLogs = [];
+            renderLogs("");
+        });
+    });
+
+    // 内存中保存加载到的最新日志列表
+    let loadedLogs = [];
+
+    /**
+     * 加载进程状态与系统概览信息
+     */
+    function loadStatus() {
+        $.get("/api/decision/system_status", function (res) {
+            if (res && res.code === 200) {
+                const data = res.data;
+                
+                // FastAPI服务状态与整体提示
+                if (data.service_status === "running") {
+                    $('#overallSystemStatus').text("运行正常").removeClass('text-danger').addClass('text-success');
+                    $('#serviceStatusVal').text("运行中 (ONLINE)").removeClass('text-danger').addClass('text-success');
+                } else {
+                    $('#overallSystemStatus').text("系统异常").removeClass('text-success').addClass('text-danger');
+                    $('#serviceStatusVal').text("停止 (OFFLINE)").removeClass('text-success').addClass('text-danger');
+                }
+
+                // 启动时长
+                $('#runTimeVal').text(data.run_time || "未知");
+
+                // 数据库记录数量
+                $('#dbDataCountVal').text(formatNumber(data.db_data_count) + " 条行情");
+
+                // 进程1：数据拉取进程
+                const $fetcherBadge = $('#fetcherStatusBadge');
+                if (data.fetcher_status === "running") {
+                    $fetcherBadge.text("✅ 正在拉取中").removeClass('bg-secondary bg-danger').addClass('bg-success');
+                } else {
+                    $fetcherBadge.text("⏸️ 未运行").removeClass('bg-success bg-danger').addClass('bg-secondary');
+                }
+
+                // 进程2：定时调度器状态
+                const $schedulerBadge = $('#schedulerStatusBadge');
+                if (data.scheduler_status === "running") {
+                    $schedulerBadge.text("✅ 正在监听监控").removeClass('bg-secondary bg-danger').addClass('bg-success');
+                } else {
+                    $schedulerBadge.text("❌ 已停止").removeClass('bg-secondary bg-success').addClass('bg-danger');
+                }
+            } else {
+                handleStatusError();
+            }
+        }).fail(function () {
+            handleStatusError();
+        });
+    }
+
+    function handleStatusError() {
+        $('#overallSystemStatus').text("连接异常").removeClass('text-success').addClass('text-danger');
+        $('#serviceStatusVal').text("无法连接").addClass('text-danger');
+        $('#runTimeVal').text("未知");
+        $('#dbDataCountVal').text("未知");
+        $('#fetcherStatusBadge').text("未知").removeClass('bg-success bg-secondary').addClass('bg-danger');
+        $('#schedulerStatusBadge').text("未知").removeClass('bg-success bg-secondary').addClass('bg-danger');
+    }
+
+    /**
+     * 获取最新50行运行日志并渲染颜色分级
+     */
+    function loadLogs() {
+        $.get("/api/decision/get_log", function (res) {
+            if (res && res.code === 200) {
+                loadedLogs = res.data || [];
+                const filterVal = $('#logSearchInput').val().trim();
+                renderLogs(filterVal);
+            } else {
+                $('#logContent').html('<span class="text-danger">读取日志失败：' + escapeHtml(res.msg || "服务响应错误") + '</span>');
+            }
+        }).fail(function () {
+            $('#logContent').html('<span class="text-danger">请求日志接口失败</span>');
+        });
+    }
+
+    /**
+     * 过滤并渲染日志内容
+     */
+    function renderLogs(filterText) {
+        const $logContent = $('#logContent');
+        if (!loadedLogs || loadedLogs.length === 0) {
+            $logContent.html('<span class="text-muted">暂无日志内容</span>');
+            return;
+        }
+        
+        let html = "";
+        let hasMatch = false;
+        const lowerFilter = filterText ? filterText.toLowerCase() : "";
+        
+        loadedLogs.forEach(function (item) {
+            if (lowerFilter && item.content.toLowerCase().indexOf(lowerFilter) === -1) {
+                return;
+            }
+            hasMatch = true;
+            let logClass = "log-info";
+            if (item.type === "error") {
+                logClass = "log-error";
+            } else if (item.type === "warning") {
+                logClass = "log-warning";
+            }
+            
+            // XSS 转义后按行包裹并着色
+            html += '<div class="' + logClass + '">' + escapeHtml(item.content) + '</div>';
+        });
+        
+        if (!hasMatch) {
+            $logContent.html('<span class="text-muted">无匹配的日志行</span>');
+        } else {
+            $logContent.html(html);
+            // 日志更新后，让滚动条探底
+            const $logBox = $('#logBox');
+            if ($logBox.length > 0) {
+                $logBox.scrollTop($logBox[0].scrollHeight);
+            }
+        }
+    }
+</script>
+</body>
+</html>

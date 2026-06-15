@@ -2322,11 +2322,23 @@
                         <p>一键串联全链路 [第一层宏观诊断 → 第二层板块轮动 → 第三层个股执行] · 状态透传与终止拦截</p>
                     </div>
                 </div>
-                <div class="strategy-header-right">
+                <div class="strategy-header-right" style="display: flex; align-items: center; gap: 16px;">
                     <button class="strategy-trigger-btn" id="decision-workflow-trigger-btn" onclick="runDecisionWorkflow()" style="background: linear-gradient(135deg, #7c3aed 0%, #3b82f6 100%); border-color: rgba(59,130,246,0.5); box-shadow: 0 4px 15px rgba(59,130,246,0.3)">
                         <span class="btn-bolt" id="decision-btn-bolt">⚡</span>
                         启动全流程整合工作流
                     </button>
+                    
+                    <!-- 自动刷新控制容器 -->
+                    <div class="auto-refresh-container" style="display: flex; align-items: center; gap: 8px; border-left: 1px solid rgba(255,255,255,0.1); padding-left: 16px; min-height: 36px;">
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="auto-refresh-toggle" onchange="onToggleAutoRefresh()">
+                            <span class="toggle-track"></span>
+                        </label>
+                        <div style="display: flex; flex-direction: column;">
+                            <span style="font-size: 0.78rem; font-weight: 600; color: var(--text-secondary); white-space: nowrap;" id="auto-refresh-title">自动刷新: 关</span>
+                            <span style="font-size: 0.65rem; color: var(--text-muted); white-space: nowrap;" id="auto-refresh-desc">每60秒自动执行决策</span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -3507,6 +3519,50 @@
             bolt.style.animation = '';
         }
     };
+
+    /* ── 自动刷新决策流逻辑 ── */
+    let autoRefreshTimer = null;
+    
+    window.onToggleAutoRefresh = function() {
+        const toggle = document.getElementById('auto-refresh-toggle');
+        const title = document.getElementById('auto-refresh-title');
+        
+        if (toggle.checked) {
+            title.textContent = '自动刷新: 开';
+            showToast('🔄 首页自动刷新已开启，每60秒自动执行一次决策', 'success');
+            
+            // 立即执行一次以响应用户的开启操作
+            runDecisionWorkflow();
+            
+            // 设定每 60 秒循环执行
+            autoRefreshTimer = setInterval(async () => {
+                const btn = document.getElementById('decision-workflow-trigger-btn');
+                // 如果按钮已被禁用（代表有正在进行的请求），跳过当前循环，防止重复并发请求
+                if (btn && btn.disabled) {
+                    console.log('决策工作流当前正在运行中，跳过此轮自动刷新。');
+                    return;
+                }
+                console.log('触发60秒自动刷新决策流...');
+                await runDecisionWorkflow();
+            }, 60000);
+        } else {
+            title.textContent = '自动刷新: 关';
+            showToast('⏹ 自动刷新已关闭', 'info');
+            clearAutoRefreshTimer();
+        }
+    };
+    
+    function clearAutoRefreshTimer() {
+        if (autoRefreshTimer) {
+            clearInterval(autoRefreshTimer);
+            autoRefreshTimer = null;
+        }
+    }
+    
+    // 监听页面卸载，清除定时器防止内存泄露
+    window.addEventListener('beforeunload', () => {
+        clearAutoRefreshTimer();
+    });
 
     /* ── Init ── */
     window.onload = () => {

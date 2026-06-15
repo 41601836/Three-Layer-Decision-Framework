@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>量化决策系统 - 板块分析</title>
+    <!-- 外部CDN资源 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+
+    <!-- 本地公共样式 -->
+    <link rel="stylesheet" href="css/common.css">
+</head>
+<body>
+<!-- 左侧固定侧边栏 -->
+<div class="sidebar">
+    <h4 class="text-center text-white mb-4 pt-2">量化决策系统</h4>
+    <nav class="nav flex-column">
+        <a href="index.html" class="nav-link">📊 总控仪表盘</a>
+        <a href="macro.html" class="nav-link">📈 宏观诊断</a>
+        <a href="board.html" class="nav-link active">🏷️ 板块分析</a>
+        <a href="stock.html" class="nav-link">📋 个股交易</a>
+        <a href="system.html" class="nav-link">⚙️ 系统设置</a>
+    </nav>
+</div>
+
+<!-- 顶部状态栏 -->
+<div class="top-bar">
+    <div class="system-info">
+        <span>系统状态：<span class="text-success">运行正常</span></span>
+        <span class="ms-4">上证指数：<span class="rise">3200.00 +0.80%</span></span>
+        <span class="ms-4">深证成指：<span class="rise">10500.00 +0.50%</span></span>
+    </div>
+    <div class="operate-group">
+        <span id="loadingTip" class="text-warning ms-2 d-none">数据加载中...</span>
+    </div>
+</div>
+
+<!-- 右侧主内容区 -->
+<div class="main-content">
+    <!-- 模块1：风格热度柱状图 -->
+    <div class="card">
+        <div class="card-header">各大风格热度排序</div>
+        <div class="card-body">
+            <div id="styleHeatChart" style="height: 320px;"></div>
+        </div>
+    </div>
+
+    <!-- 模块2：板块梯队与中军结构 -->
+    <div class="row g-4 mt-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">板块梯队评级</div>
+                <div class="card-body">
+                    <table class="table table-sm table-dark">
+                        <thead>
+                            <tr>
+                                <th>梯队</th>
+                                <th>板块名称</th>
+                                <th>强度评级</th>
+                            </tr>
+                        </thead>
+                        <tbody id="boardTierBody">
+                            <tr><td colspan="3" class="text-center text-muted">加载中...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">中军结构分析</div>
+                <div class="card-body">
+                    <div id="midforceChart" style="height: 280px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 模块3：轮动强度 & 资金虹吸 -->
+    <div class="row g-4 mt-4">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">轮动强度</div>
+                <div class="card-body" id="rotateStrengthBox">--</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">跨板块联动</div>
+                <div class="card-body" id="crossBoardBox">--</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">资金虹吸等级</div>
+                <div class="card-body" id="siphonBox">--</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 模块4：板块仓位管控状态 -->
+    <div class="card mt-4">
+        <div class="card-header">大类板块仓位管控状态</div>
+        <div class="card-body">
+            <table class="table table-dark table-striped">
+                <thead>
+                    <tr>
+                        <th>板块类别</th>
+                        <th>当前仓位</th>
+                        <th>管控状态</th>
+                        <th>建议操作</th>
+                    </tr>
+                </thead>
+                <tbody id="positionCtrlBody">
+                    <tr><td colspan="4" class="text-center text-muted">加载中...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 数据缺失汇总 -->
+    <div class="card mt-4">
+        <div class="card-header">数据缺失 & 异常汇总</div>
+        <div class="card-body text-warning" id="boardMissBox">无数据缺失</div>
+    </div>
+</div>
+
+<!-- 引入公共脚本 -->
+<script src="js/api.js"></script>
+<script src="js/common.js"></script>
+<script src="js/chart.js"></script>
+
+<script>
+    // XSS 转义方法
+    function escapeHtml(str) {
+        if (!str && str !== 0) return "";
+        return String(str).replace(/&/g, "&amp;")
+                  .replace(/</g, "&lt;")
+                  .replace(/>/g, "&gt;")
+                  .replace(/\"/g, "&quot;")
+                  .replace(/'/g, "&#039;");
+    }
+
+    // 初始化图表实例
+    const styleHeatChart = echarts.init(document.getElementById('styleHeatChart'));
+    const midforceChart = echarts.init(document.getElementById('midforceChart'));
+
+    $(function () {
+        // 导航菜单自动高亮
+        try{ if(window.activateNav) activateNav(); }catch(e){}
+        // 页面加载自动请求板块数据
+        loadBoardData();
+
+        // 图表窗口自适应
+        window.addEventListener('resize', function () {
+            styleHeatChart.resize();
+            midforceChart.resize();
+        });
+    });
+
+    /**
+     * 加载板块分析数据
+     */
+    function loadBoardData() {
+        try{ if(window.showLoading) showLoading('加载中...'); }catch(e){}
+        api.getBoard(function (res) {
+            try{ if(window.hideLoading) hideLoading(); }catch(e){}
+            if(!res){ showTip && showTip('接口返回为空','error'); return; }
+            if (res.code !== 200) {
+                showTip && showTip('板块数据请求异常：' + (res.msg || '未知错误'), 'error');
+                return;
+            }
+            const data = res.data || {};
+            renderBoardData(data);
+        });
+    }
+
+    /**
+     * 渲染板块页面所有数据
+     * @param {Object} data 接口返回板块数据
+     */
+    function renderBoardData(data) {
+        // 1. 风格热度柱状图
+        const styles = Array.isArray(data.style_names) ? data.style_names : ['科技','消费','金融','周期','赛道'];
+        const heatValues = Array.isArray(data.style_heat_values) ? data.style_heat_values : [];
+        try{
+            chartUtil.renderBar(styleHeatChart, styles, heatValues);
+        }catch(e){ console.warn('style heat chart error', e); }
+
+        // 2. 板块梯队表格
+        const tiers = Array.isArray(data.board_tier_list) ? data.board_tier_list : [];
+        let tierHtml = '';
+        if(tiers.length === 0){
+            tierHtml = '<tr><td colspan="3" class="text-center text-muted">无梯队数据</td></tr>';
+        }else{
+            tiers.forEach(tier => {
+                tierHtml += `
+                <tr>
+                    <td>${escapeHtml(tier.tier_name || '')}</td>
+                    <td>${escapeHtml(tier.board_name || '')}</td>
+                    <td class="${tier.strength_level==='强' ? 'text-danger' : (tier.strength_level==='中'?'text-warning':'')}">${escapeHtml(tier.strength_level || '')}</td>
+                </tr>
+                `;
+            });
+        }
+        $('#boardTierBody').html(tierHtml);
+
+        // 3. 中军结构饼图
+        const midforceData = Array.isArray(data.midforce_structure) ? data.midforce_structure : [];
+        try{
+            if(midforceData.length){
+                chartUtil.renderPie(midforceChart, midforceData);
+            }else{
+                midforceChart.clear();
+                midforceChart.setOption({ title:{ text: '无中军数据', left:'center', textStyle:{ color: '#94a3b8' } } });
+            }
+        }catch(e){ console.warn('midforce chart error', e); }
+
+        // 4. 轮动强度、跨板块联动、资金虹吸
+        $('#rotateStrengthBox').text(escapeHtml(data.rotate_strength || '--'));
+        $('#crossBoardBox').text(escapeHtml(data.cross_board_linkage || '--'));
+        $('#siphonBox').text(escapeHtml(data.siphon_level || '--'));
+
+        // 5. 板块仓位管控状态表格
+        const posCtrl = Array.isArray(data.position_control_list) ? data.position_control_list : [];
+        let posHtml = '';
+        if(posCtrl.length === 0){
+            posHtml = '<tr><td colspan="4" class="text-center text-muted">无仓位数据</td></tr>';
+        }else{
+            posCtrl.forEach(item => {
+                const statusClass = item.status === '预警' ? 'text-warning' : (item.status === '强制减仓' ? 'text-danger' : '');
+                posHtml += `
+                <tr>
+                    <td>${escapeHtml(item.board_category || '')}</td>
+                    <td>${item.position != null ? (item.position*100).toFixed(1) + '%' : '--'}</td>
+                    <td class="${statusClass}">${escapeHtml(item.status || '正常')}</td>
+                    <td>${escapeHtml(item.suggestion || '--')}</td>
+                </tr>
+                `;
+            });
+        }
+        $('#positionCtrlBody').html(posHtml);
+
+        // 6. 数据缺失汇总
+        const missList = Array.isArray(data.data_missing_list) ? data.data_missing_list : [];
+        if (missList.length > 0) {
+            $('#boardMissBox').html(escapeHtml(missList.join('；')));
+        } else {
+            $('#boardMissBox').text('无数据缺失');
+        }
+    }
+</script>
+</body>
+</html>

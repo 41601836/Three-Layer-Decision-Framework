@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>系统设置</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/common.css">
+</head>
+<body>
+<!-- 左侧固定侧边导航 -->
+<div class="sidebar">
+    <h4 class="text-center text-white mb-4">量化决策系统</h4>
+    <nav class="nav flex-column">
+        <a href="index.html" class="nav-link">📊 总控仪表盘</a>
+        <a href="macro.html" class="nav-link">📈 宏观诊断</a>
+        <a href="board.html" class="nav-link">🏷️ 板块分析</a>
+        <a href="stock.html" class="nav-link">📋 个股交易</a>
+        <a href="system.html" class="nav-link active">⚙️ 系统设置</a>
+    </nav>
+</div>
+
+<!-- 顶部状态栏 -->
+<div class="top-bar">
+    <div>
+        <span>系统设置</span>
+    </div>
+</div>
+
+<!-- 右侧主内容区 -->
+<div class="main-content">
+    <div class="card mt-4">
+        <div class="card-header">系统配置</div>
+        <div class="card-body">
+            <form id="systemSettingsForm">
+                <div class="mb-3">
+                    <label for="apiEndpoint" class="form-label">API 端点</label>
+                    <input type="text" class="form-control" id="apiEndpoint" placeholder="输入 API 端点">
+                </div>
+                <div class="mb-3">
+                    <label for="updateInterval" class="form-label">更新间隔（秒）</label>
+                    <input type="number" class="form-control" id="updateInterval" placeholder="输入更新间隔">
+                </div>
+                <button type="submit" class="btn btn-primary">保存设置</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('systemSettingsForm').addEventListener('submit', function(event) {
+    event.preventDefault();
+    const apiEndpoint = document.getElementById('apiEndpoint').value;
+    const updateInterval = document.getElementById('updateInterval').value;
+
+    // 这里可以添加保存设置的逻辑，例如发送到后端
+    alert(`设置已保存:\nAPI 端点: ${apiEndpoint}\n更新间隔: ${updateInterval}秒`);
+});
+</script>
+</body>
+</html>

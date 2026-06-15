@@ -5,6 +5,25 @@ from decision_framework.board_structure import board_structure
 from decision_framework.board_rank import board_rank
 
 
+original_get_conn = None
+mem_conn = None
+
+
+class MemConnWrapper:
+
+    def __init__(self, conn):
+        self.__dict__['conn'] = conn
+
+    def __getattr__(self, name):
+        return getattr(self.conn, name)
+
+    def __setattr__(self, name, value):
+        setattr(self.conn, name, value)
+
+    def close(self):
+        pass
+
+
 def setup_mock_data():
     """
     为第二层“板块结构与中军判定”注入高完整性的测试数据，涵盖以下情况：
@@ -27,11 +46,14 @@ def setup_mock_data():
        - 000001 (半导体中军)：流通市值 1500000 万元 (150亿，满足 >= 50亿 门槛)。
        - 000004 (软件中军)：流通市值 2000000 万元 (200亿，满足 >= 50亿 门槛)。
     """
-    print("\n[MockDB] 正在临时注入测试数据以供第二层板块结构验证...")
-    conn = dao.get_conn()
-    cursor = conn.cursor()
+    global original_get_conn, mem_conn
+    print("\n[MockDB] 正在启用内存隔离数据库注入测试数据以供第二层板块结构验证...")
+    original_get_conn = dao.get_conn
+
+    raw_conn = sqlite3.connect(":memory:")
+    cursor = raw_conn.cursor()
     try:
-        # A. 临时建第一层板块表并写数据以过前置
+        # A. 创建测试需要的全部表结构
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS board_money_flow (
                 board_name TEXT, trade_date TEXT, net_amount REAL, limit_up_count INTEGER,
@@ -39,76 +61,78 @@ def setup_mock_data():
                 flow_5d REAL, cover_ratio REAL, tier_status TEXT, sentry_status TEXT, retreat_ratio REAL, week_rise REAL
             )
         """)
-        # 写入半导体和软件两个强流入行业
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS stock_list (
+                ts_code TEXT, name TEXT, industry TEXT, list_date TEXT
+            )
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS daily_prices (
+                ts_code TEXT, trade_date TEXT, open REAL, high REAL, low REAL, close REAL, pre_close REAL, change REAL, pct_chg REAL, vol REAL, amount REAL, adj_factor REAL
+            )
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS daily_basic (
+                ts_code TEXT, trade_date TEXT, pe REAL, turnover_rate REAL, volume_ratio REAL, free_share REAL, circ_mv REAL
+            )
+        """)
+
+        # B. 写入半导体和软件两个强流入行业
         cursor.execute("INSERT INTO board_money_flow VALUES ('半导体', '20260613', 12000000000.0, 3, 4, 1, 0.20, 1, 12000000000.0, 0.15, '完整', '未消耗', 0.18, 0.02)")
         cursor.execute("INSERT INTO board_money_flow VALUES ('软件', '20260613', 8000000000.0, 2, 3, 1, 0.10, 1, 6000000000.0, 0.10, '基本完整', '未消耗', 0.16, 0.01)")
         
-        # B. 注入 stock_list 成分股映射
+        # C. 注入 stock_list 成分股映射
         cursor.execute("INSERT OR REPLACE INTO stock_list (ts_code, name, industry) VALUES ('000001.SZ', '半导体中军', '半导体')")
         cursor.execute("INSERT OR REPLACE INTO stock_list (ts_code, name, industry) VALUES ('000002.SZ', '半导体龙头', '半导体')")
         cursor.execute("INSERT OR REPLACE INTO stock_list (ts_code, name, industry) VALUES ('000003.SZ', '半导体跟风', '半导体')")
         cursor.execute("INSERT OR REPLACE INTO stock_list (ts_code, name, industry) VALUES ('000004.SZ', '软件中军', '软件')")
         cursor.execute("INSERT OR REPLACE INTO stock_list (ts_code, name, industry) VALUES ('000005.SZ', '软件首板', '软件')")
         
-        # C. 注入价格与涨幅历史 (20260613 - 今日，20260612 - 昨日，20260611 - 前日)
-        # 板块 A (半导体) 总成交额 = 30亿 + 3亿 + 1亿 = 34亿
-        # 中军 000001 成交 30 亿 (占比 30/34 = 88.2% >= 8% 中军门槛)，红盘
+        # D. 注入价格与涨幅历史
         cursor.execute("INSERT OR REPLACE INTO daily_prices (ts_code, trade_date, pct_chg, amount, close) VALUES ('000001.SZ', '20260613', 1.50, 3000000000.0, 15.0)")
         cursor.execute("INSERT OR REPLACE INTO daily_prices (ts_code, trade_date, pct_chg, amount, close) VALUES ('000001.SZ', '20260612', -0.50, 2000000000.0, 14.8)")
         
-        # 龙头 000002 连续 3 天涨停
         cursor.execute("INSERT OR REPLACE INTO daily_prices (ts_code, trade_date, pct_chg, amount, close) VALUES ('000002.SZ', '20260613', 9.95, 300000000.0, 20.0)")
         cursor.execute("INSERT OR REPLACE INTO daily_prices (ts_code, trade_date, pct_chg, amount, close) VALUES ('000002.SZ', '20260612', 9.91, 250000000.0, 18.2)")
         cursor.execute("INSERT OR REPLACE INTO daily_prices (ts_code, trade_date, pct_chg, amount, close) VALUES ('000002.SZ', '20260611', 9.96, 200000000.0, 16.5)")
         
-        # 跟风 000003 最新首涨停
         cursor.execute("INSERT OR REPLACE INTO daily_prices (ts_code, trade_date, pct_chg, amount, close) VALUES ('000003.SZ', '20260613', 9.92, 100000000.0, 10.0)")
         cursor.execute("INSERT OR REPLACE INTO daily_prices (ts_code, trade_date, pct_chg, amount, close) VALUES ('000003.SZ', '20260612', 0.20, 80000000.0, 9.10)")
         
-        # 板块 B (软件) 总成交 = 25亿 + 2亿 = 27亿
-        # 中军 000004 成交 25 亿 (占比 25/27 = 92.6% >= 8% 中军门槛)，绿盘 (-2.0%)
         cursor.execute("INSERT OR REPLACE INTO daily_prices (ts_code, trade_date, pct_chg, amount, close) VALUES ('000004.SZ', '20260613', -2.00, 2500000000.0, 30.0)")
         cursor.execute("INSERT OR REPLACE INTO daily_prices (ts_code, trade_date, pct_chg, amount, close) VALUES ('000004.SZ', '20260612', 1.00, 2000000000.0, 30.6)")
         
-        # 首板 000005 最新涨停
         cursor.execute("INSERT OR REPLACE INTO daily_prices (ts_code, trade_date, pct_chg, amount, close) VALUES ('000005.SZ', '20260613', 9.90, 200000000.0, 8.00)")
         cursor.execute("INSERT OR REPLACE INTO daily_prices (ts_code, trade_date, pct_chg, amount, close) VALUES ('000005.SZ', '20260612', -2.30, 150000000.0, 7.28)")
 
-        # D. 注入市值 (自由流通市值)
-        cursor.execute("INSERT OR REPLACE INTO daily_basic (ts_code, trade_date, circ_mv) VALUES ('000001.SZ', '20260613', 1500000.0)") # 150亿
-        cursor.execute("INSERT OR REPLACE INTO daily_basic (ts_code, trade_date, circ_mv) VALUES ('000004.SZ', '20260613', 2000000.0)") # 200亿
+        # E. 注入市值
+        cursor.execute("INSERT OR REPLACE INTO daily_basic (ts_code, trade_date, circ_mv) VALUES ('000001.SZ', '20260613', 1500000.0)")
+        cursor.execute("INSERT OR REPLACE INTO daily_basic (ts_code, trade_date, circ_mv) VALUES ('000004.SZ', '20260613', 2000000.0)")
         
-        # E. 第一层所依赖价格数据，确保打分不触发防守
+        # F. 第一层所依赖价格数据，确保不触发防守
         cursor.execute("INSERT OR REPLACE INTO daily_prices (ts_code, trade_date, amount) VALUES ('DUMMY_STOCK', '20260529', 1000000000.0)")
 
-        conn.commit()
-        print("[MockDB] 注入成功。")
+        raw_conn.commit()
+        mem_conn = MemConnWrapper(raw_conn)
+        dao.get_conn = lambda: mem_conn
+        print("[MockDB] 内存隔离数据库注入成功。")
     except Exception as e:
         print(f"[MockDB] 注入失败: {e}")
-        conn.rollback()
-    finally:
-        conn.close()
+        if original_get_conn is not None:
+            dao.get_conn = original_get_conn
 
 
 def teardown_mock_data():
     """
-    清理临时注入的数据表及个股价格
+    清理临时注入的内存隔离库，还原物理数据库连接
     """
-    print("\n[MockDB] 正在清理临时注入的第二层测试数据...")
-    conn = dao.get_conn()
-    cursor = conn.cursor()
-    try:
-        cursor.execute("DROP TABLE IF EXISTS board_money_flow")
-        cursor.execute("DELETE FROM stock_list WHERE ts_code IN ('000001.SZ', '000002.SZ', '000003.SZ', '000004.SZ', '000005.SZ')")
-        cursor.execute("DELETE FROM daily_prices WHERE ts_code IN ('000001.SZ', '000002.SZ', '000003.SZ', '000004.SZ', '000005.SZ', 'DUMMY_STOCK')")
-        cursor.execute("DELETE FROM daily_basic WHERE ts_code IN ('000001.SZ', '000004.SZ')")
-        conn.commit()
-        print("[MockDB] 清理成功。")
-    except Exception as e:
-        print(f"[MockDB] 清理异常: {e}")
-        conn.rollback()
-    finally:
-        conn.close()
+    global original_get_conn, mem_conn
+    print("\n[MockDB] 正在清理内存隔离数据库并恢复真实连接...")
+    if original_get_conn is not None:
+        dao.get_conn = original_get_conn
+        original_get_conn = None
+    mem_conn = None
+    print("[MockDB] 恢复物理连接成功。")
 
 
 def main():

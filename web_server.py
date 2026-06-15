@@ -64,11 +64,16 @@ STATUS_CACHE = {
 
 app = FastAPI()
 
-app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
-
 @app.get("/")
 def read_root():
     return FileResponse(os.path.join(STATIC_DIR, "index.html"))
+
+@app.get("/static/decision/")
+def decision_root():
+    """新仪表盘首页路由"""
+    return FileResponse(os.path.join(STATIC_DIR, "decision", "index.html"))
+
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 class ConfigUpdate(BaseModel):
     tushare_token: str
@@ -1800,6 +1805,183 @@ def api_get_stock():
         return {"code": 500, "msg": f"服务异常: {str(e)}", "data": None}
 
 
+# ──────────────────────────────────────────────────────────────
+# 系统运维诊断与操作接口追加
+# ──────────────────────────────────────────────────────────────
+
+@app.get("/api/decision/system_status")
+def api_system_status():
+    """
+    接口1: 获取系统基础信息、数据拉取进程状态、定时调度器状态
+    """
+    try:
+        scheduler_running = get_process("scheduler.py") is not None
+        fetcher_running = get_process("fetch_daily.py") is not None
+        
+        # 计算运行时长
+        import time
+        try:
+            p = psutil.Process()
+            create_time = p.create_time()
+            uptime_seconds = int(time.time() - create_time)
+            days = uptime_seconds // 86400
+            hours = (uptime_seconds % 86400) // 3600
+            minutes = (uptime_seconds % 3600) // 60
+            seconds = uptime_seconds % 60
+            
+            run_time_parts = []
+            if days > 0:
+                run_time_parts.append(f"{days}天")
+            if hours > 0 or days > 0:
+                run_time_parts.append(f"{hours}小时")
+            if minutes > 0 or hours > 0 or days > 0:
+                run_time_parts.append(f"{minutes}分钟")
+            run_time_parts.append(f"{seconds}秒")
+            run_time = "".join(run_time_parts)
+        except Exception:
+            run_time = "未知"
+            
+        # 统计物理数据库的总数据量 (复用大表统计缓存)
+        current_time = time.time()
+        db_data_count = 0
+        if DB_STATS_CACHE["data"] is not None and (current_time - DB_STATS_CACHE["last_updated"]) < DB_STATS_CACHE["cache_duration"]:
+            db_stats = DB_STATS_CACHE["data"]
+        else:
+            db_stats = {"stock_count": 0, "daily_count": 0, "moneyflow_count": 0, "holder_count": 0}
+            if os.path.exists(DB_PATH):
+                try:
+                    conn = sqlite3.connect(DB_PATH, timeout=5)
+                    db_stats["stock_count"] = conn.execute("SELECT COUNT(*) FROM stock_list").fetchone()[0]
+                    db_stats["daily_count"] = conn.execute("SELECT COUNT(*) FROM daily_prices").fetchone()[0]
+                    db_stats["moneyflow_count"] = conn.execute("SELECT COUNT(*) FROM moneyflow").fetchone()[0]
+                    db_stats["holder_count"] = conn.execute("SELECT COUNT(*) FROM stk_holdernumber").fetchone()[0]
+                    conn.close()
+                    DB_STATS_CACHE["data"] = db_stats
+                    DB_STATS_CACHE["last_updated"] = current_time
+                except Exception:
+                    pass
+        
+        # 汇总各表的记录行数作为总数据量
+        db_data_count = sum(db_stats.values())
+        
+        return {
+            "code": 200,
+            "msg": "success",
+            "data": {
+                "service_status": "running",
+                "fetcher_status": "running" if fetcher_running else "stopped",
+                "scheduler_status": "running" if scheduler_running else "stopped",
+                "run_time": run_time,
+                "db_data_count": db_data_count
+            }
+        }
+    except Exception as e:
+        decision_log.error(f"系统状态接口异常: {str(e)}")
+        return {
+            "code": 500,
+            "msg": f"系统状态接口异常: {str(e)}",
+            "data": None
+        }
+
+@app.get("/api/decision/get_log")
+def api_get_log():
+    """
+    接口2: 读取最新运行日志内容，截取最近50行并返回带有类型的行列表
+    """
+    try:
+        log_dir = os.path.join(ROOT_DIR, "logs")
+        if not os.path.exists(log_dir):
+            return {"code": 200, "msg": "success", "data": []}
+            
+        log_files = [os.path.join(log_dir, f) for f in os.listdir(log_dir) if f.endswith(".log")]
+        if not log_files:
+            return {"code": 200, "msg": "success", "data": []}
+            
+        # 寻找最新的日志文件
+        latest_log = max(log_files, key=os.path.getmtime)
+        
+        log_lines = []
+        try:
+            with open(latest_log, "r", encoding="utf-8") as f:
+                lines = f.readlines()
+                # 截取最后 50 行
+                last_50_lines = lines[-50:]
+                
+                for line in last_50_lines:
+                    line_str = line.strip()
+                    if not line_str:
+                        continue
+                    
+                    line_lower = line_str.lower()
+                    # 划分级别
+                    if "[error]" in line_lower or "error" in line_lower or "traceback" in line_lower or "exception" in line_lower or "critical" in line_lower or "❌" in line_str:
+                        level = "error"
+                    elif "[warning]" in line_lower or "warning" in line_lower or "⚠️" in line_str or "🚨" in line_str:
+                        level = "warning"
+                    else:
+                        level = "info"
+                        
+                    log_lines.append({
+                        "type": level,
+                        "content": line_str
+                    })
+        except Exception as read_err:
+            decision_log.error(f"读取日志文件失败: {str(read_err)}")
+            return {"code": 500, "msg": f"读取日志文件失败: {str(read_err)}", "data": []}
+            
+        return {
+            "code": 200,
+            "msg": "success",
+            "data": log_lines
+        }
+    except Exception as e:
+        decision_log.error(f"日志接口异常: {str(e)}")
+        return {
+            "code": 500,
+            "msg": f"日志接口异常: {str(e)}",
+            "data": []
+        }
+
+@app.get("/api/decision/restart_scheduler")
+def api_restart_scheduler():
+    """
+    接口3: 重启调度器进程
+    """
+    try:
+        proc = get_process("scheduler.py")
+        if proc:
+            try:
+                proc.terminate()
+                # 等待最多3秒让其退出
+                for _ in range(30):
+                    if not proc.is_running():
+                        break
+                    time.sleep(0.1)
+                if proc.is_running():
+                    proc.kill()
+            except Exception as proc_err:
+                decision_log.warning(f"终止已有调度器进程时遇到异常: {str(proc_err)}")
+                
+        # 重新启动调度器进程
+        command = [sys.executable, os.path.join(SCRIPTS_DIR, "scheduler.py")]
+        subprocess.Popen(command, cwd=ROOT_DIR)
+        
+        return {
+            "code": 200,
+            "msg": "success",
+            "data": {
+                "status": "restarted"
+            }
+        }
+    except Exception as e:
+        decision_log.error(f"重启调度器接口异常: {str(e)}")
+        return {
+            "code": 500,
+            "msg": f"重启调度器失败: {str(e)}",
+            "data": None
+        }
+
+
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8001)

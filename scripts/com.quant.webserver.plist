@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- 服务唯一标识 -->
+    <key>Label</key>
+    <string>com.quant.webserver</string>
+
+    <!-- 执行的脚本路径 -->
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/lyu/Three-Layer-Decision-Framework/scripts/start_web_service.sh</string>
+    </array>
+
+    <!-- 工作目录 -->
+    <key>WorkingDirectory</key>
+    <string>/Users/lyu/Three-Layer-Decision-Framework</string>
+
+    <!-- 开机时免登录自动启动 -->
+    <key>RunAtLoad</key>
+    <true/>
+
+    <!-- 进程挂掉后自动拉起 (KeepAlive) -->
+    <key>KeepAlive</key>
+    <false/>
+
+    <!-- 日志重定向路径 -->
+    <key>StandardOutPath</key>
+    <string>/Users/lyu/Three-Layer-Decision-Framework/logs/launchd_out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/lyu/Three-Layer-Decision-Framework/logs/launchd_err.log</string>
+</dict>
+</plist>
