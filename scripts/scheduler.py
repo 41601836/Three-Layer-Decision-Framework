@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-scheduler.py —— 陈明的专属量化助手 v4.0 定时调度器
+scheduler.py —— 个人的专属量化助手 v4.0 定时调度器
 =====================================================================
 A股交易日四时间点自动扫描 + AI报告 + 飞书推送：
   - 08:40  盘前前瞻（隔夜消息梳理）
@@ -63,11 +63,35 @@ try:
     MAX_CANDIDATES = get_config("scheduler.max_candidates", 50)
     BATCH_SIZE = get_config("scheduler.batch_size", 50)
     
+    # 周一战法配置
+    MONDAY_WAVE_ENABLED = get_config("strategy.monday_wave.enable", True)
+    MONDAY_WAVE_SCHEDULE = get_config("strategy.monday_wave.schedule", {
+        "pre_market_hour": 8,
+        "pre_market_min": 0,
+        "morning_scan_hour": 9,
+        "morning_scan_min": 45,
+        "close_scan_hour": 14,
+        "close_scan_min": 45,
+        "friday_remind_hour": 10,
+        "friday_remind_min": 0
+    })
+    
 except ImportError:
     # 降级方案：使用硬编码默认值
     SCHEDULE_TIMES = ["08:40", "11:25", "14:30", "20:00"]
     MAX_CANDIDATES = 50
     BATCH_SIZE = 50
+    MONDAY_WAVE_ENABLED = True
+    MONDAY_WAVE_SCHEDULE = {
+        "pre_market_hour": 8,
+        "pre_market_min": 0,
+        "morning_scan_hour": 9,
+        "morning_scan_min": 45,
+        "close_scan_hour": 14,
+        "close_scan_min": 45,
+        "friday_remind_hour": 10,
+        "friday_remind_min": 0
+    }
 
 SESSION_NAMES = {
     "08:40": "盘前前瞻",
@@ -190,7 +214,7 @@ def extract_stop_loss_from_report(report: str) -> str:
 
 def run_full_pipeline(session_name: str = "手动触发"):
     """
-    执行一次完整扫描 → AI报告 → 飞书推送流程（陈明专属精简版）。
+    执行一次完整扫描 → AI报告 → 飞书推送流程（个人专属精简版）。
     整合功能：
       1. market_env    → 大盘环境判断
       2. industry_strength → 行业强度计算
@@ -209,7 +233,7 @@ def run_full_pipeline(session_name: str = "手动触发"):
         return
 
     log.info("=" * 60)
-    log.info("  陈明的专属量化助手 v4.0 — %s", session_name)
+    log.info("  个人的专属量化助手 v4.0 — %s", session_name)
     log.info("  时间：%s", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
     log.info("=" * 60)
 
@@ -441,14 +465,30 @@ def _is_time_to_run(target_hhmm: str, tolerance_sec: int = 60) -> bool:
     return diff <= tolerance_sec
 
 
+def _run_monday_wave_task(task_name, task_func):
+    """执行周一战法任务的包装函数"""
+    try:
+        log.info(f"🔔 触发周一战法任务: {task_name}")
+        task_func()
+    except Exception as e:
+        log.error(f"周一战法任务 {task_name} 异常: {e}", exc_info=True)
+
 def main_loop():
     """持续轮询，到达时间点即触发任务（每30秒检查一次）。"""
     log.info("⏰ 调度器启动，监听时间点: %s", " / ".join(SCHEDULE_TIMES))
+    
+    # 注册周一战法定时任务
+    if MONDAY_WAVE_ENABLED:
+        log.info("📊 周一战法定时任务已注册")
+    else:
+        log.info("📊 周一战法已禁用")
+    
     fired_today: set = set()
 
     while True:
         now_hhmm = datetime.now().strftime("%H:%M")
         today    = datetime.now().strftime("%Y%m%d")
+        weekday  = datetime.now().weekday()  # 0=周一, 4=周五
 
         # 每天零点重置触发记录
         if now_hhmm == "00:01":
@@ -470,6 +510,47 @@ def main_loop():
                         send_error_notification(str(e))
                     except Exception as notify_err:
                         log.error("发送错误通知失败: %s", notify_err)
+
+        # 周一战法定时任务
+        if MONDAY_WAVE_ENABLED:
+            # 周一 08:00 盘前研判
+            pre_market_time = f"{MONDAY_WAVE_SCHEDULE['pre_market_hour']:02d}:{MONDAY_WAVE_SCHEDULE['pre_market_min']:02d}"
+            key_pre = f"{today}_monday_pre"
+            if weekday == 0 and key_pre not in fired_today and _is_time_to_run(pre_market_time, tolerance_sec=55):
+                fired_today.add(key_pre)
+                from monday_warfare.tasks import task_pre_market_analysis
+                _run_monday_wave_task("盘前研判", task_pre_market_analysis)
+
+            # 周一 09:45 早盘初筛
+            morning_time = f"{MONDAY_WAVE_SCHEDULE['morning_scan_hour']:02d}:{MONDAY_WAVE_SCHEDULE['morning_scan_min']:02d}"
+            key_morning = f"{today}_monday_morning"
+            if weekday == 0 and key_morning not in fired_today and _is_time_to_run(morning_time, tolerance_sec=55):
+                fired_today.add(key_morning)
+                from monday_warfare.tasks import task_morning_scan
+                _run_monday_wave_task("早盘初筛", task_morning_scan)
+
+            # 周一 14:45 尾盘精选
+            close_time = f"{MONDAY_WAVE_SCHEDULE['close_scan_hour']:02d}:{MONDAY_WAVE_SCHEDULE['close_scan_min']:02d}"
+            key_close = f"{today}_monday_close"
+            if weekday == 0 and key_close not in fired_today and _is_time_to_run(close_time, tolerance_sec=55):
+                fired_today.add(key_close)
+                from monday_warfare.tasks import task_close_scan
+                _run_monday_wave_task("尾盘精选", task_close_scan)
+
+            # 周五 10:00 清仓提醒
+            friday_time = f"{MONDAY_WAVE_SCHEDULE['friday_remind_hour']:02d}:{MONDAY_WAVE_SCHEDULE['friday_remind_min']:02d}"
+            key_friday = f"{today}_monday_friday"
+            if weekday == 4 and key_friday not in fired_today and _is_time_to_run(friday_time, tolerance_sec=55):
+                fired_today.add(key_friday)
+                from monday_warfare.tasks import task_friday_clear_remind
+                _run_monday_wave_task("周五清仓提醒", task_friday_clear_remind)
+
+            # 周一 16:00 数据更新（每周一次）
+            key_update = f"{today}_monday_update"
+            if weekday == 0 and key_update not in fired_today and _is_time_to_run("16:00", tolerance_sec=55):
+                fired_today.add(key_update)
+                from monday_warfare.tasks import task_update_weekly_data
+                _run_monday_wave_task("数据更新", task_update_weekly_data)
 
         time.sleep(30)
 

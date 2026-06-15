@@ -117,7 +117,7 @@ def run_fetch(cmd: FetchCmd):
     command = [sys.executable, os.path.join(SCRIPTS_DIR, "fetch_daily.py"), "--workers", str(cmd.workers)]
     if cmd.mode == "full":
         command.append("--start")
-        command.append("20200101")
+        command.append("20210101")
     subprocess.Popen(command, cwd=ROOT_DIR)
     return {"status": "started"}
 
@@ -202,6 +202,60 @@ def analyze_washout(req: WashoutRequest):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+# ──────────────────────────────────────────────────────────────
+# 周一战法 API
+# ──────────────────────────────────────────────────────────────
+
+@app.post("/api/strategy/monday-wave/run")
+def run_monday_wave(background_tasks: BackgroundTasks):
+    """手动触发周一战法选股"""
+    try:
+        from monday_warfare.tasks import task_close_scan
+        
+        background_tasks.add_task(task_close_scan)
+        return {"code": 0, "message": "已触发周一战法选股，结果将推送飞书", "data": None}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"触发失败: {str(e)}")
+
+@app.post("/api/strategy/monday-wave/update-data")
+def update_monday_wave_data(background_tasks: BackgroundTasks):
+    """手动触发周一战法数据更新"""
+    try:
+        from monday_warfare.tasks import task_update_weekly_data
+        
+        background_tasks.add_task(task_update_weekly_data)
+        return {"code": 0, "message": "已触发数据更新，完成后将推送通知", "data": None}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"触发失败: {str(e)}")
+
+@app.get("/api/strategy/monday-wave/config")
+def get_monday_wave_config():
+    """获取周一战法配置"""
+    try:
+        from config_loader import get_config
+        
+        config = get_config("strategy.monday_wave", {
+            "enable": True,
+            "risk_profile": "稳健",
+            "account_size": 150000,
+            "pick_count": 3,
+            "schedule": {}
+        })
+        
+        return {
+            "code": 0,
+            "message": "success",
+            "data": {
+                "enable": config.get("enable"),
+                "risk_profile": config.get("risk_profile"),
+                "account_size": config.get("account_size"),
+                "pick_count": config.get("pick_count"),
+                "schedule": config.get("schedule", {})
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"获取配置失败: {str(e)}")
 
 @app.get("/api/washout/portfolio")
 def get_portfolio_for_washout():

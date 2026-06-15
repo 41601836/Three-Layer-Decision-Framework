@@ -41,17 +41,32 @@ def _get_latest_dates(conn: sqlite3.Connection) -> tuple:
 
 
 def _get_expected_date() -> str:
-    """计算期望的最新数据日期（考虑非交易日）"""
+    """计算期望的最新数据日期（考虑非交易日和交易时间）"""
     today = datetime.now()
+    today_weekday = today.weekday()  # 0=周一, 4=周五, 5=周六, 6=周日
     
     # 检查是否在交易时间后（15:30之后）
     if today.time() >= dt_time(15, 30):
-        # 交易时间后，期望日期为今日
-        return today.strftime("%Y%m%d")
+        # 交易时间后，期望日期为今日（如果是交易日）
+        if today_weekday <= 4:  # 周一到周五
+            return today.strftime("%Y%m%d")
+        else:  # 周末，期望日期为上周五
+            last_friday = today - timedelta(days=(today_weekday - 4))
+            return last_friday.strftime("%Y%m%d")
     else:
-        # 交易时间前，期望日期为昨日
-        yesterday = today - timedelta(days=1)
-        return yesterday.strftime("%Y%m%d")
+        # 交易时间前，期望日期为最近的上一个交易日
+        days_to_subtract = 1
+        
+        # 如果是周一早上，需要回溯到上周五
+        if today_weekday == 0:  # 周一
+            days_to_subtract = 3  # 周一早上 -> 上周五
+        elif today_weekday == 5:  # 周六
+            days_to_subtract = 1  # 周六 -> 周五
+        elif today_weekday == 6:  # 周日
+            days_to_subtract = 2  # 周日 -> 周五
+        
+        expected_date = today - timedelta(days=days_to_subtract)
+        return expected_date.strftime("%Y%m%d")
 
 
 def _is_data_latest(latest_date: str, expected_date: str) -> bool:
@@ -61,17 +76,22 @@ def _is_data_latest(latest_date: str, expected_date: str) -> bool:
     return latest_date >= expected_date
 
 
-def _run_fetch_script(script_name: str) -> bool:
+def _run_fetch_script(cmd: str) -> bool:
     """运行数据获取脚本"""
+    # 解析命令，支持带参数的命令
+    parts = cmd.split()
+    script_name = parts[0]
+    args = parts[1:] if len(parts) > 1 else []
+    
     script_path = os.path.join(ROOT_DIR, "scripts", script_name)
     if not os.path.exists(script_path):
         print(f"[ERROR] 脚本不存在: {script_path}")
         return False
     
-    print(f"[INFO] 正在运行 {script_name}...")
+    print(f"[INFO] 正在运行 {cmd}...")
     try:
         result = subprocess.run(
-            [sys.executable, script_path],
+            [sys.executable, script_path] + args,
             cwd=ROOT_DIR,
             capture_output=True,
             text=False,  # 使用bytes模式避免编码问题
@@ -164,7 +184,8 @@ def validate_and_update_data(force_update: bool = False) -> bool:
         # 步骤1：更新日线数据
         if not daily_ok or force_update:
             print("\n[STEP 1/2] 更新日线数据...")
-            if not _run_fetch_script("fetch_daily.py"):
+            # 传递期望日期作为结束日期，避免拉取未来日期
+            if not _run_fetch_script(f"fetch_daily.py --end {expected_date}"):
                 print("[ERROR] 日线数据更新失败")
                 return False
         

@@ -1834,6 +1834,82 @@
                 </div>
             </div>
 
+            <!-- 周一战法 Card -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <div class="card-title-icon icon-blue">📈</div>
+                        周波段·周一战法
+                    </div>
+                    <span class="card-badge" id="monday-status" style="background:rgba(59,130,246,0.15);color:var(--blue-400)">加载中...</span>
+                </div>
+
+                <!-- 状态区 -->
+                <div class="status-list" style="margin-bottom: 16px;">
+                    <div class="status-row">
+                        <div class="status-label">
+                            <span class="indicator" id="monday-enable-indicator"></span>
+                            战法开关
+                        </div>
+                        <span class="status-val" id="monday-enable">--</span>
+                    </div>
+                    <div class="status-row">
+                        <div class="status-label">
+                            <span style="color:var(--amber-400)">⚡</span> 风险偏好
+                        </div>
+                        <span class="status-val" id="monday-risk">--</span>
+                    </div>
+                    <div class="status-row">
+                        <div class="status-label">
+                            <span style="color:var(--emerald-400)">💰</span> 账户资金
+                        </div>
+                        <span class="status-val" id="monday-account">--</span>
+                    </div>
+                    <div class="status-row">
+                        <div class="status-label">
+                            <span style="color:var(--violet-400)">🎯</span> 选股数量
+                        </div>
+                        <span class="status-val" id="monday-count">--</span>
+                    </div>
+                </div>
+
+                <!-- 操作按钮区 -->
+                <div class="btn-group">
+                    <button class="btn btn-primary" id="btn-monday-run" onclick="runMondayWarfare()">
+                        🚀 手动触发选股
+                    </button>
+                    <button class="btn btn-blue" id="btn-monday-update" onclick="updateMondayData()">
+                        📥 更新策略数据
+                    </button>
+                </div>
+
+                <!-- 结果展示区 -->
+                <div id="monday-result" style="display:none; margin-top:16px;">
+                    <div class="divider"></div>
+                    <div class="section-label" style="margin-bottom:12px">精选标的</div>
+                    <div class="table-container">
+                        <table class="data-table" style="font-size:0.78rem;">
+                            <thead>
+                                <tr>
+                                    <th style="padding:8px;">序号</th>
+                                    <th style="padding:8px;">股票名称</th>
+                                    <th style="padding:8px;">股票代码</th>
+                                    <th style="padding:8px;">所属板块</th>
+                                    <th style="padding:8px;">现价</th>
+                                    <th style="padding:8px;">1手价格</th>
+                                </tr>
+                            </thead>
+                            <tbody id="monday-picks-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 提示区 -->
+                <div style="margin-top:16px; padding:10px; background:rgba(59,130,246,0.05); border:1px solid rgba(59,130,246,0.2); border-radius:var(--radius-sm); font-size:0.72rem; color:var(--text-secondary); text-align:center;">
+                    选股结果将同步推送至飞书，仅供参考不构成投资建议
+                </div>
+            </div>
+
         </div><!-- /main-grid -->
 
         <!-- ═══ BOTTOM GRID ═══ -->
@@ -2818,6 +2894,109 @@
         await loadPortfolio();
     }
 
+    /* ── 周一战法 Functions ── */
+    async function loadMondayConfig() {
+        try {
+            const response = await fetch('/api/strategy/monday-wave/config');
+            const data = await response.json();
+            
+            if (data.code === 0) {
+                const config = data.data;
+                document.getElementById('monday-enable').textContent = config.enable ? '✅ 开启' : '❌ 关闭';
+                document.getElementById('monday-enable-indicator').className = 'indicator ' + (config.enable ? 'active' : 'inactive');
+                document.getElementById('monday-risk').textContent = config.risk_profile || '--';
+                document.getElementById('monday-account').textContent = '¥' + (config.account_size || 0).toLocaleString();
+                document.getElementById('monday-count').textContent = config.pick_count || '--';
+                document.getElementById('monday-status').textContent = config.enable ? '运行中' : '已停用';
+                document.getElementById('monday-status').style.background = config.enable ? 'rgba(16,185,129,0.15)' : 'rgba(71,85,105,0.2)';
+                document.getElementById('monday-status').style.color = config.enable ? 'var(--emerald-400)' : 'var(--text-muted)';
+            } else {
+                document.getElementById('monday-status').textContent = '加载失败';
+            }
+        } catch (error) {
+            console.error('加载周一战法配置失败:', error);
+            document.getElementById('monday-status').textContent = '加载失败';
+        }
+    }
+
+    async function runMondayWarfare() {
+        const btn = document.getElementById('btn-monday-run');
+        const updateBtn = document.getElementById('btn-monday-update');
+        
+        if (btn.disabled) return;
+        
+        btn.disabled = true;
+        btn.innerHTML = '⏳ 分析中...';
+        updateBtn.disabled = true;
+        
+        try {
+            const response = await fetch('/api/strategy/monday-wave/run', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            
+            const data = await response.json();
+            
+            if (data.code === 0) {
+                showToast('🚀 周一战法已触发，结果将推送至飞书', 'success');
+                
+                // 延迟加载结果
+                setTimeout(async () => {
+                    await loadMondayConfig();
+                    // 模拟显示结果
+                    document.getElementById('monday-result').style.display = 'block';
+                    document.getElementById('monday-picks-body').innerHTML = `
+                        <tr>
+                            <td colspan="6" style="text-align:center; padding: 15px; color: var(--text-secondary);">选股结果已推送飞书，请查看消息</td>
+                        </tr>
+                    `;
+                }, 2000);
+            } else {
+                showToast('触发失败: ' + (data.message || '未知错误'), 'error');
+            }
+        } catch (error) {
+            console.error('触发周一战法失败:', error);
+            showToast('触发失败: ' + error.message, 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '🚀 手动触发选股';
+            updateBtn.disabled = false;
+        }
+    }
+
+    async function updateMondayData() {
+        const btn = document.getElementById('btn-monday-update');
+        const runBtn = document.getElementById('btn-monday-run');
+        
+        if (btn.disabled) return;
+        
+        btn.disabled = true;
+        btn.innerHTML = '⏳ 更新中...';
+        runBtn.disabled = true;
+        
+        try {
+            const response = await fetch('/api/strategy/monday-wave/update-data', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            
+            const data = await response.json();
+            
+            if (data.code === 0) {
+                showToast('📥 数据更新已触发', 'success');
+            } else {
+                showToast('更新失败: ' + (data.message || '未知错误'), 'error');
+            }
+        } catch (error) {
+            console.error('更新周一战法数据失败:', error);
+            showToast('更新失败: ' + error.message, 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '📥 更新策略数据';
+            runBtn.disabled = false;
+        }
+    }
+
     // Close autocomplete when clicking outside
     document.addEventListener('click', function(e) {
         const autocomplete = document.getElementById('port-autocomplete');
@@ -2834,6 +3013,7 @@
         loadConfig();
         loadAIConfig();
         loadPortfolioStocks();
+        loadMondayConfig();
         setInterval(refreshStatus, 5000);
         setInterval(refreshLogs, 2000);
         refreshLogs();

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-stockai_tray.pyw —— 陈明的专属量化助手 - 系统托盘应用
+stockai_tray.pyw —— 个人专属量化助手 - 系统托盘应用
 =====================================================
 
 提供系统托盘图标和右键菜单，方便用户快速操作：
@@ -143,7 +143,7 @@ def manage_portfolio(icon, item):
     class PortfolioManager:
         def __init__(self, root):
             self.root = root
-            self.root.title("持仓管理 - 陈明的量化助手")
+            self.root.title("持仓管理 - 个人的量化助手")
             self.root.geometry("600x450")
             
             self.portfolio = load_portfolio()
@@ -425,10 +425,10 @@ def main():
         "StockAI",
         icon=create_image(),
         menu=menu_factory(),
-        title="陈明的量化助手"
+        title="个人的量化助手"
     )
     
-    print(f"陈明的专属量化助手启动成功 ({datetime.now()})")
+    print(f"个人的专属量化助手启动成功 ({datetime.now()})")
     print("右键点击托盘图标访问菜单")
     
     icon.run()

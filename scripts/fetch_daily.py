@@ -16,6 +16,12 @@ from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List, Dict, Tuple, Optional
 
+try:
+    from config.performance_monitor import get_monitor, PerformanceTimer
+    HAS_PERF_MONITOR = True
+except ImportError:
+    HAS_PERF_MONITOR = False
+
 # 添加项目根目录到Python路径
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT_DIR)
@@ -213,8 +219,52 @@ def batch_fetch(stock_df: pd.DataFrame, start_date: str, end_date: str,
         'elapsed': elapsed
     }
 
+def _fetch_daily_tushare(trade_date: str) -> Optional[pd.DataFrame]:
+    """使用Tushare拉取单日日线数据"""
+    try:
+        df = pro.daily(
+            trade_date=trade_date,
+            fields='ts_code,trade_date,open,high,low,close,pre_close,'
+                   'change,pct_chg,vol,amount'
+        )
+        time.sleep(RATE_LIMIT_SLEEP)
+        return df
+    except Exception as e:
+        log.warning(f"Tushare接口拉取 {trade_date} 失败: {e}")
+        return None
+
+def _fetch_daily_akshare(trade_date: str) -> Optional[pd.DataFrame]:
+    """使用akshare作为降级方案拉取单日日线数据"""
+    try:
+        import akshare as ak
+        
+        date_str = f"{trade_date[:4]}-{trade_date[4:6]}-{trade_date[6:8]}"
+        df = ak.stock_zh_a_hist(symbol="all", period="daily", 
+                                start_date=date_str, end_date=date_str)
+        
+        if df.empty:
+            log.warning(f"akshare未获取到 {trade_date} 的数据")
+            return None
+            
+        # 转换格式
+        df['ts_code'] = df['代码'] + '.' + df['市场'].map({'沪市': 'SH', '深市': 'SZ'})
+        df['trade_date'] = trade_date
+        df = df.rename(columns={
+            '开盘': 'open', '最高': 'high', '最低': 'low', 
+            '收盘': 'close', '前收盘': 'pre_close',
+            '涨跌额': 'change', '涨跌幅': 'pct_chg',
+            '成交量': 'vol', '成交额': 'amount'
+        })
+        
+        df = df[['ts_code', 'trade_date', 'open', 'high', 'low', 'close', 
+                 'pre_close', 'change', 'pct_chg', 'vol', 'amount']]
+        return df
+    except Exception as e:
+        log.warning(f"akshare降级拉取 {trade_date} 失败: {e}")
+        return None
+
 def fetch_by_date_range(conn: sqlite3.Connection, start_date: str, end_date: str) -> dict:
-    """按日期批量拉取全市场日线数据 (优化版)"""
+    """按日期批量拉取全市场日线数据 (优化版，支持降级方案)"""
     start_ts = time.time()
     log.info(f"[DATE] 正在获取交易日历：{start_date} ~ {end_date}")
     
@@ -235,6 +285,7 @@ def fetch_by_date_range(conn: sqlite3.Connection, start_date: str, end_date: str
     new_rows = 0
     skipped = 0
     errors = 0
+    fallback_count = 0  # 记录使用降级方案的次数
     
     for t_date in trade_dates:
         try:
@@ -249,33 +300,65 @@ def fetch_by_date_range(conn: sqlite3.Connection, start_date: str, end_date: str
                 continue
                 
             log.info(f"[DATE] 正在拉取 {t_date} 的全市场日线数据...")
-            df = pro.daily(trade_date=t_date,
-                          fields='ts_code,trade_date,open,high,low,close,pre_close,'
-                                 'change,pct_chg,vol,amount')
-            time.sleep(RATE_LIMIT_SLEEP)
             
-            if df is not None and not df.empty:
-                with DB_LOCK:
-                    conn.execute("DELETE FROM daily_prices WHERE trade_date = ?", (t_date,))
-                    df.to_sql('daily_prices', conn, if_exists='append', index=False)
-                    conn.commit()
-                new_rows += len(df)
-                log.info(f"[OK] {t_date} 成功导入 {len(df)} 行日线数据")
+            # 使用性能监控记录每个日期的拉取
+            if HAS_PERF_MONITOR:
+                monitor = get_monitor()
+                with PerformanceTimer(monitor, f"daily_fetch_{t_date}", metadata={"date": t_date}) as timer:
+                    # 优先使用Tushare
+                    df = _fetch_daily_tushare(t_date)
+                    
+                    # 如果Tushare失败或返回空数据，尝试akshare降级
+                    if df is None or df.empty:
+                        log.warning(f"Tushare未获取到 {t_date} 数据，尝试akshare降级...")
+                        df = _fetch_daily_akshare(t_date)
+                        fallback_count += 1
+                    
+                    if df is not None and not df.empty:
+                        with DB_LOCK:
+                            conn.execute("DELETE FROM daily_prices WHERE trade_date = ?", (t_date,))
+                            df.to_sql('daily_prices', conn, if_exists='append', index=False)
+                            conn.commit()
+                        rows_added = len(df)
+                        new_rows += rows_added
+                        timer.add_records(rows_added)
+                        source = "akshare(降级)" if fallback_count > 0 else "Tushare"
+                        log.info(f"[OK] {t_date} 成功导入 {rows_added} 行日线数据 (来源: {source})")
+                    else:
+                        log.warning(f"[SKIP] {t_date} 无数据")
+                        skipped += 1
             else:
-                log.info(f"[WARNING] {t_date} 未拉取到有效数据，可能未开盘或接口无返回")
-                skipped += 1
+                # 无性能监控时的原始逻辑
+                df = _fetch_daily_tushare(t_date)
+                if df is None or df.empty:
+                    log.warning(f"Tushare未获取到 {t_date} 数据，尝试akshare降级...")
+                    df = _fetch_daily_akshare(t_date)
+                    fallback_count += 1
+                
+                if df is not None and not df.empty:
+                    with DB_LOCK:
+                        conn.execute("DELETE FROM daily_prices WHERE trade_date = ?", (t_date,))
+                        df.to_sql('daily_prices', conn, if_exists='append', index=False)
+                        conn.commit()
+                    new_rows += len(df)
+                    source = "akshare(降级)" if fallback_count > 0 else "Tushare"
+                    log.info(f"[OK] {t_date} 成功导入 {len(df)} 行日线数据 (来源: {source})")
+                else:
+                    log.warning(f"[SKIP] {t_date} 无数据")
+                    skipped += 1
         except Exception as e:
             log.error(f"[ERROR] 拉取 {t_date} 数据失败: {e}")
             errors += 1
             
     elapsed = time.time() - start_ts
-    log.info(f"\n[FINISH] 日期批量拉取完成！耗时 {elapsed:.1f} 秒 | 处理 {len(trade_dates)} 天 | 新增 {new_rows} 行 | 跳过 {skipped} 天 | 错误 {errors} 天")
+    log.info(f"\n[FINISH] 日期批量拉取完成！耗时 {elapsed:.1f} 秒 | 处理 {len(trade_dates)} 天 | 新增 {new_rows} 行 | 跳过 {skipped} 天 | 错误 {errors} 天 | 降级 {fallback_count} 次")
     
     return {
         'total': len(trade_dates),
         'new_rows': new_rows,
         'skipped': skipped,
         'errors': errors,
+        'fallback_count': fallback_count,
         'elapsed': elapsed
     }
 
@@ -285,7 +368,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Tushare 全市场数据拉取 v2.5")
     
     today = datetime.now().strftime("%Y%m%d")
-    parser.add_argument("--start", default="20200101", help="起始日期 YYYYMMDD")
+    parser.add_argument("--start", default="20210101", help="起始日期 YYYYMMDD")
     parser.add_argument("--end", default=today, help="截止日期 YYYYMMDD")
     parser.add_argument("--workers", type=int, default=8, help="并发线程数")
     parser.add_argument("--refresh-list", action="store_true", help="刷新股票列表")

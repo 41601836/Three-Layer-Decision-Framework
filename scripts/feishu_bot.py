@@ -27,10 +27,10 @@ log = logging.getLogger(__name__)
 try:
     from config_loader import get_config
     FEISHU_WEBHOOK = get_config("api.feishu_webhook", "")
-except ImportError:
+except (ImportError, FileNotFoundError, Exception):
     try:
         from scripts.tokens import FEISHU_WEBHOOK
-    except ImportError:
+    except (ImportError, FileNotFoundError):
         FEISHU_WEBHOOK = os.environ.get("FEISHU_WEBHOOK", "")
 
 TIMEOUT = 12
@@ -893,6 +893,7 @@ def send_daily_brief(
     trade_date: str = "",
     attachment_url: str = "",
     data_label: str = "",
+    extra_tip: str = "",
 ) -> bool:
     main_industries = main_industries or []
     backup_industries = backup_industries or []

@@ -36,10 +36,24 @@ CIRCUIT_BREAKER_LIMIT = 10
 
 def _get_pro():
     try:
-        from scripts.tokens import TOKEN
-    except ImportError:
-        from tokens import TOKEN
-    ts.set_token(TOKEN)
+        # 尝试从 config.json 读取
+        import sys
+        sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        from config_loader import get_config
+        token = get_config("api.tushare_token", "")
+        if token and "填入" not in token:
+            ts.set_token(token)
+            return ts.pro_api()
+    except Exception as e:
+        pass
+    
+    # 降级方案：使用环境变量或默认空 token
+    token = os.environ.get("TUSHARE_TOKEN", "")
+    if token:
+        ts.set_token(token)
+        return ts.pro_api()
+    
+    # 使用空 token（Tushare 会使用默认配置）
     return ts.pro_api()
 
 

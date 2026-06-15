@@ -23,7 +23,7 @@ import os
 import json
 import logging
 
-CONFIG_FILE = "config.json"
+CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
 _config_cache = None
 
 log = logging.getLogger(__name__)
