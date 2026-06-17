@@ -221,73 +221,15 @@ class MacroVeto:
 
     def check_all_veto(self) -> Dict[str, Any]:
         """
-        批量否决校验。
-        按顺序遍历 5 条规则，一旦触发立即终止校验。
+        批量否决校验。（已去除一票否决机制，固定返回未触发状态）
         """
-        missing_list = []
-        
-        # 1. 检查流动性枯竭 (Defend, Stop)
-        triggered, reason = self.check_liquidity(missing_list)
-        if triggered:
-            return {
-                "veto_triggered": True,
-                "veto_type": "defend",
-                "flow_status": "stop",
-                "trigger_reason": reason,
-                "missing_list": missing_list
-            }
-
-        # 2. 检查情绪崩塌 (Defend, Stop)
-        triggered, reason = self.check_sentiment_collapse(missing_list)
-        if triggered:
-            return {
-                "veto_triggered": True,
-                "veto_type": "defend",
-                "flow_status": "stop",
-                "trigger_reason": reason,
-                "missing_list": missing_list
-            }
-
-        # 3. 检查政策黑天鹅 (Defend, Stop)
-        triggered, reason = self.check_reg_policy(missing_list)
-        if triggered:
-            return {
-                "veto_triggered": True,
-                "veto_type": "defend",
-                "flow_status": "stop",
-                "trigger_reason": reason,
-                "missing_list": missing_list
-            }
-
-        # 4. 检查外围系统风险 (Defend, Stop)
-        triggered, reason = self.check_outer_system_risk(missing_list)
-        if triggered:
-            return {
-                "veto_triggered": True,
-                "veto_type": "defend",
-                "flow_status": "stop",
-                "trigger_reason": reason,
-                "missing_list": missing_list
-            }
-
-        # 5. 检查外围盘中闪崩 (Cautious, Continue)
-        triggered, reason = self.check_outer_flash_crash(missing_list)
-        if triggered:
-            return {
-                "veto_triggered": True,
-                "veto_type": "cautious",
-                "flow_status": "continue",
-                "trigger_reason": reason,
-                "missing_list": missing_list
-            }
-
-        # 未触发任何否决
+        decision_log.info("ℹ️ [MacroVeto] 一票否决机制已关闭，跳过所有否决规则校验。")
         return {
             "veto_triggered": False,
             "veto_type": None,
             "flow_status": "continue",
-            "trigger_reason": "未触发一票否决项，环境运转正常",
-            "missing_list": missing_list
+            "trigger_reason": "一票否决机制已去除",
+            "missing_list": []
         }
 
     def check_health_degree(self) -> Dict[str, Any]:

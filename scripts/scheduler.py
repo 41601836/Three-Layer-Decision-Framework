@@ -361,41 +361,41 @@ def run_full_pipeline(session_name: str = "手动触发", no_feishu: bool = Fals
         log.warning("持仓体检失败: %s", e)
 
     # =========================================================================
-    # 步骤4：三层漏斗选股
+    # 步骤4：三层漏斗选股 (使用新的 layer3_service)
     # =========================================================================
     selected_stocks = []
     try:
-        import main as main_module
-        industry_filter = main_line + backup_line if (main_line or backup_line) else None
-        ok = main_module.main(
-            session_name=session_name,
-            market_volume_status="放量" if market_mode == "attack" else "缩量",
-            sector_risk="正常",
-            industry_filter=industry_filter,
-            no_ai=False,
-        )
+        # 使用 scanner 进行预筛选
+        from scripts.scanner import scan_market
+        scan_df = scan_market(min_python_score=25, max_stocks=100)
         
-        # 获取精选结果
-        candidates = getattr(main_module, "_last_selected_candidates", [])
-        for c in candidates[:5]:  # 最多取5只
-            ts_code    = c.get("ts_code", "")
-            confidence = c.get("ai_confidence", -1)  # -1 表示 AI 未运行
-
-            # AI 信心指数过滤：confidence=-1（未运行）不过滤，<70 则跳过
-            if confidence != -1 and confidence < 70:
-                log.info("[精选] 跳过 %s：AI信心指数 %d/100（< 70，信号质量不足）",
-                         ts_code, confidence)
-                continue
-
-            conf_label = f" | AI信心: {confidence}/100" if confidence >= 0 else ""
-            selected_stocks.append({
-                "ts_code":    ts_code,
-                "name":       c.get("name", ""),
-                "score":      c.get("total_score", 0),
-                "suggestion": f"可轻仓介入{conf_label}",
-            })
-        log.info("[精选] 生成 %d 只精选股票（AI信心指数≥70 过滤后）", len(selected_stocks))
-        
+        if scan_df.empty:
+            log.info("无候选股，跳过策略选股")
+        else:
+            # 提取候选股列表
+            candidate_pool = scan_df['ts_code'].tolist()
+            sector = "全市场"
+            
+            # 调用策略服务
+            from backend.app.services.layer3_service import run_strategy
+            
+            for strategy_type in ['A', 'B', 'C']:
+                result = run_strategy(
+                    strategy_type=strategy_type,
+                    sector=sector,
+                    trade_date=today,
+                    candidate_pool=candidate_pool
+                )
+                log.info("策略 %s 筛选出 %d 只候选股", strategy_type, result.get("total_count", 0))
+                
+                # mock selected stocks
+                for cand in result.get("candidates", []):
+                    selected_stocks.append({
+                        "ts_code": cand.get("ts_code", ""),
+                        "name": cand.get("name", ""),
+                        "score": cand.get("score", 0),
+                        "suggestion": f"策略{strategy_type}精选"
+                    })
     except Exception as e:
         log.error("三层漏斗任务异常: %s", e)
 

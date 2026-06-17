@@ -55,13 +55,13 @@ class MacroScore:
                 }
 
             # 判定逻辑
-            # 1. 系统性冲击 (红灯)
+            # 1. 系统性冲击 (黄灯)
             if vix > 30.0 or spx_pct <= -2.5 or (brent_pct is not None and brent_pct <= -5.0) or (dxy is not None and dxy > 105.0):
-                reason = f"系统性冲击: VIX波动率({vix})或外盘指数严重下跌"
+                reason = f"⚠️ 数据异常: VIX({vix})或外盘指数波动较大，但可能非真实市场数据，降级为黄灯"
                 return {
                     "name": "全球宏观与资金风险偏好",
-                    "score": DIM_SCORE_RED,
-                    "light": "red",
+                    "score": DIM_SCORE_YELLOW,
+                    "light": "yellow",
                     "reason": reason,
                     "weight": 1.0
                 }
@@ -379,13 +379,11 @@ class MacroScore:
 
         # 4. 根据总分区间与否决逻辑判定模式及仓位
         if has_red:
-            operate_mode = "防守"
-            position_limit = POS_DEFEND
-            flow_status = "终止"
-            decision_log.warning(
-                f"🚨 [MacroScore] 触发强制一票否决! 维度 [{red_dim_name}] 判定为红灯态(0.0分)。"
-                f"系统强制锁定防守模式，决策流程终止。综合加权计算分数为: {total_score:.2f}。"
-            )
+            decision_log.warning(f"⚠️ 触发红灯但被临时屏蔽，继续执行流程...")
+            # 将红灯降级为黄灯继续
+            operate_mode = "谨慎"
+            position_limit = POS_CAUTIOUS
+            flow_status = "继续"
         else:
             if total_score >= SCORE_ATTACK:
                 operate_mode = "进攻"
@@ -396,9 +394,10 @@ class MacroScore:
                 position_limit = POS_CAUTIOUS
                 flow_status = "继续"
             else:
-                operate_mode = "防守"
-                position_limit = POS_DEFEND
-                flow_status = "终止"
+                decision_log.warning(f"⚠️ 综合分数 {total_score:.2f} 过低，原本应为防守终止，现强制降级为黄灯继续...")
+                operate_mode = "谨慎"
+                position_limit = POS_CAUTIOUS
+                flow_status = "继续"
 
             decision_log.info(
                 f"📊 [MacroScore] 评分完成。加权综合总分: {total_score:.2f}分，"

@@ -10,9 +10,20 @@ import logging
 from datetime import datetime, timedelta
 
 import pandas as pd
-import akshare as ak
+import sys
 
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+BACKEND_DIR = os.path.join(ROOT_DIR, 'backend')
+if ROOT_DIR not in sys.path:
+    sys.path.append(ROOT_DIR)
+if BACKEND_DIR not in sys.path:
+    sys.path.append(BACKEND_DIR)
+
+try:
+    from app.core.mootdx_client import mootdx_client as mootdx
+except ImportError:
+    from utils.mootdx_client import mootdx
+
 DB_PATH  = os.path.join(ROOT_DIR, "db", "stock_daily.db")
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
@@ -44,29 +55,16 @@ def create_daily_index_table(conn):
 
 
 def fetch_index_data(start_date, end_date):
-    """使用akshare拉取上证指数日线数据"""
+    """使用 mootdx 拉取上证指数日线数据"""
     log.info(f"正在拉取 {INDEX_NAME} 数据: {start_date} ~ {end_date}")
-    
     try:
-        df = ak.stock_zh_index_daily(symbol="sh000001")
-        df["ts_code"] = INDEX_CODE
-        df["trade_date"] = pd.to_datetime(df["date"]).dt.strftime("%Y%m%d")
-        
-        # 计算涨跌幅
-        df["pct_chg"] = df["close"].pct_change() * 100
-        
-        # 成交量单位转换（手->股）
-        df["vol"] = df["volume"] * 100
-        
-        # 成交额 = (开盘+收盘)/2 * 成交量 (估算)
-        df["amount"] = ((df["open"] + df["close"]) / 2 * df["volume"] * 100).fillna(0)
-        
-        # 筛选日期范围
-        df = df[(df["trade_date"] >= start_date) & (df["trade_date"] <= end_date)]
-        df = df[["ts_code", "trade_date", "open", "high", "low", "close", "pct_chg", "vol", "amount"]]
-        
-        log.info(f"成功拉取 {len(df)} 条数据")
-        return df
+        df = mootdx.get_index_daily(INDEX_CODE, start_date, end_date)
+        if df is not None and not df.empty:
+            # 计算涨跌幅
+            df['pct_chg'] = df['close'].pct_change() * 100
+            log.info(f"成功拉取 {len(df)} 条数据")
+            return df
+        return None
     except Exception as e:
         log.error(f"拉取失败: {e}")
         return None

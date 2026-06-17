@@ -19,9 +19,22 @@ from datetime import datetime
 from pathlib import Path
 
 ROOT_DIR     = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, ROOT_DIR)
+
+# 尝试从全局配置 config 导入，确保配置统一
+try:
+    from config import AI_CONFIG
+    OLLAMA_API   = AI_CONFIG.get("ollama_api", "http://localhost:11434/api/chat")
+    OLLAMA_MODEL = AI_CONFIG.get("model", "qwen2.5:1.5b")
+    TIMEOUT_CONN = AI_CONFIG.get("timeout_conn", 10)
+    TIMEOUT_READ = AI_CONFIG.get("timeout_read", 120)
+except ImportError:
+    OLLAMA_API   = "http://localhost:11434/api/chat"
+    OLLAMA_MODEL = "qwen2.5:1.5b"
+    TIMEOUT_CONN = 10
+    TIMEOUT_READ = 120
+
 REPORTS_DIR  = os.path.join(ROOT_DIR, "reports")
-OLLAMA_API   = "http://localhost:11434/api/chat"
-OLLAMA_MODEL = "qwen2.5:1.5b"
 
 # 触发 AI 报告的最低 Python 评分（满分70），由于催化最高30分，需要40分才有机会上70分
 AI_TRIGGER_THRESHOLD = 40
@@ -120,25 +133,21 @@ def _parse_dim_score(detail_str: str, max_score: int) -> int:
 
 def call_ollama(system_prompt: str, user_msg: str,
                 model: str = OLLAMA_MODEL) -> str:
-    """调用 Ollama 流式输出，返回完整响应文本。"""
+    """调用 Ollama，返回完整响应文本。"""
     payload = {
         "model":    model,
         "messages": [
             {"role": "system",  "content": system_prompt},
             {"role": "user",    "content": user_msg},
         ],
-        "stream": True,
+        "stream": False,
     }
     try:
         resp = requests.post(OLLAMA_API, json=payload,
-                             stream=True, timeout=(10, 120))
+                             timeout=(TIMEOUT_CONN, TIMEOUT_READ))
         resp.raise_for_status()
-        content = ""
-        for line in resp.iter_lines():
-            if line:
-                obj   = json.loads(line.decode("utf-8"))
-                token = obj.get("message", {}).get("content", "")
-                content += token
+        obj = resp.json()
+        content = obj.get("message", {}).get("content", "")
         return content.strip()
     except requests.exceptions.ConnectionError:
         log.warning("Ollama 未启动，跳过 AI 分析")

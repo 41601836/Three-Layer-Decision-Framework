@@ -114,7 +114,7 @@ class TotalWorkflow:
                 decision_log.warning(f"🚨 [TotalWorkflow] 决策中断：{reason}")
                 return self._build_terminate_result("中途终止", reason, macro_sum, board_sum, all_missing, global_risks)
                 
-            # (2) 一票否决与健康度评估 (macro_veto)
+            # (2) 大盘健康度评估 (一票否决机制已去除)
             veto_res = macro_veto.run()
             veto_triggered = veto_res.get("veto_result", {}).get("veto_triggered", False)
             veto_reason = veto_res.get("veto_result", {}).get("trigger_reason", "")
@@ -125,6 +125,7 @@ class TotalWorkflow:
             health_risks = veto_res.get("health_result", {}).get("risk_list", [])
             global_risks.extend(health_risks)
             
+            # 兼容逻辑：若未来重新启用一票否决，此处保留阻断流转逻辑
             if veto_triggered:
                 macro_sum["veto_trigger"] = "是"
                 # 如果是一票否决中需要阻断的 (例如 "stop" 状态)

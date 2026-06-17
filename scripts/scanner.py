@@ -22,32 +22,25 @@ import time
 from datetime import datetime
 
 import pandas as pd
-import tushare as ts
+
+import sys
 
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DB_PATH  = os.path.join(ROOT_DIR, "db", "stock_daily.db")
-sys.path.insert(0, ROOT_DIR)
+BACKEND_DIR = os.path.join(ROOT_DIR, 'backend')
+if ROOT_DIR not in sys.path:
+    sys.path.append(ROOT_DIR)
+if BACKEND_DIR not in sys.path:
+    sys.path.append(BACKEND_DIR)
+
+try:
+    from app.core.mootdx_client import mootdx_client as mootdx
+except ImportError:
+    from utils.mootdx_client import mootdx
 
 log = logging.getLogger(__name__)
 
 # 连续API错误熔断阈值
 CIRCUIT_BREAKER_LIMIT = 10
-
-
-def _get_pro():
-    import os
-    try:
-        from scripts.tokens import TOKEN
-    except ImportError:
-        try:
-            from tokens import TOKEN
-        except ImportError:
-            TOKEN = os.environ.get('TUSHARE_TOKEN', '')
-    
-    return ts.pro_api(TOKEN)
-
-
-pro = _get_pro()
 
 
 # =============================================================================
@@ -63,19 +56,16 @@ def is_trade_day(date_str: str = None) -> bool:
     global _trade_cal_cache
     if not _trade_cal_cache:
         try:
-            df = pro.trade_cal(exchange="SSE",
-                               start_date=datetime.now().strftime("%Y0101"),
-                               end_date=datetime.now().strftime("%Y1231"),
-                               fields="cal_date,is_open")
-            _trade_cal_cache = dict(zip(df["cal_date"], df["is_open"]))
+            year = datetime.now().year
+            dates = mootdx.get_trade_dates(f"{year}0101", f"{year}1231")
+            _trade_cal_cache = {d: 1 for d in dates}
             log.info("交易日历已加载 %d 条", len(_trade_cal_cache))
         except Exception as e:
             log.warning("交易日历加载失败，默认非周末视为交易日: %s", e)
-            # 降级：非周末视为交易日
             dt = datetime.strptime(date_str, "%Y%m%d")
             return dt.weekday() < 5
 
-    return bool(_trade_cal_cache.get(date_str, 0))
+    return date_str in _trade_cal_cache
 
 
 # =============================================================================

@@ -51,9 +51,13 @@ import json
 import logging
 import requests
 import sqlite3
+import threading
 import pandas as pd
 import tushare as ts
 from datetime import datetime
+
+# 全局 Ollama 互斥锁，保护算力
+OLLAMA_POOL_LOCK = threading.Lock()
 
 # --- 路径 & 日志 ---
 ROOT_DIR   = os.path.dirname(os.path.abspath(__file__))
@@ -1200,23 +1204,23 @@ def call_ollama(prompt: str, model: str = None) -> tuple:
             model = "qwen2.5:1.5b"
 
     try:
-        resp = requests.post(
-            OLLAMA_API,
-            json={"model": model,
-                  "messages": [{"role": "user", "content": prompt}],
-                  "stream": True},
-            stream=True, timeout=(10, 300)
-        )
-        resp.raise_for_status()
-        content = ""
-        print("🤖 [AI 正在思考]: ", end="", flush=True)
-        for chunk in resp.iter_lines():
-            if chunk:
-                obj   = json.loads(chunk.decode("utf-8"))
-                token = obj.get("message", {}).get("content", "")
-                print(token, end="", flush=True)
-                content += token
-        print("\n✅ [AI 思考完毕]")
+        with OLLAMA_POOL_LOCK:
+            resp = requests.post(
+                OLLAMA_API,
+                json={"model": model,
+                      "messages": [{"role": "user", "content": prompt}],
+                      "stream": False,
+                      "options": {
+                          "temperature": 0.1,
+                          "top_p": 0.15,
+                          "num_predict": 1024,
+                          "num_thread": 4
+                      }},
+                timeout=(10, 300)
+            )
+            resp.raise_for_status()
+        obj = resp.json()
+        content = obj.get("message", {}).get("content", "")
         confidence = parse_confidence(content)
         if confidence == -1:
             log.warning("⚠️ AI 未输出 [Confidence: X] 标签，请检查 prompt是否正确")

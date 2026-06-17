@@ -28,11 +28,11 @@ FILTER_CONFIG = {
 
 # ── 第二层：AI 深度分析配置 ──────────────────────────────────────────────────
 AI_CONFIG = {
-    "model":          "qwen2.5:7b-instruct-q4_K_M",
+    "model":          "qwen2.5:1.5b",
     "ollama_api":     "http://localhost:11434/api/chat",
-    "max_concurrent": 3,       # 并发数上限，防止爆显存
-    "timeout_conn":   10,      # 连接超时（秒）
-    "timeout_read":   120,     # 读取超时（秒）
+    "max_concurrent": 2,       # 1.5b 占用低，推荐并发 2 以提升速度
+    "timeout_conn":   15,      # 连接超时（秒）
+    "timeout_read":   180,     # 读取超时（秒）
     "trigger_score":  40,      # Python 分低于此值不触发 AI
     "output_dir":     os.path.join(ROOT_DIR, "data", "ai_results"),
 }

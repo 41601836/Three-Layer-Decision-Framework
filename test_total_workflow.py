@@ -5,7 +5,7 @@ test_total_workflow.py —— 三层量化决策框架全流程总调度一键�
 
 本脚本独立测试顶层总入口 workflow_total，验证以下四大核心测试场景：
 1. 正常行情场景 (验证全链路成功走完、标准化交易指令输出与多因子仓位分配)
-2. 否决硬拦截场景 (验证流动性枯竭触发一票否决，第一层宏观诊断提前终止退出)
+2. 红灯打分拦截场景 (验证流动性枯竭时虽无一票否决，但仍触发宏观打分红灯拦截终止)
 3. 部分数据缺失降级场景 (验证当历史日线天数不足时，数据缺失去重展现且风控降级生效)
 4. 全局异常容错场景 (验证当某一子模块发生 Runtime 严重崩溃时，顶层全局捕获不崩溃并优雅输出)
 """
@@ -195,8 +195,8 @@ def setup_base_mock_db(is_missing_prices=False, is_liquidity_veto=False):
                 vol_val = 1000.0  # 均量 1000
                 turnover_val = 3.0
                 
-            # 每日大盘两市成交额
-            market_total_amount = 300000000.0 if is_liquidity_veto and dt == LATEST_DATE else 1000000000.0
+            # 每日大盘两市成交额 (修改为1亿以使3只股票总额为3亿，触发宏观打分红灯拦截)
+            market_total_amount = 100000000.0 if is_liquidity_veto and dt == LATEST_DATE else 1000000000.0
             
             cursor.execute("""
                 INSERT INTO daily_prices (ts_code, trade_date, open, high, low, close, vol, amount, pct_chg) 
@@ -276,9 +276,9 @@ def test_normal():
     finally:
         tear_down_mock_db()
 
-def test_veto_terminate():
-    print("=================== 场景 2：第一层宏观一票否决中途拦截验证 ===================")
-    # 模拟流动性一票否决 (大额流出，且成交额骤降)
+def test_red_light_terminate():
+    print("=================== 场景 2：第一层宏观打分红灯拦截验证 ===================")
+    # 模拟流动性枯竭 (一票否决已去除，由成交额极低触发宏观打分硬红灯拦截)
     setup_base_mock_db(is_liquidity_veto=True)
     try:
         res = total_workflow.run()
@@ -314,7 +314,7 @@ def test_global_exception():
 def main():
     print("🛸 开始进行《三层量化决策框架》全链路顶层总调度集成测试...")
     test_normal()
-    test_veto_terminate()
+    test_red_light_terminate()
     test_data_missing()
     test_global_exception()
     print("🏁 集成测试结束！")

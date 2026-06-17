@@ -1,71 +1,76 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>StockAI Funnel — 三层漏斗智能选股系统</title>
-    <meta name="description" content="StockAI Funnel A股量化分析系统控制台，三层漏斗架构，本地 Ollama 驱动">
+    <title>StockAI Funnel — 三层决策框架量化系统</title>
+    <meta name="description" content="基于本地LLM算力保护与三层渐进式决策框架的A股量化交易系统">
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
     <style>
         /* ═══════════════════════════════════════════════════
-           DESIGN TOKENS
+           DESIGN TOKENS (高级暗黑科技滤镜)
         ═══════════════════════════════════════════════════ */
         :root {
-            --bg-base:        #060b14;
-            --bg-surface:     #0d1526;
-            --bg-elevated:    #111d35;
-            --bg-hover:       #162040;
+            --bg-base: #040811;
+            --bg-surface: #091122;
+            --bg-elevated: #0f1a30;
+            --bg-hover: #142442;
 
-            --glass-bg:       rgba(13, 21, 38, 0.7);
-            --glass-border:   rgba(255, 255, 255, 0.07);
-            --glass-shine:    rgba(255, 255, 255, 0.03);
+            --glass-bg: rgba(9, 17, 34, 0.75);
+            --glass-border: rgba(255, 255, 255, 0.05);
+            --glass-shine: rgba(255, 255, 255, 0.02);
 
-            --emerald-400:    #34d399;
-            --emerald-500:    #10b981;
-            --emerald-600:    #059669;
-            --emerald-glow:   rgba(16, 185, 129, 0.25);
+            --emerald-400: #34d399;
+            --emerald-500: #10b981;
+            --emerald-glow: rgba(16, 185, 129, 0.2);
 
-            --blue-400:       #60a5fa;
-            --blue-500:       #3b82f6;
-            --blue-600:       #2563eb;
-            --blue-glow:      rgba(59, 130, 246, 0.25);
+            --blue-400: #60a5fa;
+            --blue-500: #3b82f6;
+            --blue-glow: rgba(59, 130, 246, 0.2);
 
-            --violet-400:     #a78bfa;
-            --violet-500:     #8b5cf6;
-            --violet-glow:    rgba(139, 92, 246, 0.25);
+            --violet-400: #a78bfa;
+            --violet-500: #8b5cf6;
+            --violet-glow: rgba(139, 92, 246, 0.2);
 
-            --amber-400:      #fbbf24;
-            --amber-500:      #f59e0b;
-            --amber-glow:     rgba(245, 158, 11, 0.25);
+            --amber-400: #fbbf24;
+            --amber-500: #f59e0b;
 
-            --red-400:        #f87171;
-            --red-500:        #ef4444;
-            --red-glow:       rgba(239, 68, 68, 0.25);
+            --red-400: #f87171;
+            --red-500: #ef4444;
 
-            --text-primary:   #f1f5f9;
+            --text-primary: #f8fafc;
             --text-secondary: #94a3b8;
-            --text-muted:     #475569;
-            --text-accent:    var(--emerald-400);
+            --text-muted: #475569;
 
-            --nav-width:      72px;
-            --header-h:       64px;
-            --radius-sm:      8px;
-            --radius-md:      12px;
-            --radius-lg:      18px;
-            --radius-xl:      24px;
+            --nav-width: 64px;
+            --nav-width-expanded: 180px;
+            --header-h: 64px;
+            --radius-sm: 6px;
+            --radius-md: 10px;
+            --radius-lg: 16px;
 
-            --transition-fast:   0.15s cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
             --transition-normal: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-            --transition-slow:   0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         /* ═══════════════════════════════════════════════════
-           RESET & BASE
+           RESET & BASIC LAYOUT
         ═══════════════════════════════════════════════════ */
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
 
-        html { scroll-behavior: smooth; }
+        html {
+            scroll-behavior: smooth;
+        }
 
         body {
             font-family: 'Inter', system-ui, sans-serif;
@@ -76,39 +81,31 @@
             overflow-x: hidden;
         }
 
-        /* Ambient light orbs */
-        body::before, body::after {
+        /* 背景氛围灯 */
+        body::before {
             content: '';
             position: fixed;
             border-radius: 50%;
-            filter: blur(120px);
+            filter: blur(140px);
             pointer-events: none;
             z-index: 0;
-        }
-        body::before {
-            width: 600px; height: 600px;
-            background: radial-gradient(circle, rgba(16, 185, 129, 0.07) 0%, transparent 70%);
-            top: -200px; left: -100px;
-        }
-        body::after {
-            width: 500px; height: 500px;
-            background: radial-gradient(circle, rgba(59, 130, 246, 0.07) 0%, transparent 70%);
-            bottom: -150px; right: -50px;
+            width: 700px;
+            height: 700px;
+            background: radial-gradient(circle, rgba(139, 92, 246, 0.04) 0%, transparent 70%);
+            top: -200px;
+            left: -100px;
         }
 
         /* ═══════════════════════════════════════════════════
-           SIDEBAR NAV
+           SIDEBAR NAV (高集成度侧边栏)
         ═══════════════════════════════════════════════════ */
-        :root {
-            --nav-width: 64px;
-            --nav-width-expanded: 180px;
-        }
-
         .sidebar {
             position: fixed;
-            left: 0; top: 0; bottom: 0;
+            left: 0;
+            top: 0;
+            bottom: 0;
             width: var(--nav-width);
-            background: rgba(13, 21, 38, 0.85);
+            background: rgba(7, 13, 26, 0.9);
             backdrop-filter: blur(20px);
             border-right: 1px solid var(--glass-border);
             display: flex;
@@ -116,7 +113,7 @@
             align-items: center;
             padding: 16px 0;
             z-index: 100;
-            gap: 4px;
+            gap: 6px;
             transition: width var(--transition-normal);
             overflow: hidden;
         }
@@ -126,55 +123,45 @@
         }
 
         .sidebar-logo {
-            width: 40px; height: 40px;
-            background: linear-gradient(135deg, var(--emerald-500), var(--blue-500));
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--violet-500), var(--blue-500));
             border-radius: var(--radius-sm);
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 18px;
             margin-bottom: 20px;
-            box-shadow: 0 0 20px var(--emerald-glow);
+            box-shadow: 0 0 20px var(--blue-glow);
             flex-shrink: 0;
             cursor: pointer;
         }
 
         .nav-item {
             width: calc(100% - 12px);
-            min-height: 44px;
-            max-height: 44px;
+            min-height: 40px;
             border-radius: var(--radius-sm);
             display: flex;
             align-items: center;
-            justify-content: flex-start;
             padding: 0 10px;
             cursor: pointer;
             position: relative;
             transition: all var(--transition-fast);
-            color: #86909c;
+            color: var(--text-secondary);
             border: 1px solid transparent;
             background: none;
-            font-size: 18px;
-            gap: 10px;
-            overflow: hidden;
-        }
-
-        .nav-item .nav-icon {
-            width: 24px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
+            font-size: 16px;
+            gap: 12px;
+            text-decoration: none;
         }
 
         .nav-item .nav-label {
-            font-size: 0.78rem;
+            font-size: 0.8rem;
             font-weight: 500;
             white-space: nowrap;
             opacity: 0;
             transform: translateX(-8px);
             transition: all var(--transition-fast);
-            flex-shrink: 0;
         }
 
         .sidebar.expanded .nav-item .nav-label {
@@ -183,48 +170,14 @@
         }
 
         .nav-item:hover {
-            background: rgba(16, 185, 129, 0.08);
-            color: var(--emerald-400);
-            border-color: rgba(16, 185, 129, 0.2);
+            background: rgba(255, 255, 255, 0.03);
+            color: var(--text-primary);
         }
 
         .nav-item.active {
-            background: rgba(16, 185, 129, 0.12);
-            color: var(--emerald-400);
-            border-color: rgba(16, 185, 129, 0.3);
-            box-shadow: 0 0 16px rgba(16, 185, 129, 0.2);
-        }
-
-        .nav-item.disabled {
-            opacity: 0.4;
-            cursor: not-allowed;
-        }
-
-        .nav-item.disabled:hover {
-            background: none;
-            color: #86909c;
-            border-color: transparent;
-            box-shadow: none;
-        }
-
-        .nav-item .nav-tooltip {
-            position: absolute;
-            left: calc(100% + 12px);
-            background: var(--bg-elevated);
-            border: 1px solid var(--glass-border);
-            padding: 6px 12px;
-            border-radius: var(--radius-sm);
-            font-size: 0.75rem;
-            white-space: nowrap;
-            pointer-events: none;
-            opacity: 0;
-            transform: translateX(-4px);
-            transition: all var(--transition-fast);
-        }
-
-        .nav-item:hover:not(.disabled) .nav-tooltip {
-            opacity: 1;
-            transform: translateX(0);
+            background: rgba(59, 130, 246, 0.1);
+            color: var(--blue-400);
+            border-color: rgba(59, 130, 246, 0.2);
         }
 
         .nav-divider {
@@ -238,13 +191,11 @@
             position: absolute;
             top: 6px;
             right: 8px;
-            width: 8px;
-            height: 8px;
+            width: 6px;
+            height: 6px;
             background: var(--red-500);
             border-radius: 50%;
-            box-shadow: 0 0 6px var(--red-glow);
             opacity: 0;
-            transition: opacity var(--transition-fast);
         }
 
         .nav-badge.active {
@@ -253,45 +204,27 @@
 
         .nav-toggle-btn {
             position: absolute;
-            right: -8px;
-            top: 50%;
-            transform: translateY(-50%);
-            width: 16px;
-            height: 32px;
-            background: var(--bg-surface);
+            right: 4px;
+            bottom: 16px;
+            width: 24px;
+            height: 24px;
+            background: var(--bg-elevated);
             border: 1px solid var(--glass-border);
-            border-left: none;
-            border-radius: 0 4px 4px 0;
+            border-radius: 50%;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: var(--text-muted);
-            font-size: 10px;
-            transition: all var(--transition-fast);
-        }
-
-        .nav-toggle-btn:hover {
-            background: var(--bg-elevated);
-            color: var(--text-primary);
+            color: var(--text-secondary);
+            font-size: 12px;
         }
 
         .sidebar.expanded .nav-toggle-btn {
-            transform: translateY(-50%) rotate(180deg);
-        }
-
-        /* Loading spinner for sync */
-        .nav-loading {
-            animation: spin 1.5s linear infinite;
-        }
-
-        @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
+            transform: rotate(180deg);
         }
 
         /* ═══════════════════════════════════════════════════
-           MAIN LAYOUT
+           MAIN CONTENT ARRANGEMENT
         ═══════════════════════════════════════════════════ */
         .main {
             margin-left: var(--nav-width);
@@ -303,904 +236,297 @@
             z-index: 1;
         }
 
-        /* ═══════════════════════════════════════════════════
-           TOPBAR
-        ═══════════════════════════════════════════════════ */
         .topbar {
             height: var(--header-h);
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 0 28px;
+            padding: 0 24px;
             border-bottom: 1px solid var(--glass-border);
-            background: rgba(6, 11, 20, 0.8);
+            background: rgba(4, 8, 17, 0.8);
             backdrop-filter: blur(16px);
             position: sticky;
             top: 0;
             z-index: 50;
         }
 
-        .topbar-left {
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-        }
-
         .topbar-title {
             font-size: 1rem;
             font-weight: 700;
-            background: linear-gradient(90deg, var(--emerald-400), var(--blue-400));
+            background: linear-gradient(90deg, var(--text-primary), var(--blue-400));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            background-clip: text;
-            letter-spacing: -0.3px;
         }
 
         .topbar-sub {
-            font-size: 0.72rem;
+            font-size: 0.7rem;
             color: var(--text-muted);
             font-family: 'JetBrains Mono', monospace;
-        }
-
-        .topbar-right {
-            display: flex;
-            align-items: center;
-            gap: 16px;
+            margin-top: 2px;
         }
 
         .system-badge {
             display: flex;
             align-items: center;
             gap: 8px;
-            padding: 6px 14px;
-            background: var(--glass-bg);
+            padding: 4px 12px;
+            background: var(--bg-surface);
             border: 1px solid var(--glass-border);
             border-radius: 100px;
-            font-size: 0.78rem;
+            font-size: 0.75rem;
             color: var(--text-secondary);
         }
 
         .pulse-dot {
-            width: 8px; height: 8px;
+            width: 6px;
+            height: 6px;
             border-radius: 50%;
             background: var(--emerald-500);
-            box-shadow: 0 0 0 0 var(--emerald-glow);
-            animation: pulse-ring 2s infinite;
-            flex-shrink: 0;
+            box-shadow: 0 0 8px var(--emerald-glow);
         }
 
-        .time-display {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.82rem;
-            color: var(--text-secondary);
-            padding: 6px 14px;
-            background: var(--glass-bg);
-            border: 1px solid var(--glass-border);
-            border-radius: 100px;
-        }
-
-        /* ═══════════════════════════════════════════════════
-           CONTENT AREA
-        ═══════════════════════════════════════════════════ */
         .content {
-            padding: 28px;
+            padding: 24px;
             display: flex;
             flex-direction: column;
-            gap: 24px;
-            flex: 1;
-        }
-
-        /* ═══════════════════════════════════════════════════
-           SECTION TABS
-        ═══════════════════════════════════════════════════ */
-        .tab-bar {
-            display: flex;
-            gap: 4px;
-            background: var(--bg-surface);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius-md);
-            padding: 4px;
-            width: fit-content;
-        }
-
-        .tab-btn {
-            padding: 7px 18px;
-            border-radius: var(--radius-sm);
-            font-size: 0.82rem;
-            font-weight: 500;
-            cursor: pointer;
-            border: none;
-            background: none;
-            color: var(--text-muted);
-            transition: all var(--transition-fast);
-            font-family: inherit;
-        }
-
-        .tab-btn.active {
-            background: var(--bg-elevated);
-            color: var(--text-primary);
-        }
-
-        .tab-btn:hover:not(.active) {
-            color: var(--text-secondary);
-        }
-
-        /* ═══════════════════════════════════════════════════
-           METRIC CARDS ROW
-        ═══════════════════════════════════════════════════ */
-        .metrics-row {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 16px;
-        }
-
-        .metric-card {
-            background: var(--glass-bg);
-            backdrop-filter: blur(20px);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius-lg);
-            padding: 20px 22px;
-            position: relative;
-            overflow: hidden;
-            transition: all var(--transition-normal);
-        }
-
-        .metric-card::before {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; right: 0;
-            height: 1px;
-            background: linear-gradient(90deg, transparent, var(--glass-shine), transparent);
-        }
-
-        .metric-card:hover {
-            border-color: rgba(255,255,255,0.12);
-            transform: translateY(-2px);
-            box-shadow: 0 12px 40px rgba(0,0,0,0.3);
-        }
-
-        .metric-label {
-            font-size: 0.72rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            color: var(--text-muted);
-            margin-bottom: 12px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .metric-value {
-            font-size: 1.9rem;
-            font-weight: 700;
-            font-family: 'JetBrains Mono', monospace;
-            color: var(--text-primary);
-            line-height: 1;
-            margin-bottom: 6px;
-        }
-
-        .metric-sub {
-            font-size: 0.73rem;
-            color: var(--text-muted);
-        }
-
-        .metric-icon {
-            position: absolute;
-            right: 20px;
-            top: 50%;
-            transform: translateY(-50%);
-            font-size: 32px;
-            opacity: 0.12;
-        }
-
-        .metric-accent-line {
-            position: absolute;
-            bottom: 0; left: 0; right: 0;
-            height: 3px;
-            border-radius: 0 0 var(--radius-lg) var(--radius-lg);
-        }
-
-        /* ═══════════════════════════════════════════════════
-           MAIN GRID
-        ═══════════════════════════════════════════════════ */
-        .main-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
             gap: 20px;
-        }
-
-        .main-grid .span-2 {
-            grid-column: span 2;
+            flex: 1;
+            max-w: 1600px;
+            margin: 0 auto;
+            width: 100%;
         }
 
         /* ═══════════════════════════════════════════════════
-           GLASS CARD
+           THREE-LAYER ARCHITECTURE DASHBOARD COMPONENT
         ═══════════════════════════════════════════════════ */
         .card {
             background: var(--glass-bg);
             backdrop-filter: blur(20px);
             border: 1px solid var(--glass-border);
             border-radius: var(--radius-lg);
-            padding: 24px;
-            position: relative;
-            overflow: hidden;
-            transition: border-color var(--transition-normal);
-        }
-
-        .card::before {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; right: 0;
-            height: 1px;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent);
-        }
-
-        .card:hover {
-            border-color: rgba(255,255,255,0.1);
+            padding: 20px;
+            relative: overflow: hidden;
         }
 
         .card-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 22px;
+            margin-bottom: 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            padding-bottom: 12px;
         }
 
         .card-title {
-            font-size: 0.88rem;
+            font-size: 0.85rem;
             font-weight: 700;
             color: var(--text-primary);
             display: flex;
             align-items: center;
             gap: 8px;
-            text-transform: uppercase;
-            letter-spacing: 0.06em;
-        }
-
-        .card-title-icon {
-            width: 28px; height: 28px;
-            border-radius: 7px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 14px;
-        }
-
-        .icon-emerald { background: rgba(16,185,129,0.15); }
-        .icon-blue    { background: rgba(59,130,246,0.15); }
-        .icon-violet  { background: rgba(139,92,246,0.15); }
-        .icon-amber   { background: rgba(245,158,11,0.15); }
-        .icon-red     { background: rgba(239,68,68,0.15); }
-
-        .card-badge {
-            font-size: 0.7rem;
-            font-weight: 600;
-            padding: 3px 10px;
-            border-radius: 100px;
-            text-transform: uppercase;
             letter-spacing: 0.05em;
+            text-transform: uppercase;
         }
 
-        .badge-live { background: rgba(16,185,129,0.15); color: var(--emerald-400); }
-        .badge-idle { background: rgba(71,85,105,0.2); color: var(--text-muted); }
-        .badge-running { background: rgba(59,130,246,0.15); color: var(--blue-400); }
-
-        /* ═══════════════════════════════════════════════════
-           STATUS ROWS
-        ═══════════════════════════════════════════════════ */
-        .status-list {
-            display: flex;
-            flex-direction: column;
-            gap: 0;
-        }
-
-        .status-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 14px 0;
-            border-bottom: 1px solid rgba(255,255,255,0.04);
-        }
-
-        .status-row:last-child { border-bottom: none; }
-
-        .status-label {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-size: 0.82rem;
-            color: var(--text-secondary);
-        }
-
-        .indicator {
-            width: 8px; height: 8px;
-            border-radius: 50%;
-            flex-shrink: 0;
-        }
-
-        .indicator.active {
-            background: var(--emerald-500);
-            box-shadow: 0 0 0 0 var(--emerald-glow);
-            animation: pulse-ring 2s infinite;
-        }
-
-        .indicator.inactive { background: var(--text-muted); }
-        .indicator.warning { background: var(--amber-500); }
-
-        .status-val {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.82rem;
-            font-weight: 600;
+        .card-title span {
+            font-size: 12px;
+            padding: 2px 6px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
             color: var(--blue-400);
         }
 
-        /* ═══════════════════════════════════════════════════
-           FORM ELEMENTS
-        ═══════════════════════════════════════════════════ */
-        .form-group {
-            margin-bottom: 16px;
-        }
-
-        .form-label {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 8px;
-            font-size: 0.78rem;
-            font-weight: 500;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.06em;
-        }
-
-        .form-label span {
-            color: var(--text-primary);
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.85rem;
-            text-transform: none;
-            letter-spacing: 0;
-        }
-
-        input[type="text"],
-        input[type="password"],
-        select,
-        textarea {
-            width: 100%;
-            background: rgba(0, 0, 0, 0.3);
-            border: 1px solid var(--glass-border);
-            color: var(--text-primary);
-            padding: 10px 14px;
-            border-radius: var(--radius-sm);
-            font-family: 'Inter', sans-serif;
-            font-size: 0.85rem;
-            transition: all var(--transition-fast);
-            outline: none;
-        }
-
-        input:focus, select:focus, textarea:focus {
-            border-color: var(--blue-500);
-            background: rgba(0, 0, 0, 0.4);
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-        }
-
-        select option {
-            background: var(--bg-elevated);
-        }
-
-        /* Range slider */
-        .range-wrapper {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        input[type="range"] {
-            flex: 1;
-            -webkit-appearance: none;
-            background: transparent;
-            height: 4px;
-        }
-
-        input[type="range"]::-webkit-slider-runnable-track {
-            background: rgba(255,255,255,0.08);
-            height: 4px;
-            border-radius: 2px;
-        }
-
-        input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            width: 16px; height: 16px;
-            border-radius: 50%;
-            background: var(--emerald-500);
-            margin-top: -6px;
-            cursor: pointer;
-            box-shadow: 0 0 8px var(--emerald-glow);
-            transition: transform var(--transition-fast);
-        }
-
-        input[type="range"]:hover::-webkit-slider-thumb {
-            transform: scale(1.2);
-        }
-
-        .range-val {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.85rem;
-            color: var(--emerald-400);
-            min-width: 28px;
-            text-align: right;
-        }
-
-        /* ═══════════════════════════════════════════════════
-           BUTTONS
-        ═══════════════════════════════════════════════════ */
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            padding: 10px 18px;
-            border-radius: var(--radius-sm);
-            font-weight: 600;
-            font-size: 0.82rem;
-            cursor: pointer;
-            border: none;
-            color: white;
-            transition: all var(--transition-fast);
-            font-family: 'Inter', sans-serif;
-            position: relative;
+        /* 顶层整合控制台增强 */
+        .strategy-board {
+            background: var(--bg-surface);
+            border: 1px solid rgba(139, 92, 246, 0.15);
+            border-radius: var(--radius-lg);
             overflow: hidden;
-            white-space: nowrap;
-        }
-
-        .btn::after {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background: rgba(255,255,255,0);
-            transition: background var(--transition-fast);
-        }
-
-        .btn:hover::after { background: rgba(255,255,255,0.08); }
-        .btn:active::after { background: rgba(255,255,255,0.15); }
-
-        .btn:disabled {
-            opacity: 0.45;
-            cursor: not-allowed;
-        }
-
-        .btn-full { width: 100%; }
-
-        .btn-primary {
-            background: linear-gradient(135deg, var(--emerald-600), var(--emerald-500));
-            box-shadow: 0 4px 16px rgba(16,185,129,0.25);
-        }
-
-        .btn-primary:hover:not(:disabled) {
-            box-shadow: 0 6px 24px rgba(16,185,129,0.4);
-            transform: translateY(-1px);
-        }
-
-        .btn-blue {
-            background: linear-gradient(135deg, var(--blue-600), var(--blue-500));
-            box-shadow: 0 4px 16px rgba(59,130,246,0.25);
-        }
-
-        .btn-blue:hover:not(:disabled) {
-            box-shadow: 0 6px 24px rgba(59,130,246,0.4);
-            transform: translateY(-1px);
-        }
-
-        .btn-violet {
-            background: linear-gradient(135deg, #7c3aed, var(--violet-500));
-            box-shadow: 0 4px 16px rgba(139,92,246,0.25);
-        }
-
-        .btn-violet:hover:not(:disabled) {
-            box-shadow: 0 6px 24px rgba(139,92,246,0.4);
-            transform: translateY(-1px);
-        }
-
-        .btn-danger {
-            background: linear-gradient(135deg, #dc2626, var(--red-500));
-            box-shadow: 0 4px 16px rgba(239,68,68,0.25);
-        }
-
-        .btn-danger:hover:not(:disabled) {
-            box-shadow: 0 6px 24px rgba(239,68,68,0.4);
-            transform: translateY(-1px);
-        }
-
-        .btn-ghost {
-            background: rgba(255,255,255,0.05);
-            border: 1px solid var(--glass-border);
-            color: var(--text-secondary);
-        }
-
-        .btn-ghost:hover:not(:disabled) {
-            background: rgba(255,255,255,0.08);
-            color: var(--text-primary);
-        }
-
-        .btn-sm {
-            padding: 7px 14px;
-            font-size: 0.78rem;
-        }
-
-        /* Button group */
-        .btn-group {
-            display: flex;
-            gap: 8px;
-        }
-
-        .btn-group .btn { flex: 1; }
-
-        /* ═══════════════════════════════════════════════════
-           FUNNEL PIPELINE VISUALIZATION
-        ═══════════════════════════════════════════════════ */
-        .funnel-viz {
-            display: flex;
-            align-items: center;
-            gap: 0;
-            margin: 20px 0;
-            padding: 16px;
-            background: rgba(0,0,0,0.2);
-            border-radius: var(--radius-md);
-            border: 1px solid var(--glass-border);
-            overflow: hidden;
-        }
-
-        .funnel-stage {
-            flex: 1;
-            text-align: center;
-            padding: 12px 8px;
-            position: relative;
-        }
-
-        .funnel-stage::after {
-            content: '→';
-            position: absolute;
-            right: -8px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: var(--text-muted);
-            font-size: 16px;
-            z-index: 1;
-        }
-
-        .funnel-stage:last-child::after { display: none; }
-
-        .funnel-num {
-            font-size: 1.5rem;
-            font-weight: 800;
-            font-family: 'JetBrains Mono', monospace;
-            line-height: 1;
             margin-bottom: 4px;
         }
 
-        .funnel-label {
-            font-size: 0.68rem;
-            color: var(--text-muted);
+        .strategy-board-header {
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--glass-border);
+            background: rgba(0, 0, 0, 0.1);
+        }
+
+        .strategy-trigger-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background: linear-gradient(135deg, var(--violet-500) 0%, var(--blue-500) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: var(--radius-md);
+            color: #fff;
+            font-size: 0.82rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all var(--transition-normal);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+            white-space: nowrap;
+        }
+
+        .strategy-trigger-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(59, 130, 246, 0.3);
+        }
+
+        .strategy-trigger-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* 渐进式网格布局 */
+        .strategy-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            padding: 16px 20px;
+            gap: 14px;
+        }
+
+        @media (max-width: 1200px) {
+            .strategy-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        .s-cell {
+            background: rgba(255, 255, 255, 0.01);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-md);
+            padding: 14px;
+        }
+
+        .s-cell-title {
+            font-size: 0.72rem;
+            font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 0.06em;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }
 
-        .funnel-bar {
-            height: 3px;
-            border-radius: 2px;
-            margin-top: 8px;
-            transition: width var(--transition-slow);
-        }
-
-        .funnel-btn {
+        .s-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
             display: inline-block;
-            margin-top: 10px;
-            padding: 6px 12px;
-            font-size: 0.65rem;
-            font-weight: 500;
-            color: var(--blue-400);
-            background: rgba(59, 130, 246, 0.1);
-            border: 1px solid rgba(59, 130, 246, 0.3);
-            border-radius: 6px;
-            text-decoration: none;
-            transition: all var(--transition-fast);
-        }
-
-        .funnel-btn:hover {
-            background: rgba(59, 130, 246, 0.2);
-            border-color: var(--blue-500);
-            color: var(--blue-300);
-            transform: translateY(-2px);
         }
 
         /* ═══════════════════════════════════════════════════
-           CANDIDATES PANEL
+           DATA 表格标准化
         ═══════════════════════════════════════════════════ */
-        .candidates-panel {
-            margin: 20px 0;
-            padding: 16px;
-            background: rgba(0,0,0,0.2);
-            border-radius: var(--radius-md);
-            border: 1px solid var(--glass-border);
-        }
-
-        .panel-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 16px;
-        }
-
-        .panel-header h3 {
-            margin: 0;
-            font-size: 0.95rem;
-            color: var(--text-primary);
-        }
-
-        .panel-actions {
-            display: flex;
-            gap: 8px;
-        }
-
         .candidates-table-container {
             overflow-x: auto;
+            width: 100%;
         }
 
         .candidates-table {
             width: 100%;
             border-collapse: collapse;
             font-size: 0.8rem;
+            text-align: left;
         }
 
         .candidates-table th {
-            text-align: left;
             padding: 10px 12px;
             font-weight: 600;
-            color: var(--text-muted);
+            color: var(--text-secondary);
             text-transform: uppercase;
-            font-size: 0.65rem;
-            letter-spacing: 0.06em;
-            border-bottom: 2px solid var(--glass-border);
+            font-size: 0.68rem;
+            letter-spacing: 0.05em;
+            border-bottom: 1px solid var(--glass-border);
+            background: rgba(0, 0, 0, 0.1);
         }
 
         .candidates-table td {
-            padding: 10px 12px;
-            border-bottom: 1px solid var(--glass-border);
+            padding: 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
             vertical-align: middle;
         }
 
         .candidates-table tbody tr:hover {
-            background: rgba(255,255,255,0.03);
+            background: rgba(255, 255, 255, 0.01);
         }
 
-        .candidates-table .empty-state {
+        .empty-state {
             text-align: center;
             color: var(--text-muted);
-            padding: 40px;
+            padding: 32px;
+            font-size: 0.8rem;
         }
 
-        .stock-code {
-            color: var(--blue-400);
-            font-family: 'JetBrains Mono', monospace;
-            font-weight: 500;
-        }
-
-        .stock-name {
-            color: var(--text-primary);
-            font-weight: 500;
-        }
-
-        .score-high {
-            color: var(--emerald-400);
-            font-weight: 600;
-        }
-
-        .score-medium {
-            color: var(--amber-400);
-            font-weight: 600;
-        }
-
-        .score-low {
-            color: var(--rose-400);
-            font-weight: 600;
-        }
-
-        .pct-up {
-            color: var(--rose-400);
-        }
-
-        .pct-down {
-            color: var(--emerald-400);
-        }
-
-        .rank-badge {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 22px;
-            height: 22px;
-            border-radius: 50%;
-            font-size: 0.7rem;
-            font-weight: 700;
-            background: var(--blue-500);
-            color: white;
-        }
-
-        .btn-view {
-            padding: 4px 10px;
-            font-size: 0.7rem;
-            color: var(--blue-400);
-            background: rgba(59, 130, 246, 0.1);
-            border: 1px solid rgba(59, 130, 246, 0.3);
+        .badge {
+            display: inline-block;
+            padding: 2px 6px;
             border-radius: 4px;
-            cursor: pointer;
-            transition: all var(--transition-fast);
-        }
-
-        .btn-view:hover {
-            background: rgba(59, 130, 246, 0.2);
-            border-color: var(--blue-500);
-        }
-
-        /* ═══════════════════════════════════════════════════
-           SCHEDULER TOGGLE
-        ═══════════════════════════════════════════════════ */
-        .scheduler-toggle {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            padding: 16px;
-            background: rgba(0,0,0,0.2);
-            border-radius: var(--radius-md);
-            border: 1px solid var(--glass-border);
-            margin-bottom: 16px;
-        }
-
-        .toggle-switch {
-            position: relative;
-            width: 44px; height: 24px;
-            flex-shrink: 0;
-        }
-
-        .toggle-switch input { display: none; }
-
-        .toggle-track {
-            position: absolute;
-            inset: 0;
-            background: rgba(255,255,255,0.1);
-            border-radius: 100px;
-            cursor: pointer;
-            transition: background var(--transition-normal);
-            border: 1px solid var(--glass-border);
-        }
-
-        .toggle-track::after {
-            content: '';
-            position: absolute;
-            left: 3px; top: 50%;
-            transform: translateY(-50%);
-            width: 16px; height: 16px;
-            background: var(--text-muted);
-            border-radius: 50%;
-            transition: all var(--transition-normal);
-        }
-
-        .toggle-switch input:checked ~ .toggle-track {
-            background: rgba(16,185,129,0.25);
-            border-color: var(--emerald-500);
-        }
-
-        .toggle-switch input:checked ~ .toggle-track::after {
-            left: calc(100% - 19px);
-            background: var(--emerald-500);
-            box-shadow: 0 0 8px var(--emerald-glow);
-        }
-
-        .toggle-info {
-            flex: 1;
-        }
-
-        .toggle-title {
-            font-size: 0.85rem;
+            font-size: 11px;
             font-weight: 600;
-            color: var(--text-primary);
         }
 
-        .toggle-desc {
-            font-size: 0.73rem;
-            color: var(--text-muted);
-            margin-top: 2px;
-        }
-
-        /* ═══════════════════════════════════════════════════
-           SCHEDULE TIMELINE
-        ═══════════════════════════════════════════════════ */
-        .timeline {
-            display: flex;
-            flex-direction: column;
-            gap: 0;
-        }
-
-        .timeline-item {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 10px 0;
-            border-bottom: 1px solid rgba(255,255,255,0.04);
-            font-size: 0.8rem;
-        }
-
-        .timeline-item:last-child { border-bottom: none; }
-
-        .timeline-time {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.8rem;
+        .badge-live {
+            background: rgba(16, 185, 129, 0.12);
             color: var(--emerald-400);
-            font-weight: 600;
-            min-width: 48px;
+            border: 1px solid rgba(16, 185, 129, 0.2);
         }
 
-        .timeline-dot {
-            width: 6px; height: 6px;
-            border-radius: 50%;
-            background: var(--emerald-500);
-            flex-shrink: 0;
-            box-shadow: 0 0 6px var(--emerald-glow);
-        }
-
-        .timeline-desc {
+        .badge-idle {
+            background: rgba(71, 85, 105, 0.15);
             color: var(--text-secondary);
-            font-size: 0.78rem;
         }
 
-        /* ═══════════════════════════════════════════════════
-           DATA SYNC CARD
-        ═══════════════════════════════════════════════════ */
-        .mode-selector {
+        /* 核心指标卡片行 */
+        .metrics-row {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px;
-            margin-bottom: 16px;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 14px;
         }
 
-        .mode-option {
-            padding: 12px;
-            border-radius: var(--radius-sm);
+        @media (max-width: 900px) {
+            .metrics-row {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        .metric-card {
+            background: var(--glass-bg);
             border: 1px solid var(--glass-border);
-            cursor: pointer;
-            transition: all var(--transition-fast);
-            background: rgba(0,0,0,0.2);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            position: relative;
         }
 
-        .mode-option:hover {
-            border-color: var(--blue-500);
-            background: rgba(59,130,246,0.05);
-        }
-
-        .mode-option.selected {
-            border-color: var(--blue-500);
-            background: rgba(59,130,246,0.1);
-        }
-
-        .mode-option input[type="radio"] { display: none; }
-
-        .mode-title {
-            font-size: 0.82rem;
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: 3px;
-        }
-
-        .mode-desc {
+        .metric-label {
             font-size: 0.7rem;
-            color: var(--text-muted);
+            font-weight: 600;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
         }
 
-        /* ═══════════════════════════════════════════════════
-           TERMINAL / LOGS
-        ═══════════════════════════════════════════════════ */
+        .metric-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .metric-sub {
+            font-size: 0.68rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        /* 终端仿真组件 */
         .terminal-wrap {
-            border-radius: var(--radius-lg);
+            border-radius: var(--radius-md);
             overflow: hidden;
             border: 1px solid var(--glass-border);
         }
@@ -1209,2411 +535,975 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 12px 16px;
-            background: rgba(0,0,0,0.4);
+            padding: 8px 14px;
+            background: rgba(0, 0, 0, 0.3);
             border-bottom: 1px solid var(--glass-border);
         }
 
-        .terminal-dots {
-            display: flex;
-            gap: 6px;
-        }
-
-        .term-dot {
-            width: 10px; height: 10px;
-            border-radius: 50%;
-        }
-
-        .term-dot-r { background: #ff5f57; }
-        .term-dot-y { background: #ffbd2e; }
-        .term-dot-g { background: #28c840; }
-
         .terminal-label {
             font-family: 'JetBrains Mono', monospace;
-            font-size: 0.73rem;
+            font-size: 0.7rem;
             color: var(--text-muted);
         }
 
         .terminal-body {
-            background: #030712;
-            padding: 16px;
-            height: 220px;
+            background: #02050b;
+            padding: 14px;
+            height: 160px;
             overflow-y: auto;
             font-family: 'JetBrains Mono', monospace;
-            font-size: 0.75rem;
-            line-height: 1.7;
-            white-space: pre-wrap;
-            word-break: break-all;
-            color: #7dd3a0;
+            font-size: 0.72rem;
+            line-height: 1.6;
+            color: #a3e635;
         }
 
-        .terminal-body::-webkit-scrollbar {
-            width: 4px;
-        }
-
-        .terminal-body::-webkit-scrollbar-track { background: transparent; }
-        .terminal-body::-webkit-scrollbar-thumb {
-            background: rgba(255,255,255,0.1);
-            border-radius: 2px;
-        }
-
-        /* ═══════════════════════════════════════════════════
-           STRATEGY PANEL
-        ═══════════════════════════════════════════════════ */
-        .strategy-section {
-            margin-top: 0;
-        }
-
-        .strategy-grid {
+        /* 表单与交互结构 */
+        .form-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 16px;
-            margin-bottom: 16px;
+            gap: 14px;
         }
 
-        .strategy-market-pill {
-            display: flex;
-            gap: 6px;
+        @media (max-width: 900px) {
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
         }
 
-        .market-pill {
-            flex: 1;
-            padding: 9px 8px;
-            border-radius: var(--radius-sm);
-            border: 1px solid var(--glass-border);
-            cursor: pointer;
-            text-align: center;
-            font-size: 0.75rem;
+        .form-group {
+            margin-bottom: 12px;
+        }
+
+        .form-label {
+            font-size: 0.72rem;
             font-weight: 600;
-            transition: all var(--transition-fast);
-            background: rgba(0,0,0,0.2);
-            color: var(--text-muted);
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            display: block;
         }
 
-        .market-pill:hover {
-            border-color: rgba(255,255,255,0.15);
-            color: var(--text-primary);
-        }
-
-        .market-pill.bull.selected { border-color: var(--emerald-500); background: rgba(16,185,129,0.12); color: var(--emerald-400); }
-        .market-pill.bear.selected { border-color: var(--red-500);     background: rgba(239,68,68,0.12);  color: var(--red-400); }
-        .market-pill.neutral.selected { border-color: var(--blue-500); background: rgba(59,130,246,0.12); color: var(--blue-400); }
-
-        /* ═══════════════════════════════════════════════════
-           INPUT WITH BUTTON INLINE
-        ═══════════════════════════════════════════════════ */
-        .input-with-btn {
-            display: flex;
-            gap: 8px;
-        }
-
-        .input-with-btn input {
-            flex: 1;
-        }
-
-        /* ═══════════════════════════════════════════════════
-           TOAST NOTIFICATIONS
-        ═══════════════════════════════════════════════════ */
-        #toast-container {
-            position: fixed;
-            bottom: 28px;
-            right: 28px;
-            z-index: 9999;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            pointer-events: none;
-        }
-
-        .toast {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 12px 18px;
-            background: var(--bg-elevated);
+        input[type="text"],
+        input[type="password"],
+        select {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.2);
             border: 1px solid var(--glass-border);
-            border-radius: var(--radius-md);
-            box-shadow: 0 16px 40px rgba(0,0,0,0.4);
-            transform: translateX(120%);
-            opacity: 0;
-            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-            pointer-events: auto;
-            max-width: 320px;
+            color: var(--text-primary);
+            padding: 8px 12px;
+            border-radius: var(--radius-sm);
+            font-size: 0.8rem;
+            outline: none;
         }
 
-        .toast.show {
-            transform: translateX(0);
-            opacity: 1;
+        input:focus,
+        select:focus {
+            border-color: var(--blue-500);
         }
 
-        .toast-icon {
-            width: 28px; height: 28px;
-            border-radius: 7px;
-            display: flex;
+        .btn {
+            display: inline-flex;
             align-items: center;
             justify-content: center;
-            font-size: 13px;
-            flex-shrink: 0;
-        }
-
-        .toast-success .toast-icon { background: rgba(16,185,129,0.2); }
-        .toast-error   .toast-icon { background: rgba(239,68,68,0.2); }
-        .toast-info    .toast-icon { background: rgba(59,130,246,0.2); }
-
-        .toast-text {
-            font-size: 0.82rem;
-            color: var(--text-primary);
-            font-weight: 500;
-        }
-
-        .toast-close {
-            background: none;
-            border: none;
-            color: var(--text-muted);
+            gap: 6px;
+            padding: 8px 16px;
+            border-radius: var(--radius-sm);
+            font-weight: 600;
+            font-size: 0.78rem;
             cursor: pointer;
-            padding: 2px;
-            font-size: 14px;
-            margin-left: auto;
-            transition: color var(--transition-fast);
+            border: none;
+            color: white;
+            transition: all var(--transition-fast);
         }
 
-        .toast-close:hover { color: var(--text-primary); }
-
-        /* ═══════════════════════════════════════════════════
-           DIVIDER
-        ═══════════════════════════════════════════════════ */
-        .divider {
-            height: 1px;
-            background: var(--glass-border);
-            margin: 18px 0;
+        .btn-full {
+            width: 100%;
         }
 
-        /* ═══════════════════════════════════════════════════
-           ANIMATIONS
-        ═══════════════════════════════════════════════════ */
-        @keyframes pulse-ring {
-            0%   { box-shadow: 0 0 0 0 rgba(16,185,129,0.5); }
-            70%  { box-shadow: 0 0 0 6px rgba(16,185,129,0); }
-            100% { box-shadow: 0 0 0 0 rgba(16,185,129,0); }
+        .btn-blue {
+            background: var(--blue-600);
         }
 
-        @keyframes shimmer {
-            0%   { transform: translateX(-100%); }
-            100% { transform: translateX(100%); }
+        .btn-blue:hover {
+            background: var(--blue-500);
         }
 
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(12px); }
-            to   { opacity: 1; transform: translateY(0); }
+        .btn-ghost {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--glass-border);
+            color: var(--text-secondary);
         }
 
-        .fade-in {
-            animation: fadeInUp 0.4s ease both;
+        .btn-ghost:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--text-primary);
         }
 
-        /* Staggered children animation */
-        .metrics-row > *:nth-child(1) { animation: fadeInUp 0.4s 0.05s ease both; }
-        .metrics-row > *:nth-child(2) { animation: fadeInUp 0.4s 0.10s ease both; }
-        .metrics-row > *:nth-child(3) { animation: fadeInUp 0.4s 0.15s ease both; }
-        .metrics-row > *:nth-child(4) { animation: fadeInUp 0.4s 0.20s ease both; }
-
-        /* Number count-up placeholder shimmer */
-        .loading-shimmer {
-            background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.04) 75%);
-            background-size: 200% 100%;
-            animation: shimmer 1.5s infinite;
-            border-radius: 4px;
-        }
-
-        /* ═══════════════════════════════════════════════════
-           SECTION SEPARATOR LABEL
-        ═══════════════════════════════════════════════════ */
-        .section-label {
+        .strategy-footer {
+            padding: 10px 20px;
+            border-top: 1px solid var(--glass-border);
+            background: rgba(0, 0, 0, 0.1);
             display: flex;
-            align-items: center;
-            gap: 10px;
+            justify-content: space-between;
             font-size: 0.7rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
             color: var(--text-muted);
         }
 
-        .section-label::after {
-            content: '';
-            flex: 1;
-            height: 1px;
-            background: var(--glass-border);
+        /* 策略规则明细行样式 */
+        .factor-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            padding: 4px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.02);
         }
 
-        /* ═══════════════════════════════════════════════════
-           SCROLLBAR GLOBAL
-        ═══════════════════════════════════════════════════ */
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb {
-            background: rgba(255,255,255,0.08);
-            border-radius: 3px;
-        }
-        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.15); }
-
-        /* ═══════════════════════════════════════════════════
-           BOTTOM ROW
-        ═══════════════════════════════════════════════════ */
-        .bottom-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
+        .factor-name {
+            color: var(--text-secondary);
         }
 
-        /* ═══════════════════════════════════════════════════
-           AI 报告模态弹窗样式
-        ═══════════════════════════════════════════════════ */
+        .factor-score {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+        }
+
+        .factor-score.pos {
+            color: var(--emerald-400);
+        }
+
+        .factor-score.neg {
+            color: var(--red-400);
+        }
+
+        /* 模态弹窗 */
         .modal-overlay {
             position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(10, 14, 23, 0.85);
-            backdrop-filter: blur(10px);
+            inset: 0;
+            background: rgba(4, 8, 17, 0.85);
+            backdrop-filter: blur(8px);
             z-index: 1000;
             display: flex;
             align-items: center;
             justify-content: center;
             opacity: 0;
-            transition: opacity var(--transition-normal);
             pointer-events: none;
+            transition: opacity 0.2s ease;
         }
+
         .modal-overlay.show {
             opacity: 1;
             pointer-events: auto;
         }
+
         .modal-container {
             width: 90%;
             max-width: 850px;
-            height: 80vh;
-            max-height: 80vh;
+            height: 75vh;
             background: var(--bg-surface);
             border: 1px solid var(--glass-border);
             border-radius: var(--radius-lg);
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5), 0 0 0 1px var(--glass-border);
             display: flex;
             flex-direction: column;
             overflow: hidden;
-            transform: scale(0.95);
-            transition: transform var(--transition-normal);
         }
-        .modal-overlay.show .modal-container {
-            transform: scale(1);
-        }
+
         .modal-header {
-            padding: 20px 24px;
+            padding: 16px 20px;
             border-bottom: 1px solid var(--glass-border);
             display: flex;
-            align-items: center;
             justify-content: space-between;
-            background: rgba(0,0,0,0.15);
+            align-items: center;
         }
-        .modal-header h3 {
-            font-size: 1.15rem;
-            font-weight: 700;
-            color: var(--text-primary);
+
+        .modal-body {
+            padding: 20px;
+            overflow-y: auto;
+            flex: 1;
         }
-        .modal-close {
-            background: none;
-            border: none;
-            font-size: 1.75rem;
-            color: var(--text-secondary);
-            cursor: pointer;
-            line-height: 1;
-            transition: color var(--transition-fast);
-        }
-        .modal-close:hover {
-            color: var(--red-400);
-        }
+
         .modal-tabs {
             display: flex;
-            background: rgba(0,0,0,0.2);
+            background: rgba(0, 0, 0, 0.1);
             border-bottom: 1px solid var(--glass-border);
-            padding: 0 20px;
-            gap: 16px;
+            padding: 0 16px;
         }
+
         .modal-tab {
-            padding: 14px 16px;
+            padding: 12px 14px;
+            font-size: 0.8rem;
             color: var(--text-secondary);
-            font-size: 0.85rem;
-            font-weight: 600;
             cursor: pointer;
             border-bottom: 2px solid transparent;
-            transition: all var(--transition-fast);
         }
+
         .modal-tab.active {
             color: var(--emerald-400);
             border-bottom-color: var(--emerald-500);
         }
-        .modal-body {
-            padding: 24px;
-            overflow-y: auto;
-            flex: 1;
-        }
-        
-        .funnel-btn-violet {
-            color: var(--violet-400) !important;
-            background: rgba(139, 92, 246, 0.1) !important;
-            border: 1px solid rgba(139, 92, 246, 0.3) !important;
-        }
-        .funnel-btn-violet:hover {
-            background: rgba(139, 92, 246, 0.2) !important;
-            border-color: var(--violet-500) !important;
-            color: var(--violet-300) !important;
-        }
-        .funnel-btn-amber {
-            color: var(--amber-400) !important;
-            background: rgba(245, 158, 11, 0.1) !important;
-            border: 1px solid rgba(245, 158, 11, 0.3) !important;
-        }
-        .funnel-btn-amber:hover {
-            background: rgba(245, 158, 11, 0.2) !important;
-            border-color: var(--amber-500) !important;
-            color: var(--amber-300) !important;
-        }
 
-        .reports-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        .reports-table th, .reports-table td {
-            padding: 12px 16px;
-            text-align: left;
-            border-bottom: 1px solid rgba(255,255,255,0.05);
-        }
-        .reports-table th {
-            font-size: 0.75rem;
-            font-weight: 600;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            background: rgba(0,0,0,0.1);
-        }
-        .reports-table td {
-            font-size: 0.85rem;
-        }
-        .reports-table tr:hover td {
-            background: var(--bg-hover);
-        }
-        
-        .badge-grade {
-            display: inline-block;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-weight: 700;
-            font-size: 0.7rem;
-        }
-        .badge-grade.S { background: rgba(239, 68, 68, 0.2); color: var(--red-400); border: 1px solid rgba(239,68,68,0.4); }
-        .badge-grade.A { background: rgba(251, 191, 36, 0.2); color: var(--amber-400); border: 1px solid rgba(251,191,36,0.4); }
-        .badge-grade.B { background: rgba(59, 130, 246, 0.2); color: var(--blue-400); border: 1px solid rgba(59,130,246,0.4); }
-        .badge-grade.C { background: rgba(148, 163, 184, 0.2); color: var(--text-secondary); border: 1px solid rgba(148,163,184,0.4); }
-
-        .markdown-body-custom {
-            color: #e6edf3;
-            line-height: 1.6;
-        }
-        .markdown-body-custom h1, .markdown-body-custom h2, .markdown-body-custom h3 {
-            color: var(--blue-400);
-            margin-top: 24px;
-            margin-bottom: 12px;
-        }
-        .markdown-body-custom h1 { font-size: 1.4rem; border-bottom: 1px solid var(--glass-border); padding-bottom: 8px; }
-        .markdown-body-custom h2 { font-size: 1.2rem; }
-        .markdown-body-custom h3 { font-size: 1.05rem; }
-        .markdown-body-custom code {
-            background: rgba(255,255,255,0.08);
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.85em;
-        }
-        .markdown-body-custom br {
-            display: block;
-            content: "";
-            margin-top: 8px;
-        }
-        .check { color: #3fb950; font-weight: bold; }
-        .cross { color: #f85149; font-weight: bold; }
-        .warning { color: #d29922; font-weight: bold; }
-
-        /* ═══════════════════════════════════════════════════
-           策略展示卡片
-        ═══════════════════════════════════════════════════ */
-        .strategy-board {
-            background: var(--bg-surface);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius-lg);
-            overflow: hidden;
-            position: relative;
-            margin-bottom: 20px;
-        }
-        .strategy-board::before {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; right: 0;
-            height: 2px;
-            background: linear-gradient(90deg,
-                var(--emerald-500) 0%,
-                var(--blue-500) 35%,
-                var(--violet-500) 65%,
-                var(--amber-500) 100%);
-        }
-        .strategy-board-header {
-            padding: 18px 24px 16px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            border-bottom: 1px solid var(--glass-border);
-            background: rgba(0,0,0,0.15);
-        }
-        .strategy-board-title {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-        .strategy-board-icon {
-            width: 38px; height: 38px;
-            border-radius: 10px;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 1.2rem;
-            background: linear-gradient(135deg, rgba(16,185,129,0.2), rgba(59,130,246,0.15));
-            border: 1px solid rgba(16,185,129,0.3);
-            flex-shrink: 0;
-        }
-        .strategy-board-title h2 {
-            font-size: 0.95rem;
-            font-weight: 700;
-            color: var(--text-primary);
-            letter-spacing: 0.02em;
-        }
-        .strategy-board-title p {
-            font-size: 0.72rem;
-            color: var(--text-secondary);
-            margin-top: 2px;
-        }
-        .strategy-version-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 4px 12px;
-            background: rgba(16,185,129,0.12);
-            border: 1px solid rgba(16,185,129,0.3);
-            border-radius: 20px;
-            font-size: 0.72rem;
-            font-weight: 700;
-            color: var(--emerald-400);
-            letter-spacing: 0.05em;
-        }
-        /* 策略激发按鈕 */
-        .strategy-trigger-btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 9px;
-            padding: 10px 22px;
-            background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 50%, #5b21b6 100%);
-            border: 1px solid rgba(139, 92, 246, 0.5);
-            border-radius: var(--radius-md);
-            color: #fff;
-            font-size: 0.88rem;
-            font-weight: 700;
-            cursor: pointer;
-            letter-spacing: 0.02em;
-            position: relative;
-            overflow: hidden;
-            transition: all var(--transition-normal);
-            box-shadow: 0 4px 15px rgba(109, 40, 217, 0.35), 0 0 0 1px rgba(139,92,246,0.2);
-            white-space: nowrap;
-        }
-        .strategy-trigger-btn::before {
-            content: '';
-            position: absolute;
-            top: 0; left: -100%;
-            width: 100%; height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent);
-            transition: left 0.5s ease;
-        }
-        .strategy-trigger-btn:hover::before {
-            left: 100%;
-        }
-        .strategy-trigger-btn:hover {
-            background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 50%, #6d28d9 100%);
-            box-shadow: 0 6px 20px rgba(109, 40, 217, 0.5), 0 0 0 1px rgba(139,92,246,0.4);
-            transform: translateY(-1px);
-        }
-        .strategy-trigger-btn:active {
-            transform: translateY(0);
-        }
-        .strategy-trigger-btn.running {
-            background: linear-gradient(135deg, #065f46 0%, #047857 100%);
-            border-color: rgba(16,185,129,0.5);
-            box-shadow: 0 4px 15px rgba(16,185,129,0.3);
-            cursor: not-allowed;
-        }
-        .strategy-trigger-btn .btn-bolt {
-            font-size: 1rem;
-            animation: boltPulse 1.5s ease-in-out infinite;
-        }
-        .strategy-trigger-btn.running .btn-bolt {
-            animation: spin 1s linear infinite;
-        }
-        @keyframes boltPulse {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50%       { opacity: 0.7; transform: scale(1.2); }
-        }
-        @keyframes spin {
-            from { transform: rotate(0deg); }
-            to   { transform: rotate(360deg); }
-        }
-        .strategy-header-right {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            flex-shrink: 0;
-        }
-        .strategy-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 0;
-            padding: 20px 24px;
-            gap: 16px;
-        }
-        @media (max-width: 1100px) {
-            .strategy-grid { grid-template-columns: repeat(2, 1fr); }
-        }
-        .s-cell {
-            background: rgba(255,255,255,0.02);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius-md);
-            padding: 14px 16px;
-            transition: border-color var(--transition-fast), background var(--transition-fast);
-        }
-        .s-cell:hover {
-            background: rgba(255,255,255,0.04);
-            border-color: rgba(255,255,255,0.12);
-        }
-        .s-cell-title {
-            font-size: 0.7rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            color: var(--text-muted);
-            margin-bottom: 10px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-        .s-cell-title .s-dot {
-            width: 6px; height: 6px;
-            border-radius: 50%;
-            flex-shrink: 0;
-        }
-        /* 评分因子行 */
-        .factor-row {
-            display: flex;
-            align-items: flex-start;
-            justify-content: space-between;
-            gap: 8px;
-            padding: 5px 0;
-            border-bottom: 1px solid rgba(255,255,255,0.04);
-            font-size: 0.78rem;
-        }
-        .factor-row:last-child { border-bottom: none; }
-        .factor-name { color: var(--text-secondary); flex: 1; line-height: 1.4; }
-        .factor-score {
-            font-weight: 700;
-            font-size: 0.82rem;
-            white-space: nowrap;
-            font-family: 'JetBrains Mono', monospace;
-        }
-        .factor-score.pos { color: var(--emerald-400); }
-        .factor-score.neg { color: var(--red-400); }
-        .factor-score.info { color: var(--blue-400); }
-        /* 信号等级 */
-        .signal-levels {
+        #toast-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 9999;
             display: flex;
             flex-direction: column;
             gap: 6px;
         }
-        .signal-level-row {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 6px 10px;
+
+        .toast {
+            padding: 10px 16px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--glass-border);
             border-radius: var(--radius-sm);
             font-size: 0.78rem;
-        }
-        .signal-level-row.strong {
-            background: rgba(16,185,129,0.1);
-            border: 1px solid rgba(16,185,129,0.25);
-        }
-        .signal-level-row.medium {
-            background: rgba(59,130,246,0.08);
-            border: 1px solid rgba(59,130,246,0.2);
-        }
-        .signal-level-row.weak {
-            background: rgba(255,255,255,0.03);
-            border: 1px solid rgba(255,255,255,0.06);
-        }
-        .signal-score-badge {
-            font-family: 'JetBrains Mono', monospace;
-            font-weight: 700;
-            font-size: 0.8rem;
-            white-space: nowrap;
-        }
-        .signal-level-row.strong .signal-score-badge { color: var(--emerald-400); }
-        .signal-level-row.medium .signal-score-badge { color: var(--blue-400); }
-        .signal-level-row.weak .signal-score-badge { color: var(--text-muted); }
-        .signal-desc { color: var(--text-secondary); flex: 1; }
-        /* 否决规则 */
-        .veto-row {
-            display: flex;
-            align-items: flex-start;
-            gap: 8px;
-            padding: 5px 0;
-            font-size: 0.78rem;
-            border-bottom: 1px solid rgba(255,255,255,0.04);
-        }
-        .veto-row:last-child { border-bottom: none; }
-        .veto-icon { font-size: 0.85rem; flex-shrink: 0; margin-top: 1px; }
-        .veto-text { color: var(--text-secondary); line-height: 1.4; }
-        .veto-text strong { color: var(--red-400); }
-        /* 回测指标 */
-        .backtest-metrics {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-        }
-        .bt-metric {
-            text-align: center;
-            padding: 10px 8px;
-            background: rgba(255,255,255,0.02);
-            border-radius: var(--radius-sm);
-            border: 1px solid rgba(255,255,255,0.05);
-        }
-        .bt-metric-val {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 1.1rem;
-            font-weight: 700;
-            margin-bottom: 2px;
-        }
-        .bt-metric-val.green { color: var(--emerald-400); }
-        .bt-metric-val.blue  { color: var(--blue-400); }
-        .bt-metric-val.amber { color: var(--amber-400); }
-        .bt-metric-val.red   { color: var(--red-400); }
-        .bt-metric-label {
-            font-size: 0.68rem;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-        .strategy-footer {
-            padding: 10px 24px;
-            border-top: 1px solid var(--glass-border);
-            background: rgba(0,0,0,0.1);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            font-size: 0.72rem;
-            color: var(--text-muted);
-        }
-        .strategy-footer-tag {
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-            padding: 3px 8px;
-            border-radius: 4px;
-            background: rgba(255,255,255,0.04);
-            border: 1px solid rgba(255,255,255,0.07);
+            color: var(--text-primary);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
         }
     </style>
 </head>
+
 <body>
 
-<!-- ═══════════════════════════════════════
-     SIDEBAR
-═══════════════════════════════════════ -->
-<nav class="sidebar" id="sidebar" aria-label="主导航">
-    <div class="sidebar-logo" onclick="toggleSidebar()" aria-hidden="true">📈</div>
+    <nav class="sidebar" id="sidebar" aria-label="核心控制链路">
+        <div class="sidebar-logo" onclick="toggleSidebar()">💎</div>
 
-    <!-- 导航区 -->
-    <a href="/" class="nav-item active" id="nav-dashboard">
-        <span class="nav-icon">🏠</span>
-        <span class="nav-label">首页仪表盘</span>
-        <span class="nav-tooltip">首页仪表盘</span>
-        <span class="nav-badge" id="badge-dashboard"></span>
-    </a>
+        <a href="/" class="nav-item active" id="nav-dashboard">
+            <span class="nav-icon">🏠</span><span class="nav-label">交易主视窗</span>
+        </a>
+        <a href="/macro" class="nav-item" id="nav-stock">
+            <span class="nav-icon">📈</span><span class="nav-label">三级量化诊断</span>
+        </a>
+        <a href="/market" class="nav-item" id="nav-market">
+            <span class="nav-icon">📊</span><span class="nav-label">市场风格主线</span>
+        </a>
+        <a href="/backtest" class="nav-item" id="nav-backtest">
+            <span class="nav-icon">🔬</span><span class="nav-label">策略底线回测</span>
+        </a>
 
-    <a href="/macro" class="nav-item" id="nav-stock">
-        <span class="nav-icon">📈</span>
-        <span class="nav-label">个股诊股</span>
-        <span class="nav-tooltip">个股诊股</span>
-        <span class="nav-badge" id="badge-stock"></span>
-    </a>
+        <div class="nav-divider"></div>
 
-    <a href="/market" class="nav-item" id="nav-market">
-        <span class="nav-icon">📊</span>
-        <span class="nav-label">市场主线</span>
-        <span class="nav-tooltip">市场主线</span>
-        <span class="nav-badge" id="badge-market"></span>
-    </a>
+        <button class="nav-item" id="nav-settings" onclick="openSettings()">
+            <span class="nav-icon">⚙️</span><span class="nav-label">系统内核配置</span>
+        </button>
+        <button class="nav-item" id="nav-sync" onclick="triggerSync()">
+            <span class="nav-icon" id="sync-icon">🔄</span><span class="nav-label">冷数据同步</span>
+        </button>
 
-    <a href="/backtest" class="nav-item" id="nav-backtest">
-        <span class="nav-icon">🔬</span>
-        <span class="nav-label">策略回测</span>
-        <span class="nav-tooltip">策略回测</span>
-        <span class="nav-badge" id="badge-backtest"></span>
-    </a>
+        <button class="nav-toggle-btn" onclick="toggleSidebar()">›</button>
+    </nav>
 
-    <a href="/portfolio" class="nav-item" id="nav-portfolio">
-        <span class="nav-icon">💼</span>
-        <span class="nav-label">持仓跟踪</span>
-        <span class="nav-tooltip">持仓跟踪</span>
-        <span class="nav-badge active" id="badge-portfolio"></span>
-    </a>
+    <div class="main">
 
-    <!-- 分割线 -->
-    <div class="nav-divider"></div>
-
-    <!-- 工具区 -->
-    <button class="nav-item" id="nav-settings" onclick="openSettings()">
-        <span class="nav-icon">⚙️</span>
-        <span class="nav-label">系统配置</span>
-        <span class="nav-tooltip">系统配置</span>
-        <span class="nav-badge" id="badge-settings"></span>
-    </button>
-
-    <button class="nav-item" id="nav-logs" onclick="switchView('logs')">
-        <span class="nav-icon">📜</span>
-        <span class="nav-label">数据日志</span>
-        <span class="nav-tooltip">数据日志</span>
-        <span class="nav-badge active" id="badge-logs"></span>
-    </button>
-
-    <button class="nav-item" id="nav-sync" onclick="triggerSync()">
-        <span class="nav-icon" id="sync-icon">🔄</span>
-        <span class="nav-label">数据同步</span>
-        <span class="nav-tooltip">数据同步</span>
-        <span class="nav-badge" id="badge-sync"></span>
-    </button>
-
-    <!-- 折叠按钮 -->
-    <button class="nav-toggle-btn" onclick="toggleSidebar()" title="展开/折叠">›</button>
-</nav>
-
-<!-- ═══════════════════════════════════════
-     MAIN CONTENT
-═══════════════════════════════════════ -->
-<div class="main">
-
-    <!-- TOPBAR -->
-    <header class="topbar">
-        <div class="topbar-left">
-            <div class="topbar-title">StockAI Funnel · 三层漏斗智能选股</div>
-            <div class="topbar-sub">qwen2.5:7b-instruct-q4_K_M @ localhost:11434</div>
-        </div>
-        <div class="topbar-right">
-            <div class="system-badge">
-                <span class="pulse-dot" id="sys-pulse"></span>
-                <span id="sys-status-text">系统在线</span>
+        <header class="topbar">
+            <div>
+                <div class="topbar-title">Three-Layer Quantitative Decision Platform</div>
+                <div class="topbar-sub">Engine: qwen2.5:7b-instruct | Environment Status Syncing...</div>
             </div>
-            <div class="time-display" id="clock">--:--:--</div>
-        </div>
-    </header>
-
-    <!-- CONTENT -->
-    <div class="content">
-
-        <!-- ═══ 漏斗管道可视化 ═══ -->
-        <div class="funnel-viz" id="funnel-viz">
-            <div class="funnel-stage">
-                <div class="funnel-num" style="color: var(--emerald-400)">
-                    <span id="fv-total">—</span>
+            <div style="display: flex; gap: 12px; align-items: center;">
+                <div class="system-badge">
+                    <span class="pulse-dot" id="sys-pulse"></span>
+                    <span id="sys-status-text">系统内核在线</span>
                 </div>
-                <div class="funnel-label">全市场股票</div>
-                <div class="funnel-bar" style="background: var(--emerald-500); width: 100%;"></div>
+                <div class="system-badge" id="clock" style="font-family: 'JetBrains Mono';">00:00:00</div>
             </div>
-            <div class="funnel-stage">
-                <div class="funnel-num" style="color: var(--blue-400)">
-                    <span id="fv-filtered">50</span>
-                </div>
-                <div class="funnel-label">第一层候选</div>
-                <div class="funnel-bar" style="background: var(--blue-500); width: 75%;"></div>
-                <a href="/macro" class="funnel-btn" id="funnel-candidate-btn">
-                    📊 查看个股多因子分析
-                </a>
-            </div>
-            <div class="funnel-stage">
-                <div class="funnel-num" style="color: var(--violet-400)">
-                    <span id="fv-ai">≤5</span>
-                </div>
-                <div class="funnel-label">AI 深度分析</div>
-                <div class="funnel-bar" style="background: var(--violet-500); width: 45%;"></div>
-                <button class="funnel-btn funnel-btn-violet" onclick="openAIReportsModal('all')" id="funnel-ai-btn">
-                    📄 查看 AI 深度报告
-                </button>
-            </div>
-            <div class="funnel-stage">
-                <div class="funnel-num" style="color: var(--amber-400)">
-                    <span id="fv-push">今日推送</span>
-                </div>
-                <div class="funnel-label">飞书推送</div>
-                <div class="funnel-bar" style="background: var(--amber-500); width: 20%;"></div>
-                <button class="funnel-btn funnel-btn-amber" onclick="openAIReportsModal('today')" id="funnel-push-btn">
-                    📩 查看今日精选
-                </button>
-            </div>
-        </div>
+        </header>
 
-        <!-- ═══ 策略展示：主力嗅探·横盘吸筹识别器 ═══ -->
-        <div class="strategy-board" id="strategy-board">
+        <div class="content">
 
-            <div class="strategy-board-header">
-                <div class="strategy-board-title">
-                    <div class="strategy-board-icon">🎯</div>
-                    <div>
-                        <h2>主力嗅探 · 横盘吸筹识别器</h2>
-                        <p>双核心因子 · 三重否决 · 动态仓位 — v3.3 Final 策略规范</p>
+            <div class="strategy-board" id="decision-workflow-panel">
+                <div class="strategy-board-header">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div style="font-size: 20px;">⚡</div>
+                        <div>
+                            <h2 style="font-size: 0.95rem; font-weight: 700;">三层决策工作流总调度控制台 (Core Engine)</h2>
+                            <p style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 2px;">串联 [L1宏观诊断 →
+                                L2风格轮动与风控拦截 → L3个股AI精筛执行] 的自上而下决策总线</p>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div
+                            style="display: flex; align-items: center; gap: 8px; border-right: 1px solid rgba(255,255,255,0.1); padding-right: 16px;">
+                            <input type="checkbox" id="auto-refresh-toggle" onchange="onToggleAutoRefresh()"
+                                style="cursor:pointer;">
+                            <span style="font-size: 0.75rem; color: var(--text-secondary);"
+                                id="auto-refresh-title">周期轮询: 关</span>
+                        </div>
+
+                        <button class="strategy-trigger-btn" id="decision-workflow-trigger-btn"
+                            onclick="runDecisionWorkflow()">
+                            <span class="btn-bolt" id="decision-btn-bolt">⚡</span>
+                            <span>启动全流程整合决策流水线</span>
+                        </button>
                     </div>
                 </div>
-                <div class="strategy-header-right">
-                    <div class="strategy-version-badge">
-                        <span>⭐</span> v3.3 Final · 封版 2026-06-09
+
+                <div class="strategy-grid">
+                    <div class="s-cell" style="border-left: 2px solid var(--blue-500);">
+                        <div class="s-cell-title">
+                            <span class="s-dot" id="wf-macro-dot" style="background:var(--text-muted)"></span>
+                            [L1 层] 宏观大盘运行模式
+                        </div>
+                        <div style="font-size: 1.3rem; font-weight: 800; margin-top: 4px;" id="wf-macro-mode">—</div>
+                        <div style="font-size: 0.68rem; color: var(--text-muted); margin-top: 4px;" id="wf-macro-score">
+                            环境加权总分：—</div>
                     </div>
-                    <button class="strategy-trigger-btn" id="strategy-trigger-btn" onclick="runStrategyTrigger()">
-                        <span class="btn-bolt">⚡</span>
-                        立即执行全市场三层漏斗分析
-                    </button>
+                    <div class="s-cell" style="border-left: 2px solid var(--violet-500);">
+                        <div class="s-cell-title">
+                            <span class="s-dot" style="background:var(--violet-500)"></span>
+                            [L2 层] 市场风格与主线中军
+                        </div>
+                        <div style="font-size: 1rem; font-weight: 700; color: var(--violet-400); margin-top: 6px;"
+                            id="wf-board-style">—</div>
+                        <div style="font-size: 0.68rem; color: var(--text-muted); margin-top: 4px;"
+                            id="wf-board-rotate">轮动强度系数：—</div>
+                    </div>
+                    <div class="s-cell" style="border-left: 2px solid var(--red-500);">
+                        <div class="s-cell-title">
+                            <span class="s-dot" style="background:var(--red-500)"></span>
+                            [L2 风控] 二次虹吸资金拦截
+                        </div>
+                        <div style="font-size: 1.1rem; font-weight: 700; color: var(--red-400); margin-top: 4px;"
+                            id="wf-siphon-level">—</div>
+                        <div style="font-size: 0.68rem; color: var(--text-muted); margin-top: 4px;" id="wf-market-pos">
+                            建议总账户仓位：—</div>
+                    </div>
+                    <div class="s-cell"
+                        style="border-left: 2px solid var(--emerald-500); background: rgba(16,185,129,0.01);">
+                        <div class="s-cell-title">
+                            <span class="s-dot" style="background:var(--emerald-500)"></span>
+                            [L3 执行] 引擎流转状态结论
+                        </div>
+                        <div style="font-size: 1.1rem; font-weight: 700; margin-top: 4px;" id="wf-total-status">—</div>
+                        <div style="font-size: 0.68rem; color: var(--text-muted); margin-top: 4px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;"
+                            id="wf-terminate-reason">流转说明：—</div>
+                    </div>
+                </div>
+
+                <div id="wf-alert-container"
+                    style="padding: 0 20px 12px; display: none; flex-direction: column; gap: 8px;">
+                    <div id="wf-risk-alert"
+                        style="padding: 8px 12px; background: rgba(239,68,68,0.06); border: 1px solid rgba(239,68,68,0.15); border-radius: var(--radius-sm); font-size: 0.75rem; color: var(--red-400); display: none;">
+                    </div>
+                    <div id="wf-missing-alert"
+                        style="padding: 8px 12px; background: rgba(245,158,11,0.06); border: 1px solid rgba(245,158,11,0.15); border-radius: var(--radius-sm); font-size: 0.75rem; color: var(--amber-400); display: none;">
+                    </div>
+                </div>
+
+                <div style="padding: 0 20px 16px;">
+                    <div class="candidates-table-container"
+                        style="border: 1px solid var(--glass-border); border-radius: var(--radius-md); background: rgba(0,0,0,0.15); max-height: 320px; overflow-y: auto;">
+                        <table class="candidates-table" id="wf-trade-table">
+                            <thead>
+                                <tr>
+                                    <th>标的代码</th>
+                                    <th>名称</th>
+                                    <th>评级权重</th>
+                                    <th>合理入场位</th>
+                                    <th>强支撑/阻力线</th>
+                                    <th>双重止损/止盈参考</th>
+                                    <th>动态下单仓位</th>
+                                    <th>系数明细与LLM状态</th>
+                                </tr>
+                            </thead>
+                            <tbody id="wf-trade-body">
+                                <tr>
+                                    <td colspan="8" class="empty-state">待调度：启动全流程决策流水线后激活最终指令</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="strategy-footer">
+                    <span>自上而下递进控制链路：Macro $\rightarrow$ Cluster $\rightarrow$ Target</span>
+                    <span id="wf-timestamp">未执行</span>
                 </div>
             </div>
 
-            <div class="strategy-grid">
-
-                <!-- 评分规则 -->
-                <div class="s-cell">
-                    <div class="s-cell-title">
-                        <span class="s-dot" style="background:var(--emerald-500)"></span>
-                        评分规则 · 总分 -5 ~ 40
+            <div class="card" style="padding: 16px;">
+                <div class="card-header" style="margin-bottom: 12px;">
+                    <div class="card-title">🎯 策略内核算法：主力嗅探与横盘吸筹识别器 <span>v3.3 Final</span></div>
+                    <button class="btn btn-ghost" style="font-size:11px; padding:4px 10px;"
+                        onclick="runStrategyTrigger()" id="strategy-trigger-btn">⚡ 强制重刷候选池</button>
+                </div>
+                <div class="strategy-grid" style="padding:0; gap:12px;">
+                    <div class="s-cell">
+                        <div class="s-cell-title"><span class="s-dot"
+                                style="background:var(--emerald-500)"></span>因子积分矩阵 (-5 ~ 40)</div>
+                        <div class="factor-row"><span class="factor-name">🏦 主力特大单流入痕迹</span><span
+                                class="factor-score pos">+15</span></div>
+                        <div class="factor-row"><span class="factor-name">👥 股东户数连续下降(筹码集中)</span><span
+                                class="factor-score pos">+15</span></div>
+                        <div class="factor-row"><span class="factor-name">📉 三日缩量控盘压盘背离</span><span
+                                class="factor-score pos">+10</span></div>
+                        <div class="factor-row"><span class="factor-name">⚡ 独立异常庄股振幅惩罚</span><span
+                                class="factor-score neg">-5</span></div>
                     </div>
-                    <div class="factor-row">
-                        <span class="factor-name">🏦 主力资金净流入<br><span style="font-size:0.7rem;color:var(--text-muted)">特大单+大单净买入 &gt; 0</span></span>
-                        <span class="factor-score pos">+15</span>
+                    <div class="s-cell">
+                        <div class="s-cell-title"><span class="s-dot"
+                                style="background:var(--red-500)"></span>三重流出一票否决规则</div>
+                        <div class="factor-row"><span class="factor-name">❶ 日内资金流净值退潮</span><span
+                                class="factor-score neg">否决清零</span></div>
+                        <div class="factor-row"><span class="factor-name">❷ 杠杆两融信用盘连续缩减</span><span
+                                class="factor-score neg">否决清零</span></div>
+                        <div class="factor-row"><span class="factor-name">❸ 陆股通北向外资趋势性流出</span><span
+                                class="factor-score neg">否决清零</span></div>
+                        <div class="factor-row"><span class="factor-name">🚫 剔除 ST/停牌/极度微盘股</span><span
+                                class="factor-score neg">前置硬拦截</span></div>
                     </div>
-                    <div class="factor-row">
-                        <span class="factor-name">👥 股东户数连续下降<br><span style="font-size:0.7rem;color:var(--text-muted)">近 2 期或 3 期连续减少</span></span>
-                        <span class="factor-score pos">+15</span>
+                    <div class="s-cell">
+                        <div class="s-cell-title"><span class="s-dot"
+                                style="background:var(--blue-500)"></span>动态止损与风险约束</div>
+                        <div style="font-size:11px; color:var(--text-secondary); line-height: 1.5;">
+                            $$\text{止损点} = \max(\text{成本} \times 0.92, \text{20日最低} \times 0.98)$$
+                            随着盈利推进自动触发行营止损锁仓：<br>
+                            $\bullet$ 达 $+5\%$ 移动至成本线；达 $+15\%$ 启动回撤 $5\%$ 跟踪止盈。
+                        </div>
                     </div>
-                    <div class="factor-row">
-                        <span class="factor-name">📉 三日资金背离<br><span style="font-size:0.7rem;color:var(--text-muted)">主力连续流入 + 价格下跌</span></span>
-                        <span class="factor-score pos">+10</span>
-                    </div>
-                    <div class="factor-row">
-                        <span class="factor-name">⚡ 振幅异常<br><span style="font-size:0.7rem;color:var(--text-muted)">个股&gt;30% 且 大盘&lt;10%</span></span>
-                        <span class="factor-score neg">−5</span>
-                    </div>
-                    <div style="margin-top:12px;">
-                        <div class="signal-levels">
-                            <div class="signal-level-row strong">
-                                <span class="signal-score-badge">≥ 30</span>
-                                <span class="signal-desc">强信号 · 双核心全满，可建仓</span>
+                    <div class="s-cell">
+                        <div class="s-cell-title"><span class="s-dot"
+                                style="background:var(--violet-500)"></span>2025年基准压力回测绩效</div>
+                        <div
+                            style="display:grid; grid-template-columns: 1fr 1fr; gap:6px; font-family:'JetBrains Mono'; text-align:center;">
+                            <div style="background:rgba(255,255,255,0.02); padding:4px;">
+                                <p style="color:var(--amber-400); font-weight:700;">49.1%</p><span
+                                    style="font-size:9px; color:var(--text-muted);">10D胜率</span>
                             </div>
-                            <div class="signal-level-row medium">
-                                <span class="signal-score-badge">≥ 15</span>
-                                <span class="signal-desc">中信号 · 单核心，加入观察池</span>
+                            <div style="background:rgba(255,255,255,0.02); padding:4px;">
+                                <p style="color:var(--emerald-400); font-weight:700;">1.57</p><span
+                                    style="font-size:9px; color:var(--text-muted);">盈亏比</span>
                             </div>
-                            <div class="signal-level-row weak">
-                                <span class="signal-score-badge">&lt; 15</span>
-                                <span class="signal-desc">过滤 · 不推送，不参与</span>
+                            <div style="background:rgba(255,255,255,0.02); padding:4px;">
+                                <p style="color:var(--emerald-400); font-weight:700;">0.2%</p><span
+                                    style="font-size:9px; color:var(--text-muted);">最大回撤</span>
+                            </div>
+                            <div style="background:rgba(255,255,255,0.02); padding:4px;">
+                                <p style="color:var(--blue-400); font-weight:700;">-53.6%</p><span
+                                    style="font-size:9px; color:var(--text-muted);">基准无损回撤</span>
                             </div>
                         </div>
                     </div>
                 </div>
-
-                <!-- 否决机制 -->
-                <div class="s-cell">
-                    <div class="s-cell-title">
-                        <span class="s-dot" style="background:var(--red-500)"></span>
-                        否决机制 · 硬性过滤
-                    </div>
-                    <div style="font-size:0.7rem;color:var(--text-muted);margin-bottom:8px;padding:5px 8px;background:rgba(239,68,68,0.07);border-radius:6px;border:1px solid rgba(239,68,68,0.15);">
-                        ⚠️ 三重流出同时成立 → 总分清零
-                    </div>
-                    <div class="veto-row">
-                        <span class="veto-icon">❶</span>
-                        <span class="veto-text"><strong>主力资金净流出</strong><br>moneyflow 当日净值 &lt; 0</span>
-                    </div>
-                    <div class="veto-row">
-                        <span class="veto-icon">❷</span>
-                        <span class="veto-text"><strong>融资余额下降</strong><br>rzye 当日 &lt; 前一日</span>
-                    </div>
-                    <div class="veto-row">
-                        <span class="veto-icon">❸</span>
-                        <span class="veto-text"><strong>北向资金流出</strong><br>3日均值 &lt; 前3日均值（P1校准）</span>
-                    </div>
-                    <div style="border-top:1px solid var(--glass-border);padding-top:8px;margin-top:4px">
-                        <div style="font-size:0.7rem;color:var(--text-muted);margin-bottom:6px;font-weight:700;text-transform:uppercase;letter-spacing:.05em">硬性过滤条件</div>
-                        <div class="veto-row">
-                            <span class="veto-icon">🚫</span>
-                            <span class="veto-text">ST股 / 停牌 / 跌停 (&lt;−9.5%) → 直接排除</span>
-                        </div>
-                        <div class="veto-row">
-                            <span class="veto-icon">🚫</span>
-                            <span class="veto-text">日成交额 &lt; 5000万 → 排除</span>
-                        </div>
-                        <div class="veto-row">
-                            <span class="veto-icon">🚫</span>
-                            <span class="veto-text">20日振幅 &gt; 50% → 排除</span>
-                        </div>
-                        <div class="veto-row">
-                            <span class="veto-icon">🚫</span>
-                            <span class="veto-text">流通市值 &lt; <strong style="color:var(--amber-400)">10亿</strong> → 微盘股排除</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 止损 & 仓位 -->
-                <div class="s-cell">
-                    <div class="s-cell-title">
-                        <span class="s-dot" style="background:var(--blue-500)"></span>
-                        止损规则 · v3.3 Final
-                    </div>
-                    <div style="font-size:0.78rem;color:var(--text-secondary);line-height:1.6;margin-bottom:10px">
-                        实际止损 = <span style="color:var(--emerald-400);font-family:'JetBrains Mono',monospace">max(买入价×0.92, 20日低点×0.98)</span>
-                    </div>
-                    <div class="factor-row">
-                        <span class="factor-name">盈利 +5%</span>
-                        <span class="factor-score info">止损→成本价</span>
-                    </div>
-                    <div class="factor-row">
-                        <span class="factor-name">盈利 +10%</span>
-                        <span class="factor-score info">止损→成本+3%</span>
-                    </div>
-                    <div class="factor-row">
-                        <span class="factor-name">盈利 +15%</span>
-                        <span class="factor-score info">最高点−5% 跟踪</span>
-                    </div>
-                    <div style="border-top:1px solid var(--glass-border);padding-top:10px;margin-top:6px">
-                        <div style="font-size:0.7rem;color:var(--text-muted);margin-bottom:8px;font-weight:700;text-transform:uppercase;letter-spacing:.05em">动态仓位规则</div>
-                        <div class="factor-row">
-                            <span class="factor-name">🟢 进攻（上证&gt;MA60 斜率&gt;+0.2%）</span>
-                            <span class="factor-score pos">15%</span>
-                        </div>
-                        <div class="factor-row">
-                            <span class="factor-name">🔵 防守（其余情况）</span>
-                            <span class="factor-score info">8%</span>
-                        </div>
-                        <div class="factor-row">
-                            <span class="factor-name">⬛ 空仓（上证&lt;MA60 斜率&lt;−0.2%）</span>
-                            <span class="factor-score neg">0%</span>
-                        </div>
-                        <div style="font-size:0.7rem;color:var(--amber-400);margin-top:6px">铁律：单股上限 20%</div>
-                    </div>
-                </div>
-
-                <!-- 2025全年回测 -->
-                <div class="s-cell">
-                    <div class="s-cell-title">
-                        <span class="s-dot" style="background:var(--violet-500)"></span>
-                        2025 全年回测绩效
-                    </div>
-                    <div class="backtest-metrics">
-                        <div class="bt-metric">
-                            <div class="bt-metric-val amber">49.1%</div>
-                            <div class="bt-metric-label">10日胜率</div>
-                        </div>
-                        <div class="bt-metric">
-                            <div class="bt-metric-val green">1.57</div>
-                            <div class="bt-metric-label">盈亏比</div>
-                        </div>
-                        <div class="bt-metric">
-                            <div class="bt-metric-val green">0.2%</div>
-                            <div class="bt-metric-label">最大回撤</div>
-                        </div>
-                        <div class="bt-metric">
-                            <div class="bt-metric-val blue">27.5%</div>
-                            <div class="bt-metric-label">止损触发率</div>
-                        </div>
-                        <div class="bt-metric">
-                            <div class="bt-metric-val green">25.4万</div>
-                            <div class="bt-metric-label">强信号数</div>
-                        </div>
-                        <div class="bt-metric">
-                            <div class="bt-metric-val blue">−8%</div>
-                            <div class="bt-metric-label">最大单笔亏损</div>
-                        </div>
-                    </div>
-                    <div style="margin-top:12px;padding:8px 10px;background:rgba(16,185,129,0.07);border:1px solid rgba(16,185,129,0.2);border-radius:var(--radius-sm);font-size:0.72rem;color:var(--text-secondary);line-height:1.5">
-                        ✅ 最大回撤从 −53.6% 压缩至 <span style="color:var(--emerald-400);font-weight:700">0.2%</span>（改善 99.6%）<br>
-                        ⚠️ 胜率未达 50% 目标，<span style="color:var(--amber-400)">v3.4 待优化</span>
-                    </div>
-                    <div style="margin-top:10px;">
-                        <div class="factor-row">
-                            <span class="factor-name">🤖 AI信心过滤阈值</span>
-                            <span class="factor-score info">≥ 70</span>
-                        </div>
-                        <div class="factor-row">
-                            <span class="factor-name">📅 北向数据覆盖</span>
-                            <span class="factor-score info">763 条</span>
-                        </div>
-                        <div class="factor-row">
-                            <span class="factor-name">🏢 微盘过滤</span>
-                            <span class="factor-score neg">−63 只</span>
-                        </div>
-                    </div>
-                </div>
-
-            </div><!-- /strategy-grid -->
-
-            <div class="strategy-footer">
-                <div style="display:flex;align-items:center;gap:10px">
-                    <span class="strategy-footer-tag">📐 双核心因子</span>
-                    <span class="strategy-footer-tag">🔒 三重否决机制</span>
-                    <span class="strategy-footer-tag">⚡ 动态仓位框架</span>
-                    <span class="strategy-footer-tag">🤖 AI信心过滤</span>
-                </div>
-                <span>验证区间: 2025-01-01 ~ 2025-12-31 · 数据源: 本地 SQLite · <a href="/backtest" style="color:var(--blue-400);text-decoration:none">查看完整回测 →</a></span>
             </div>
 
-        </div><!-- /strategy-board -->
-
-        <!-- ═══ 候选股票列表 ═══ -->
-        <div class="candidates-panel" id="candidates-panel">
-            <div class="panel-header">
-                <div style="display:flex; align-items:center; gap:10px;">
-                    <h3>📋 策略分析结果：主力嗅探·横盘吸筹识别器</h3>
-                    <span style="font-size:0.75rem; color:var(--text-muted); background:rgba(255,255,255,0.05); padding:2px 8px; border-radius:4px; border:1px solid rgba(255,255,255,0.1);">第一层漏斗候选池</span>
-                </div>
-                <div class="panel-actions">
-                    <button class="btn btn-secondary" onclick="refreshCandidates()">🔄 刷新</button>
-                </div>
-            </div>
-            <div class="candidates-table-container">
-                <table class="candidates-table" id="candidates-table">
-                    <thead>
-                        <tr>
-                            <th>排名</th>
-                            <th>代码</th>
-                            <th>名称</th>
-                            <th>得分</th>
-                            <th>涨幅</th>
-                            <th>行业</th>
-                            <th>操作</th>
-                        </tr>
-                    </thead>
-                    <tbody id="candidates-body">
-                        <tr>
-                            <td colspan="7" class="empty-state">暂无候选股票，请先执行三层漏斗分析</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- ═══ 三层决策整合工作流面板 ═══ -->
-        <div class="strategy-board" id="decision-workflow-panel" style="margin-top: 24px; background: rgba(13,17,23,0.4); border: 1px solid rgba(139,92,246,0.2);">
-            <div class="strategy-board-header">
-                <div class="strategy-board-title">
-                    <div class="strategy-board-icon" style="background: linear-gradient(135deg, rgba(124,58,237,0.2), rgba(59,130,246,0.15)); border-color: rgba(124,58,237,0.3);">🌐</div>
-                    <div>
-                        <h2>三层量化决策框架 · 全流程整合控制台</h2>
-                        <p>一键串联全链路 [第一层宏观诊断 → 第二层板块轮动 → 第三层个股执行] · 状态透传与终止拦截</p>
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">📋 算力保护漏斗第一层过滤结果池 (Top 50 粗筛标的)</div>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="btn btn-ghost" style="font-size:11px; padding:4px 12px;"
+                            onclick="openAIReportsModal('all')">📄 调阅本地 LLM 语义分析报告</button>
+                        <button class="btn btn-ghost" style="font-size:11px; padding:4px 12px;"
+                            onclick="refreshCandidates()">🔄 刷新列表</button>
                     </div>
                 </div>
-                <div class="strategy-header-right" style="display: flex; align-items: center; gap: 16px;">
-                    <button class="strategy-trigger-btn" id="decision-workflow-trigger-btn" onclick="runDecisionWorkflow()" style="background: linear-gradient(135deg, #7c3aed 0%, #3b82f6 100%); border-color: rgba(59,130,246,0.5); box-shadow: 0 4px 15px rgba(59,130,246,0.3)">
-                        <span class="btn-bolt" id="decision-btn-bolt">⚡</span>
-                        启动全流程整合工作流
-                    </button>
-                    
-                    <!-- 自动刷新控制容器 -->
-                    <div class="auto-refresh-container" style="display: flex; align-items: center; gap: 8px; border-left: 1px solid rgba(255,255,255,0.1); padding-left: 16px; min-height: 36px;">
-                        <label class="toggle-switch">
-                            <input type="checkbox" id="auto-refresh-toggle" onchange="onToggleAutoRefresh()">
-                            <span class="toggle-track"></span>
-                        </label>
-                        <div style="display: flex; flex-direction: column;">
-                            <span style="font-size: 0.78rem; font-weight: 600; color: var(--text-secondary); white-space: nowrap;" id="auto-refresh-title">自动刷新: 关</span>
-                            <span style="font-size: 0.65rem; color: var(--text-muted); white-space: nowrap;" id="auto-refresh-desc">每60秒自动执行决策</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 摘要网格 -->
-            <div class="strategy-grid" style="grid-template-columns: repeat(4, 1fr); border-bottom: 1px solid var(--glass-border); padding-bottom: 20px; gap: 16px;">
-                <div class="s-cell">
-                    <div class="s-cell-title">
-                        <span class="s-dot" id="wf-macro-dot" style="background:var(--text-muted)"></span>
-                        第一层：大盘模式
-                    </div>
-                    <div style="font-size: 1.4rem; font-weight: 700; color: var(--text-primary); margin-top: 5px;" id="wf-macro-mode">—</div>
-                    <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 5px;" id="wf-macro-score">加权综合评分：—</div>
-                </div>
-                <div class="s-cell">
-                    <div class="s-cell-title">
-                        <span class="s-dot" style="background:var(--blue-500)"></span>
-                        第二层：主线风格
-                    </div>
-                    <div style="font-size: 1.05rem; font-weight: 700; color: var(--blue-400); margin-top: 8px; line-height: 1.4;" id="wf-board-style">—</div>
-                    <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 5px;" id="wf-board-rotate">轮动强度：—</div>
-                </div>
-                <div class="s-cell">
-                    <div class="s-cell-title">
-                        <span class="s-dot" style="background:var(--violet-500)"></span>
-                        第二层：风控度
-                    </div>
-                    <div style="font-size: 1.2rem; font-weight: 700; color: var(--violet-400); margin-top: 5px;" id="wf-siphon-level">—</div>
-                    <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 5px;" id="wf-market-pos">全市场仓位：—</div>
-                </div>
-                <div class="s-cell">
-                    <div class="s-cell-title">
-                        <span class="s-dot" style="background:var(--amber-500)"></span>
-                        执行决策状态
-                    </div>
-                    <div style="font-size: 1.2rem; font-weight: 700; color: var(--text-primary); margin-top: 5px;" id="wf-total-status">—</div>
-                    <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 5px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;" id="wf-terminate-reason" title="">原因：—</div>
-                </div>
-            </div>
-
-            <!-- 警告与缺失展示面板 (默认隐藏) -->
-            <div id="wf-alert-container" style="padding: 16px 24px; display: none; flex-direction: column; gap: 10px;">
-                <div id="wf-risk-alert" style="padding: 10px 14px; background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.25); border-radius: var(--radius-sm); font-size: 0.78rem; color: var(--red-400); display: none;">
-                    <strong>⚠️ 全局风控警告：</strong> <span id="wf-risk-content"></span>
-                </div>
-                <div id="wf-missing-alert" style="padding: 10px 14px; background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.25); border-radius: var(--radius-sm); font-size: 0.78rem; color: var(--amber-400); display: none;">
-                    <strong>⚠️ 数据缺失清单：</strong> <span id="wf-missing-content"></span>
-                </div>
-            </div>
-
-            <!-- 交易指令表格 -->
-            <div style="padding: 20px 24px;">
-                <div style="font-size: 0.8rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 12px; letter-spacing: 0.05em; text-transform: uppercase;">✅ 最终可执行交易指令 (标准化防风分配)</div>
-                <div class="candidates-table-container" style="border: 1px solid rgba(255,255,255,0.05); border-radius: var(--radius-sm); background: rgba(0,0,0,0.15); max-height: 400px; overflow-y: auto;">
-                    <table class="candidates-table" id="wf-trade-table" style="margin-bottom: 0;">
+                <div class="candidates-table-container">
+                    <table class="candidates-table" id="candidates-table">
                         <thead>
                             <tr>
-                                <th>代码</th>
+                                <th>池内排名</th>
+                                <th>股票代码</th>
                                 <th>股票名称</th>
-                                <th>评级</th>
-                                <th>入场分区</th>
-                                <th>强支撑 / 短期压力</th>
-                                <th>固定止损 / 一二档止盈</th>
-                                <th>建议持仓</th>
-                                <th>交易约束及系数明细</th>
+                                <th>粗筛得分</th>
+                                <th>日内涨跌幅</th>
+                                <th>所属申万行业</th>
+                                <th>前置诊断及报告</th>
                             </tr>
                         </thead>
-                        <tbody id="wf-trade-body">
+                        <tbody id="candidates-body">
                             <tr>
-                                <td colspan="8" class="empty-state">暂无交易指令，请先启动全流程决策</td>
+                                <td colspan="7" class="empty-state">数据就绪。请执行整合决策或手动刷新粗筛候选池</td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
             </div>
-            
-            <div class="strategy-footer" style="background: rgba(0,0,0,0.15)">
-                <span style="color: var(--text-muted)">第一层宏观诊断 → 第二层板块风格 → 第三层个股执行风控</span>
-                <span id="wf-timestamp">未执行</span>
-            </div>
-        </div>
 
-        <!-- ═══ METRICS ROW ═══ -->
-        <div class="metrics-row">
-            <div class="metric-card">
-                <div class="metric-label">
-                    <span style="color:var(--emerald-400)">●</span> 股票名录
+            <div class="metrics-row">
+                <div class="metric-card">
+                    <div class="metric-label">📋 全市场名单基础池</div>
+                    <div class="metric-value" id="db-stocks">—</div>
+                    <div class="metric-sub">SQLite: stock_list</div>
                 </div>
-                <div class="metric-value" id="db-stocks">—</div>
-                <div class="metric-sub">stock_list 表记录</div>
-                <div class="metric-icon">📋</div>
-                <div class="metric-accent-line" style="background: linear-gradient(90deg, var(--emerald-500), transparent)"></div>
-            </div>
-            <div class="metric-card">
-                <div class="metric-label">
-                    <span style="color:var(--blue-400)">●</span> 日线行情
+                <div class="metric-card">
+                    <div class="metric-label">📊 日线基础行情资产</div>
+                    <div class="metric-value" id="db-daily">—</div>
+                    <div class="metric-sub">SQLite: daily_prices</div>
                 </div>
-                <div class="metric-value" id="db-daily">—</div>
-                <div class="metric-sub">daily_prices 表记录</div>
-                <div class="metric-icon">📊</div>
-                <div class="metric-accent-line" style="background: linear-gradient(90deg, var(--blue-500), transparent)"></div>
-            </div>
-            <div class="metric-card">
-                <div class="metric-label">
-                    <span style="color:var(--violet-400)">●</span> 主力资金
+                <div class="metric-card">
+                    <div class="metric-label">💰 核心大单主力数据流</div>
+                    <div class="metric-value" id="db-moneyflow">—</div>
+                    <div class="metric-sub">SQLite: moneyflow</div>
                 </div>
-                <div class="metric-value" id="db-moneyflow">—</div>
-                <div class="metric-sub">moneyflow 表记录</div>
-                <div class="metric-icon">💰</div>
-                <div class="metric-accent-line" style="background: linear-gradient(90deg, var(--violet-500), transparent)"></div>
-            </div>
-            <div class="metric-card">
-                <div class="metric-label">
-                    <span style="color:var(--amber-400)">●</span> 股东户数
+                <div class="metric-card">
+                    <div class="metric-label">👥 股东户数变动特征</div>
+                    <div class="metric-value" id="db-holder">—</div>
+                    <div class="metric-sub">SQLite: stk_holdernumber</div>
                 </div>
-                <div class="metric-value" id="db-holder">—</div>
-                <div class="metric-sub">stk_holdernumber 表记录</div>
-                <div class="metric-icon">👥</div>
-                <div class="metric-accent-line" style="background: linear-gradient(90deg, var(--amber-500), transparent)"></div>
             </div>
-        </div>
 
-        <!-- ═══ MAIN GRID ═══ -->
-        <div class="main-grid">
-
-            <!-- 系统状态 Card -->
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-title">
-                        <div class="card-title-icon icon-emerald">📡</div>
-                        进程状态
+            <div class="form-grid">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">📡 系统引擎多核状态</div>
                     </div>
-                    <button class="btn btn-ghost btn-sm" onclick="refreshStatus()">↻ 刷新</button>
-                </div>
-
-                <div class="status-list">
-                    <div class="status-row">
-                        <div class="status-label">
-                            <span class="indicator inactive" id="scheduler-indicator"></span>
-                            自动调度器 (Scheduler)
+                    <div style="display:flex; flex-direction:column; gap:10px; font-size:12px;">
+                        <div
+                            style="display:flex; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.03); padding-bottom:6px;">
+                            <span>自动无人值守调度器 (Scheduler)</span>
+                            <span class="badge badge-idle" id="scheduler-badge">已挂起</span>
                         </div>
-                        <span class="card-badge badge-idle" id="scheduler-badge">已停止</span>
-                    </div>
-                    <div class="status-row">
-                        <div class="status-label">
-                            <span class="indicator inactive" id="fetcher-indicator"></span>
-                            数据拉取进程 (Fetcher)
+                        <div
+                            style="display:flex; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.03); padding-bottom:6px;">
+                            <span>Tushare 数据增量拉取器 (Fetcher)</span>
+                            <span class="badge badge-idle" id="fetcher-badge">就绪</span>
                         </div>
-                        <span class="card-badge badge-idle" id="fetcher-badge">闲置中</span>
-                    </div>
-                    <div class="status-row">
-                        <div class="status-label">
-                            <span class="indicator active" style="background:var(--emerald-500)"></span>
-                            本地 Ollama 服务
+                        <div style="display:flex; justify-content:space-between;">
+                            <span>本地 Ollama 计算节点状态</span>
+                            <span
+                                style="color:var(--blue-400); font-family:'JetBrains Mono'; font-weight:700;">Ollama/Qwen2.5-7B</span>
                         </div>
-                        <span class="card-badge badge-live">localhost:11434</span>
                     </div>
-                    <div class="status-row">
-                        <div class="status-label">
-                            <span class="indicator active" style="background:var(--blue-500)"></span>
-                            SQLite 数据库
+
+                    <div
+                        style="margin-top: 14px; padding: 10px; background: rgba(0,0,0,0.15); border-radius: var(--radius-sm); border:1px solid var(--glass-border);">
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <input type="checkbox" id="scheduler-toggle" onchange="onToggleScheduler()">
+                            <div>
+                                <p style="font-size:12px; font-weight:700;" id="toggle-title">挂机守护未开启</p>
+                                <p style="font-size:10px; color:var(--text-muted);">自动于 08:40 / 14:30 触发流水线并下发飞书卡片</p>
+                            </div>
                         </div>
-                        <span class="card-badge" style="background:rgba(59,130,246,0.15);color:var(--blue-400)">stock_daily.db</span>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">⚙️ 策略核心边界控制 (微调)</div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">大盘强行校准 (留空则由 L1 模块自动化判定)</label>
+                        <div style="display:flex; gap:6px;">
+                            <button class="btn btn-ghost" style="flex:1; font-size:11px;" id="pill-bull"
+                                onclick="selectMarket('牛市')">🟢 进攻模式</button>
+                            <button class="btn btn-ghost" style="flex:1; font-size:11px;" id="pill-neutral"
+                                onclick="selectMarket('震荡')">🟡 谨慎模式</button>
+                            <button class="btn btn-ghost" style="flex:1; font-size:11px;" id="pill-bear"
+                                onclick="selectMarket('熊市')">🔴 强制防守</button>
+                        </div>
+                        <input type="hidden" id="ai-market-env" value="牛市">
+                    </div>
+                    <div class="form-grid" style="grid-template-columns:1fr 1fr; gap:8px;">
+                        <div class="form-group">
+                            <label class="form-label">最大偏离度(<span id="bias-val">15</span>%)</label>
+                            <input type="range" id="ai-max-bias" min="5" max="30" value="15">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Ollama GPU 并发数</label>
+                            <input type="range" id="fetch-workers" min="1" max="5" value="3">
+                        </div>
+                    </div>
+                    <button class="btn btn-blue btn-full" style="font-size:11px;" onclick="saveAllConfig()">💾
+                        同步写入持久化全局参数配置文件</button>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">🧹 洗盘分析与边缘配置</div>
+                    </div>
+                    <div class="form-grid" style="grid-template-columns: 1.5fr 1fr; gap:8px; align-items: end;">
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label class="form-label">单股精准吸筹洗盘排查</label>
+                            <input type="text" id="washout-code" placeholder="输入代码 如: 600519.SH">
+                        </div>
+                        <button class="btn btn-blue" style="font-size:11px; height:34px;"
+                            onclick="runWashoutAnalysis()">排查特征</button>
+                    </div>
+                    <div class="divider" style="height:1px; background:var(--glass-border); margin:12px 0;"></div>
+                    <div class="form-group">
+                        <label class="form-label">定向监测板块 (留空代表扫描全市场A股)</label>
+                        <input type="text" id="ai-sector" placeholder="例如: 半导体, 东方大飞机, 创新药">
                     </div>
                 </div>
             </div>
 
-            <!-- 自动调度 Card -->
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-title">
-                        <div class="card-title-icon icon-blue">🤖</div>
-                        无人值守挂机
-                    </div>
-                    <span class="card-badge badge-idle" id="scheduler-status-badge">已停止</span>
+            <div class="terminal-wrap">
+                <div class="terminal-header">
+                    <span class="terminal-label">📊 整合框架决策系统核心流转实时日志 (自动刷新 2s)</span>
+                    <button class="btn btn-ghost" onclick="clearTerminal()"
+                        style="padding:2px 8px; font-size:10px;">清空终端</button>
                 </div>
-
-                <div class="scheduler-toggle">
-                    <label class="toggle-switch">
-                        <input type="checkbox" id="scheduler-toggle" onchange="onToggleScheduler()">
-                        <span class="toggle-track"></span>
-                    </label>
-                    <div class="toggle-info">
-                        <div class="toggle-title" id="toggle-title">调度器已停止</div>
-                        <div class="toggle-desc">开启后在指定时间自动触发分析</div>
-                    </div>
-                </div>
-
-                <div class="section-label" style="margin-bottom:12px">每日自动执行计划</div>
-                <div class="timeline">
-                    <div class="timeline-item">
-                        <div class="timeline-time">08:40</div>
-                        <div class="timeline-dot"></div>
-                        <div class="timeline-desc">拉取昨日收盘数据 + 早盘前选股分析</div>
-                    </div>
-                    <div class="timeline-item">
-                        <div class="timeline-time">11:25</div>
-                        <div class="timeline-dot"></div>
-                        <div class="timeline-desc">午盘前资金流向更新推送</div>
-                    </div>
-                    <div class="timeline-item">
-                        <div class="timeline-time">14:30</div>
-                        <div class="timeline-dot"></div>
-                        <div class="timeline-desc">尾盘异动监测 + 三层漏斗筛选</div>
-                    </div>
-                    <div class="timeline-item">
-                        <div class="timeline-time">19:30</div>
-                        <div class="timeline-dot"></div>
-                        <div class="timeline-desc">全量复盘 + 飞书每日简报推送</div>
-                    </div>
-                </div>
+                <div id="terminal-logs" class="terminal-body">正在加载核心事件总线日志监听流...</div>
             </div>
 
-            <!-- 手动触发 Card -->
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-title">
-                        <div class="card-title-icon icon-violet">🎯</div>
-                        手动触发扫描
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <div class="form-label">推送标题前缀</div>
-                    <input type="text" id="scan-session" value="手动触发" placeholder="例：早盘扫描">
-                </div>
-
-                <button class="btn btn-violet btn-full" onclick="runManualScan()" style="margin-bottom:12px">
-                    ⚡ 立即执行全市场三层漏斗分析
-                </button>
-
-                <div class="divider"></div>
-
-                <div class="form-group">
-                    <div class="form-label">并发 AI 分析数 <span id="worker-val">3</span></div>
-                    <div class="range-wrapper">
-                        <input type="range" id="fetch-workers" min="1" max="5" value="3"
-                               oninput="document.getElementById('worker-val').innerText = this.value">
-                        <span class="range-val" id="worker-display">3</span>
-                    </div>
-                </div>
-                <div style="font-size:0.72rem; color:var(--text-muted); line-height:1.5;">
-                    并发数控制 Ollama GPU 显存占用，建议 3-4。超过 5 可能导致显存溢出。
-                </div>
-            </div>
-
-            <!-- 洗盘分析 Card -->
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-title">
-                        <div class="card-title-icon icon-amber">🧹</div>
-                        洗盘分析
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <div class="form-label">股票代码</div>
-                    <input type="text" id="washout-code" placeholder="输入股票代码，如 600519.SH">
-                </div>
-
-                <button class="btn btn-amber btn-full" onclick="runWashoutAnalysis()" style="margin-bottom:12px">
-                    📊 开始洗盘分析
-                </button>
-
-                <div class="divider"></div>
-
-                <div class="form-group">
-                    <div class="form-label">股票代码</div>
-                    <input id="washout-portfolio" class="washout-portfolio-input" type="text" placeholder="请输入股票代码（如：600000.SH）" oninput="onPortfolioInput()" />
-                </div>
-            </div>
-
-        </div><!-- /main-grid -->
-
-        <!-- ═══ BOTTOM GRID ═══ -->
-        <div class="bottom-grid">
-
-            <!-- 数据同步 Card -->
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-title">
-                        <div class="card-title-icon icon-blue">⚡</div>
-                        数据同步 (Tushare)
-                    </div>
-                    <span class="card-badge badge-idle" id="fetcher-status-badge">就绪</span>
-                </div>
-
-                <div class="section-label" style="margin-bottom:12px">更新模式</div>
-                <div class="mode-selector">
-                    <label class="mode-option selected" id="mode-inc" onclick="selectMode('incremental')">
-                        <input type="radio" name="fetchmode" value="incremental" checked>
-                        <div class="mode-title">⚡ 增量更新</div>
-                        <div class="mode-desc">仅拉取最新日期数据，速度快</div>
-                    </label>
-                    <label class="mode-option" id="mode-full" onclick="selectMode('full')">
-                        <input type="radio" name="fetchmode" value="full">
-                        <div class="mode-title">🔄 全量冷启动</div>
-                        <div class="mode-desc">从 2020-01-01 补齐所有历史数据</div>
-                    </label>
-                </div>
-
-                <button id="btn-run-fetch" class="btn btn-blue btn-full" onclick="runDataFetch()">
-                    📥 启动数据同步
-                </button>
-
-                <div style="margin-top:12px; padding:10px 12px; background:rgba(245,158,11,0.07); border:1px solid rgba(245,158,11,0.2); border-radius:var(--radius-sm); font-size:0.73rem; color:var(--amber-400); line-height:1.6;">
-                    ⚠️ 全量冷启动预计耗时数小时，请确保 Tushare 积分充足（建议 5000+ 分）
-                </div>
-            </div>
-
-            <!-- 系统配置 + 策略微调 Card -->
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-title">
-                        <div class="card-title-icon icon-amber">⚙️</div>
-                        系统配置
-                    </div>
-                    <button class="btn btn-ghost btn-sm" onclick="saveConfig()">💾 保存</button>
-                </div>
-
-                <div class="form-group">
-                    <div class="form-label">Tushare API Token</div>
-                    <input type="password" id="cfg-tushare" placeholder="输入 Tushare Token（5000积分账户）">
-                </div>
-
-                <div class="form-group">
-                    <div class="form-label">飞书 Webhook URL</div>
-                    <div class="input-with-btn">
-                        <input type="password" id="cfg-feishu" placeholder="https://open.feishu.cn/open-apis/bot/...">
-                        <button class="btn btn-ghost btn-sm" onclick="testFeishu()" style="white-space:nowrap">🚀 测试</button>
-                    </div>
-                </div>
-
-                <div class="divider"></div>
-                <div class="section-label" style="margin-bottom:12px">策略微调</div>
-
-                <div class="form-group">
-                    <div class="form-label">大盘环境模式</div>
-                    <div class="strategy-market-pill">
-                        <div class="market-pill bull selected" id="pill-bull" onclick="selectMarket('牛市')">🟢 牛市</div>
-                        <div class="market-pill neutral" id="pill-neutral" onclick="selectMarket('震荡')">🟡 震荡</div>
-                        <div class="market-pill bear" id="pill-bear" onclick="selectMarket('熊市')">🔴 熊市</div>
-                    </div>
-                    <input type="hidden" id="ai-market-env" value="牛市">
-                </div>
-
-                <div class="form-group">
-                    <div class="form-label">最大允许乖离率 <span id="bias-val">15</span>%</div>
-                    <div class="range-wrapper">
-                        <input type="range" id="ai-max-bias" min="5" max="30" value="15"
-                               oninput="document.getElementById('bias-val').innerText=this.value">
-                        <span class="range-val" id="bias-display">15%</span>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <div class="form-label">定向扫描板块（留空=全市场）</div>
-                    <input type="text" id="ai-sector" placeholder="例：半导体, 消费电子, 新能源">
-                </div>
-
-                <button class="btn btn-primary btn-full" onclick="saveAllConfig()">
-                    💾 保存全部配置
-                </button>
-            </div>
-
-        </div><!-- /bottom-grid -->
-
-        <!-- ═══ TERMINAL LOG ═══ -->
-        <div class="terminal-wrap fade-in">
-            <div class="terminal-header">
-                <div class="terminal-dots">
-                    <div class="term-dot term-dot-r"></div>
-                    <div class="term-dot term-dot-y"></div>
-                    <div class="term-dot term-dot-g"></div>
-                </div>
-                <span class="terminal-label">实时执行日志 — 自动刷新 2s</span>
-                <button class="btn btn-ghost btn-sm" onclick="clearTerminal()" style="padding:3px 10px;font-size:0.7rem;">清屏</button>
-            </div>
-            <div id="terminal-logs" class="terminal-body">正在连接日志流...</div>
-        </div>
-
-    </div><!-- /content -->
-</div><!-- /main -->
-
-<!-- TOAST CONTAINER -->
-<div id="toast-container"></div>
-
-<!-- ═══════════════════════════════════════
-     JAVASCRIPT
-═══════════════════════════════════════ -->
-<script>
-    /* ── Clock ── */
-    function updateClock() {
-        const now = new Date();
-        document.getElementById('clock').textContent =
-            now.toLocaleTimeString('zh-CN', { hour12: false });
-    }
-    setInterval(updateClock, 1000);
-    updateClock();
-
-    /* ── Toast ── */
-    function showToast(msg, type = 'success') {
-        const icons = { success: '✓', error: '✕', info: 'ℹ' };
-        const container = document.getElementById('toast-container');
-        const el = document.createElement('div');
-        el.className = `toast toast-${type}`;
-        el.innerHTML = `
-            <div class="toast-icon">${icons[type] || '✓'}</div>
-            <span class="toast-text">${msg}</span>
-            <button class="toast-close" onclick="this.parentElement.remove()">✕</button>`;
-        container.appendChild(el);
-        requestAnimationFrame(() => el.classList.add('show'));
-        setTimeout(() => {
-            el.classList.remove('show');
-            setTimeout(() => el.remove(), 400);
-        }, 3500);
-    }
-
-    /* ── API Helper ── */
-    async function fetchAPI(url, options = {}) {
-        try {
-            const res = await fetch(url, options);
-            if (!res.ok) throw new Error(await res.text());
-            return await res.json();
-        } catch (err) {
-            showToast('请求失败: ' + err.message, 'error');
-            throw err;
-        }
-    }
-
-    /* ── Number count-up animation ── */
-    function countUp(el, target, duration = 800) {
-        const start = Date.now();
-        const from = parseInt(el.textContent.replace(/,/g, '')) || 0;
-        const to = parseInt(target);
-        if (isNaN(to)) { el.textContent = target; return; }
-        const step = () => {
-            const elapsed = Date.now() - start;
-            const progress = Math.min(elapsed / duration, 1);
-            const eased = 1 - Math.pow(1 - progress, 3);
-            el.textContent = Math.round(from + (to - from) * eased).toLocaleString();
-            if (progress < 1) requestAnimationFrame(step);
-        };
-        requestAnimationFrame(step);
-    }
-
-    /* ── Status Refresh ── */
-    async function refreshStatus() {
-        let data;
-        try { data = await fetchAPI('/api/status'); }
-        catch(e) {
-            document.getElementById('sys-status-text').textContent = '连接失败';
-            document.getElementById('sys-pulse').style.background = 'var(--red-500)';
-            return;
-        }
-
-        // Scheduler
-        const sInd   = document.getElementById('scheduler-indicator');
-        const sBadge = document.getElementById('scheduler-badge');
-        const sBadge2= document.getElementById('scheduler-status-badge');
-        const toggle = document.getElementById('scheduler-toggle');
-        const toggleTitle = document.getElementById('toggle-title');
-
-        if (data.scheduler_running) {
-            sInd.className = 'indicator active';
-            sBadge.className = 'card-badge badge-live'; sBadge.textContent = '运行中';
-            sBadge2.className= 'card-badge badge-live'; sBadge2.textContent = '运行中';
-            toggle.checked = true;
-            toggleTitle.textContent = '调度器运行中';
-        } else {
-            sInd.className = 'indicator inactive';
-            sBadge.className = 'card-badge badge-idle'; sBadge.textContent = '已停止';
-            sBadge2.className= 'card-badge badge-idle'; sBadge2.textContent = '已停止';
-            toggle.checked = false;
-            toggleTitle.textContent = '调度器已停止';
-        }
-
-        // Fetcher
-        const fInd   = document.getElementById('fetcher-indicator');
-        const fBadge = document.getElementById('fetcher-badge');
-        const fBadge2= document.getElementById('fetcher-status-badge');
-        const bFetch = document.getElementById('btn-run-fetch');
-
-        if (data.fetcher_running) {
-            fInd.className = 'indicator active';
-            fBadge.className = fBadge2.className = 'card-badge badge-running';
-            fBadge.textContent = fBadge2.textContent = '拉取中…';
-            bFetch.disabled = true; bFetch.textContent = '🔄 任务进行中…';
-        } else {
-            fInd.className = 'indicator inactive';
-            fBadge.className = 'card-badge badge-idle'; fBadge.textContent = '闲置中';
-            fBadge2.className= 'card-badge badge-idle'; fBadge2.textContent = '就绪';
-            bFetch.disabled = false; bFetch.textContent = '📥 启动数据同步';
-        }
-
-        // DB Metrics with count-up
-        countUp(document.getElementById('db-stocks'),     data.db.stock_count);
-        countUp(document.getElementById('db-daily'),      data.db.daily_count);
-        countUp(document.getElementById('db-moneyflow'),  data.db.moneyflow_count);
-        countUp(document.getElementById('db-holder'),     data.db.holder_count);
-
-        // Funnel viz
-        const total = data.db.stock_count;
-        document.getElementById('fv-total').textContent =
-            total ? total.toLocaleString() : '—';
-    }
-
-    /* ── Scheduler Toggle ── */
-    async function onToggleScheduler() {
-        const checked = document.getElementById('scheduler-toggle').checked;
-        await toggleScheduler(checked ? 'start' : 'stop');
-    }
-
-    async function toggleScheduler(action) {
-        await fetchAPI('/api/scheduler', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action })
-        });
-        showToast(action === 'start' ? '🤖 自动挂机已启动' : '⏹ 自动挂机已停止',
-                  action === 'start' ? 'success' : 'info');
-        setTimeout(refreshStatus, 800);
-    }
-
-    /* ── Refresh Candidates ── */
-    async function refreshCandidates() {
-        const body = document.getElementById('candidates-body');
-        body.innerHTML = '<tr><td colspan="7" class="empty-state">加载中...</td></tr>';
-        
-        let reportMap = {};
-        try {
-            const reportsData = await fetchAPI('/api/reports');
-            if (reportsData && reportsData.reports) {
-                reportsData.reports.forEach(r => {
-                    if (r.type === 'ai_report') {
-                        if (!reportMap[r.ts_code]) {
-                            reportMap[r.ts_code] = r.filename;
-                        }
-                    }
-                });
-            }
-        } catch (e) {
-            console.error("加载候选股报告失败", e);
-        }
-
-        const result = await fetchAPI('/api/candidates');
-        if (result && result.candidates && result.candidates.length > 0) {
-            body.innerHTML = result.candidates.map((c, i) => {
-                const reportFile = reportMap[c.ts_code];
-                const reportBtn = reportFile 
-                    ? `<button class="btn-view" style="background:rgba(139, 92, 246, 0.12);color:var(--violet-400);border-color:rgba(139,92,246,0.3);margin-left:6px;" onclick="viewCandidateReport('${reportFile}')">📄 报告</button>`
-                    : '';
-                return `
-                    <tr>
-                        <td><span class="rank-badge">${i + 1}</span></td>
-                        <td><span class="stock-code">${c.ts_code}</span></td>
-                        <td><span class="stock-name">${c.name}</span></td>
-                        <td><span class="${c.score >= 40 ? 'score-high' : c.score >= 30 ? 'score-medium' : 'score-low'}">${c.score}分</span></td>
-                        <td><span class="${c.pct_chg >= 0 ? 'pct-up' : 'pct-down'}">${c.pct_chg >= 0 ? '+' : ''}${c.pct_chg}%</span></td>
-                        <td>${c.industry || '-'}</td>
-                        <td>
-                            <button class="btn-view" onclick="viewStock('${c.ts_code}')">查看</button>
-                            ${reportBtn}
-                        </td>
-                    </tr>
-                `;
-            }).join('');
-        } else {
-            body.innerHTML = '<tr><td colspan="7" class="empty-state">暂无候选股票，请先执行三层漏斗分析</td></tr>';
-        }
-    }
-
-    function viewStock(ts_code) {
-        window.location.href = `/macro?code=${ts_code}`;
-    }
-
-    function viewCandidateReport(filename) {
-        openAIReportsModal('all');
-        viewReportDetail(filename);
-    }
-
-    /* ── AI Reports Modal Logic ── */
-    let currentReportsTab = 'all'; // 'all' 或 'today'
-
-    async function openAIReportsModal(tabType = 'all') {
-        currentReportsTab = tabType;
-        const modal = document.getElementById('ai-reports-modal');
-        modal.style.display = 'flex';
-        setTimeout(() => modal.classList.add('show'), 10);
-        
-        // 更新 Tab 按钮的激活状态
-        document.getElementById('tab-reports-all').classList.toggle('active', tabType === 'all');
-        document.getElementById('tab-reports-today').classList.toggle('active', tabType === 'today');
-        
-        // 显示列表，隐藏详情
-        document.getElementById('modal-reports-list-container').style.display = 'block';
-        document.getElementById('modal-report-detail-container').style.display = 'none';
-        
-        await loadReportsList();
-    }
-
-    function changeReportsTab(tabType) {
-        if (currentReportsTab === tabType) return;
-        currentReportsTab = tabType;
-        
-        document.getElementById('tab-reports-all').classList.toggle('active', tabType === 'all');
-        document.getElementById('tab-reports-today').classList.toggle('active', tabType === 'today');
-        
-        loadReportsList();
-    }
-
-    function closeAIReportsModal() {
-        const modal = document.getElementById('ai-reports-modal');
-        modal.classList.remove('show');
-        setTimeout(() => modal.style.display = 'none', 250);
-    }
-
-    async function loadReportsList() {
-        const body = document.getElementById('modal-reports-list-body');
-        body.innerHTML = '<tr><td colspan="6" class="empty-state">加载中...</td></tr>';
-        
-        try {
-            const data = await fetchAPI('/api/reports');
-            let reports = data.reports.filter(r => r.type === 'ai_report');
-            
-            if (currentReportsTab === 'today') {
-                // 精选：评分大于等于 70 分（S级和A级）
-                reports = reports.filter(r => r.score >= 70);
-            }
-            
-            if (reports.length === 0) {
-                body.innerHTML = currentReportsTab === 'today'
-                    ? '<tr><td colspan="6" class="empty-state">今日无符合推送门槛的精选报告(评分≥70分)</td></tr>'
-                    : '<tr><td colspan="6" class="empty-state">暂无 AI 诊断报告，请执行分析</td></tr>';
-                return;
-            }
-            
-            body.innerHTML = reports.map(r => `
-                <tr>
-                    <td><span style="color:var(--text-secondary)">${r.datetime}</span></td>
-                    <td><span class="stock-code">${r.ts_code}</span></td>
-                    <td><span class="stock-name" style="font-weight:600">${r.name}</span></td>
-                    <td><span class="badge-grade ${r.grade}">${r.grade}级</span></td>
-                    <td><span style="font-family:'JetBrains Mono',monospace;font-weight:600;color:var(--emerald-400)">${r.score}分</span></td>
-                    <td>
-                        <button class="btn btn-ghost" style="padding:6px 12px;font-size:0.75rem;" onclick="viewReportDetail('${r.filename}')">阅读</button>
-                    </td>
-                </tr>
-            `).join('');
-        } catch (e) {
-            body.innerHTML = `<tr><td colspan="6" class="empty-state" style="color:var(--red-400)">加载失败: ${e.message}</td></tr>`;
-        }
-    }
-
-    async function viewReportDetail(filename) {
-        const detailContainer = document.getElementById('modal-report-detail-container');
-        const listContainer = document.getElementById('modal-reports-list-container');
-        const contentDiv = document.getElementById('modal-report-content');
-        
-        contentDiv.innerHTML = '<div class="empty-state">报告加载中...</div>';
-        listContainer.style.display = 'none';
-        detailContainer.style.display = 'block';
-        
-        try {
-            const data = await fetchAPI(`/api/reports/content?filename=${encodeURIComponent(filename)}`);
-            contentDiv.innerHTML = markdownToHtml(data.content);
-        } catch (e) {
-            contentDiv.innerHTML = `<div class="empty-state" style="color:var(--red-400)">读取失败: ${e.message}</div>`;
-        }
-    }
-
-    function backToReportsList() {
-        document.getElementById('modal-report-detail-container').style.display = 'none';
-        document.getElementById('modal-reports-list-container').style.display = 'block';
-    }
-
-    /* ── Manual Scan ── */
-    /* ── 策略卡片激发按钮 ── */
-    async function runStrategyTrigger() {
-        const btn  = document.getElementById('strategy-trigger-btn');
-        const bolt = btn ? btn.querySelector('.btn-bolt') : null;
-
-        // 进入 running 状态
-        if (btn) {
-            btn.classList.add('running');
-            btn.disabled = true;
-            if (bolt) bolt.textContent = '🔄';
-            btn.childNodes[btn.childNodes.length - 1].textContent = ' 分析进行中，请稍候…';
-        }
-
-        showToast('⚡ 主力嗅探·三层漏斗分析已启动…', 'info');
-
-        try {
-            // 取 scan-session 的值（如存在），否则用固定前缀
-            const sessionEl = document.getElementById('scan-session');
-            const session   = sessionEl ? sessionEl.value : '策略激发';
-
-            const result = await fetchAPI('/api/scan', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ session_name: session })
-            });
-
-            if (result && result.candidates) {
-                showToast(`✅ 分析完成！第一层候选 ${result.candidates.length} 只股票`, 'success');
-                await refreshCandidates();
-                setTimeout(() => { window.location.href = '/macro'; }, 2000);
-            } else {
-                showToast('✅ 三层漏斗分析已完成', 'success');
-                setTimeout(() => { window.location.href = '/macro'; }, 1500);
-            }
-        } catch (e) {
-            showToast('❌ 分析启动失败：' + e.message, 'error');
-        } finally {
-            // 恢复按钮状态
-            if (btn) {
-                btn.classList.remove('running');
-                btn.disabled = false;
-                if (bolt) bolt.textContent = '⚡';
-                btn.childNodes[btn.childNodes.length - 1].textContent = ' 立即执行全市场三层漏斗分析';
-            }
-        }
-    }
-
-    async function runManualScan() {
-        const session = document.getElementById('scan-session').value;
-        showToast('⚡ 正在执行全市场三层漏斗分析...', 'info');
-        
-        const result = await fetchAPI('/api/scan', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ session_name: session })
-        });
-        
-        if (result && result.candidates) {
-            showToast(`✅ 分析完成！第一层候选 ${result.candidates.length} 只股票`, 'success');
-            await refreshCandidates();
-            setTimeout(() => {
-                window.location.href = '/macro';
-            }, 2000);
-        } else {
-            showToast('✅ 三层漏斗分析已完成', 'success');
-            setTimeout(() => {
-                window.location.href = '/macro';
-            }, 1500);
-        }
-    }
-
-    /* ── Mode Selector ── */
-    let _selectedMode = 'incremental';
-    function selectMode(mode) {
-        _selectedMode = mode;
-        document.getElementById('mode-inc').classList.toggle('selected', mode === 'incremental');
-        document.getElementById('mode-full').classList.toggle('selected', mode === 'full');
-    }
-
-    /* ── Data Fetch ── */
-    async function runDataFetch() {
-        const workers = parseInt(document.getElementById('fetch-workers').value);
-        await fetchAPI('/api/fetch', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ workers, mode: _selectedMode })
-        });
-        showToast('📥 数据同步已在后台启动', 'success');
-        setTimeout(refreshStatus, 1000);
-    }
-
-    /* ── Config ── */
-    async function loadConfig() {
-        const data = await fetchAPI('/api/config');
-        document.getElementById('cfg-tushare').value = data.tushare_token;
-        document.getElementById('cfg-feishu').value  = data.feishu_webhook;
-    }
-
-    async function saveConfig() {
-        const token = document.getElementById('cfg-tushare').value;
-        const hook  = document.getElementById('cfg-feishu').value;
-        await fetchAPI('/api/config', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tushare_token: token, feishu_webhook: hook })
-        });
-        showToast('💾 API 配置已保存', 'success');
-    }
-
-    async function testFeishu() {
-        try {
-            await fetchAPI('/api/test_feishu', { method: 'POST' });
-            showToast('🚀 飞书测试消息发送成功', 'success');
-        } catch(e) {}
-    }
-
-    /* ── Market Pills ── */
-    let _selectedMarket = '牛市';
-    function selectMarket(val) {
-        _selectedMarket = val;
-        document.getElementById('ai-market-env').value = val;
-        const map = { '牛市': 'bull', '震荡': 'neutral', '熊市': 'bear' };
-        ['bull','neutral','bear'].forEach(k => {
-            const el = document.getElementById('pill-' + k);
-            el.classList.remove('selected');
-        });
-        document.getElementById('pill-' + map[val]).classList.add('selected');
-    }
-
-    /* ── AI Config ── */
-    async function loadAIConfig() {
-        try {
-            const data = await fetchAPI('/api/ai_config');
-            selectMarket(data.market_env || '震荡');
-            const bias = data.max_bias || 15;
-            document.getElementById('ai-max-bias').value = bias;
-            document.getElementById('bias-val').textContent = bias;
-            document.getElementById('ai-sector').value = data.sector_focus || '';
-        } catch(e) {}
-    }
-
-    async function saveAIConfig() {
-        const env    = document.getElementById('ai-market-env').value;
-        const bias   = parseInt(document.getElementById('ai-max-bias').value);
-        const sector = document.getElementById('ai-sector').value;
-        await fetchAPI('/api/ai_config', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ market_env: env, max_bias: bias, sector_focus: sector })
-        });
-        showToast('📐 策略参数已保存', 'success');
-    }
-
-    async function saveAllConfig() {
-        await saveConfig();
-        await saveAIConfig();
-    }
-
-    /* ── Sidebar Toggle ── */
-    function toggleSidebar() {
-        const sidebar = document.getElementById('sidebar');
-        sidebar.classList.toggle('expanded');
-        localStorage.setItem('sidebarExpanded', sidebar.classList.contains('expanded'));
-    }
-
-    // 初始化侧边栏状态
-    document.addEventListener('DOMContentLoaded', () => {
-        const expanded = localStorage.getItem('sidebarExpanded') === 'true';
-        if (expanded) {
-            document.getElementById('sidebar').classList.add('expanded');
-        }
-    });
-
-    /* ── Sidebar Nav ── */
-    function switchView(view) {
-        ['dashboard','funnel','stock','backtest','portfolio','settings','logs','sync'].forEach(v => {
-            document.getElementById('nav-' + v)?.classList.remove('active');
-        });
-        document.getElementById('nav-' + view)?.classList.add('active');
-        
-        const viewNames = {
-            'dashboard': '首页仪表盘',
-            'funnel': '选股漏斗',
-            'stock': '个股诊股',
-            'backtest': '回测中心',
-            'portfolio': '持仓跟踪',
-            'settings': '系统配置',
-            'logs': '数据日志',
-            'sync': '数据同步'
-        };
-        showToast('切换到 ' + viewNames[view] + '（暂为单页模式）', 'info');
-    }
-
-    /* ── Open Settings Modal ── */
-    function openSettings() {
-        switchView('settings');
-        showToast('系统配置面板已打开', 'info');
-    }
-
-    /* ── Trigger Sync ── */
-    let _isSyncing = false;
-    async function triggerSync() {
-        if (_isSyncing) {
-            showToast('数据同步正在进行中...', 'info');
-            return;
-        }
-
-        _isSyncing = true;
-        const syncBtn = document.getElementById('nav-sync');
-        const syncIcon = document.getElementById('sync-icon');
-        
-        syncBtn.classList.add('active');
-        syncIcon.classList.add('nav-loading');
-        syncBtn.disabled = true;
-
-        try {
-            await fetchAPI('/api/fetch', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ workers: 1, mode: 'incremental' })
-            });
-            showToast('📥 数据同步已在后台启动', 'success');
-        } catch (e) {
-            showToast('同步启动失败: ' + e.message, 'error');
-        } finally {
-            // 延迟恢复状态以显示加载动画
-            setTimeout(() => {
-                _isSyncing = false;
-                syncIcon.classList.remove('nav-loading');
-                syncBtn.classList.remove('active');
-                syncBtn.disabled = false;
-                setTimeout(refreshStatus, 1000);
-            }, 2000);
-        }
-    }
-
-    /* ── Range sync ── */
-    document.getElementById('fetch-workers').addEventListener('input', function() {
-        document.getElementById('worker-val').textContent = this.value;
-        document.getElementById('worker-display').textContent = this.value;
-    });
-
-    document.getElementById('ai-max-bias').addEventListener('input', function() {
-        document.getElementById('bias-val').textContent = this.value;
-        document.getElementById('bias-display').textContent = this.value + '%';
-    });
-
-    /* ── Washout Analysis ── */
-    function onPortfolioInput() {
-        const input = document.getElementById('washout-portfolio');
-        if (input.value) {
-            document.getElementById('washout-code').value = input.value.trim();
-        }
-    }
-
-    async function runWashoutAnalysis() {
-        const tsCode = document.getElementById('washout-code').value.trim();
-        if (!tsCode) {
-            showToast('请输入股票代码或从持仓选择', 'error');
-            return;
-        }
-
-        try {
-            showToast(`🧹 正在分析 ${tsCode}...`, 'info');
-            const data = await fetchAPI('/api/washout/analyze', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ts_code: tsCode })
-            });
-            
-            showToast(`📊 洗盘分析完成，报告已保存`, 'success');
-            
-            const newWindow = window.open('', '_blank');
-            if (newWindow) {
-                newWindow.document.write(`
-                    <!DOCTYPE html>
-                    <html lang="zh-CN">
-                    <head>
-                        <meta charset="UTF-8">
-                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                        <title>洗盘分析报告 - ${tsCode}</title>
-                        <style>
-                            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 40px; max-width: 800px; margin: 0 auto; background: #0d1117; color: #c9d1d9; line-height: 1.6; }
-                            h1, h2 { color: #58a6ff; }
-                            h1 { border-bottom: 1px solid #30363d; padding-bottom: 10px; }
-                            table { width: 100%; border-collapse: collapse; margin: 15px 0; }
-                            th, td { border: 1px solid #30363d; padding: 8px 12px; text-align: left; }
-                            th { background: #161b22; }
-                            code { background: #21262d; padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; }
-                            pre { background: #0d1117; border: 1px solid #30363d; padding: 15px; border-radius: 8px; overflow-x: auto; white-space: pre-wrap; }
-                            .check { color: #3fb950; }
-                            .cross { color: #f85149; }
-                            .warning { color: #d29922; }
-                        </style>
-                    </head>
-                    <body>
-                        ${markdownToHtml(data.report)}
-                    </body>
-                    </html>
-                `);
-                newWindow.document.close();
-            } else {
-                showToast('报告已生成，但浏览器阻止了弹窗', 'info');
-            }
-            
-        } catch(e) {
-            showToast('洗盘分析失败: ' + e.message, 'error');
-        }
-    }
-
-    function markdownToHtml(md) {
-        return md
-            .replace(/^### (.*$)/gim, '<h3>$1</h3>')
-            .replace(/^## (.*$)/gim, '<h2>$1</h2>')
-            .replace(/^# (.*$)/gim, '<h1>$1</h1>')
-            .replace(/\*\*(.*)\*\*/g, '<strong>$1</strong>')
-            .replace(/\*(.*)\*/g, '<em>$1</em>')
-            .replace(/✅/g, '<span class="check">✓</span>')
-            .replace(/❌/g, '<span class="cross">✗</span>')
-            .replace(/⚠️/g, '<span class="warning">⚠</span>')
-            .replace(/📊|📈|🎯|🔔|📐|🧹/g, '')
-            .replace(/\[([^\]]+)\]/g, '<code>$1</code>')
-            .replace(/\n/g, '<br>');
-    }
-
-    /* ── Logs ── */
-    async function refreshLogs() {
-        try {
-            const data = await fetchAPI('/api/logs');
-            const term = document.getElementById('terminal-logs');
-            if (term.textContent !== data.logs) {
-                term.textContent = data.logs;
-                term.scrollTop = term.scrollHeight;
-            }
-        } catch(e) {
-            document.getElementById('terminal-logs').textContent =
-                '[日志服务不可达，请确认 web_server.py 正在运行]';
-        }
-    }
-
-    function clearTerminal() {
-        document.getElementById('terminal-logs').textContent = '— 日志已清除 —';
-    }
-
-    /* ── Load Portfolio Stocks ── */
-    async function loadPortfolioStocks() {
-        try {
-            const data = await fetchAPI('/api/portfolio');
-            // 预留接口，待后续实现
-        } catch(e) {
-            // 接口未实现时静默处理
-        }
-    }
-
-    /* ── 三层决策整合工作流执行 ── */
-    window.runDecisionWorkflow = async function() {
-        const btn = document.getElementById('decision-workflow-trigger-btn');
-        const bolt = document.getElementById('decision-btn-bolt');
-        const statusEl = document.getElementById('wf-total-status');
-        const timestampEl = document.getElementById('wf-timestamp');
-        
-        // 1. 设置运行中状态
-        btn.disabled = true;
-        btn.style.opacity = '0.7';
-        btn.style.cursor = 'not-allowed';
-        const originalBoltText = bolt.textContent;
-        bolt.textContent = '⏳';
-        bolt.style.display = 'inline-block';
-        bolt.style.animation = 'spin 1.5s linear infinite';
-        
-        statusEl.textContent = '决策计算中...';
-        statusEl.style.color = 'var(--amber-400)';
-        
-        try {
-            const res = await fetchAPI('/api/run_total');
-            if (res.code !== 200) {
-                throw new Error(res.msg || '未知服务器错误');
-            }
-            
-            const data = res.data;
-            
-            // 2. 更新大盘模式
-            const macroMode = data.macro_summary.operate_mode;
-            const macroModeEl = document.getElementById('wf-macro-mode');
-            macroModeEl.textContent = macroMode;
-            
-            const macroDot = document.getElementById('wf-macro-dot');
-            if (macroMode === '进攻') {
-                macroDot.style.background = 'var(--emerald-500)';
-                macroModeEl.style.color = 'var(--emerald-400)';
-            } else if (macroMode === '谨慎') {
-                macroDot.style.background = 'var(--amber-500)';
-                macroModeEl.style.color = 'var(--amber-400)';
-            } else { // 防守
-                macroDot.style.background = 'var(--red-500)';
-                macroModeEl.style.color = 'var(--red-400)';
-            }
-            
-            // 3. 更新大盘总分和修正说明
-            document.getElementById('wf-macro-score').textContent = `综合得分：${data.macro_summary.total_score}分 | ${data.macro_summary.revise_desc || '无修正'}`;
-            
-            // 4. 更新主线风格与轮动强度
-            document.getElementById('wf-board-style').textContent = data.board_summary.main_style || '无';
-            document.getElementById('wf-board-rotate').textContent = `轮动强度：${data.board_summary.rotate_strength || '—'}`;
-            
-            // 5. 更新风控度与全市场仓位
-            document.getElementById('wf-siphon-level').textContent = data.board_summary.siphon_level || '无';
-            document.getElementById('wf-market-pos').textContent = `全市场仓位：${data.board_summary.market_position || '0.0%'}`;
-            
-            // 6. 更新决策流状态
-            statusEl.textContent = data.total_flow_status;
-            if (data.total_flow_status === '正常完成') {
-                statusEl.style.color = 'var(--emerald-400)';
-            } else if (data.total_flow_status === '中途终止') {
-                statusEl.style.color = 'var(--amber-400)';
-            } else {
-                statusEl.style.color = 'var(--red-400)';
-            }
-            
-            const reasonEl = document.getElementById('wf-terminate-reason');
-            reasonEl.textContent = data.terminate_reason ? `原因：${data.terminate_reason}` : '原因：无';
-            reasonEl.title = data.terminate_reason || '';
-            
-            // 7. 异常警告与数据缺失展示
-            const alertContainer = document.getElementById('wf-alert-container');
-            const riskAlert = document.getElementById('wf-risk-alert');
-            const riskContent = document.getElementById('wf-risk-content');
-            const missingAlert = document.getElementById('wf-missing-alert');
-            const missingContent = document.getElementById('wf-missing-content');
-            
-            let hasAlert = false;
-            
-            // 风险警示展示
-            if (data.global_risk_list && data.global_risk_list.length > 0) {
-                riskContent.textContent = data.global_risk_list.join('；');
-                riskAlert.style.display = 'block';
-                hasAlert = true;
-            } else {
-                riskAlert.style.display = 'none';
-            }
-            
-            // 数据缺失清单展示
-            if (data.all_data_missing && data.all_data_missing.length > 0) {
-                missingContent.textContent = data.all_data_missing.join('，');
-                missingAlert.style.display = 'block';
-                hasAlert = true;
-            } else {
-                missingAlert.style.display = 'none';
-            }
-            
-            alertContainer.style.display = hasAlert ? 'flex' : 'none';
-            
-            // 8. 填充交易表格
-            const tradeBody = document.getElementById('wf-trade-body');
-            if (data.final_trade_list && data.final_trade_list.length > 0) {
-                let html = '';
-                data.final_trade_list.forEach(item => {
-                    const isCore = item.stock_level === '核心标的';
-                    const suggestPosPercent = (item.suggest_position * 100).toFixed(1) + '%';
-                    
-                    html += `
-                        <tr>
-                            <td><span style="font-family:'JetBrains Mono',monospace;color:var(--text-secondary)">${item.stock_code}</span></td>
-                            <td><strong>${item.stock_name}</strong></td>
-                            <td><span class="badge ${isCore ? 'badge-live' : ''}" style="${!isCore ? 'background:rgba(255,255,255,0.05);color:var(--text-muted)' : ''}">${item.stock_level}</span></td>
-                            <td><span style="color:var(--amber-400)">${item.entry_zone}</span></td>
-                            <td><span style="font-family:'JetBrains Mono',monospace">${item.support_price}</span> / <span style="font-family:'JetBrains Mono',monospace">${item.pressure_price}</span></td>
-                            <td><span style="color:var(--red-400);font-family:'JetBrains Mono',monospace">${item.stop_loss_price}</span> / <span style="color:var(--emerald-400);font-family:'JetBrains Mono',monospace">${item.first_profit_price} (${item.second_profit_price})</span></td>
-                            <td><span style="color:var(--emerald-400);font-weight:700;font-family:'JetBrains Mono',monospace">${suggestPosPercent}</span></td>
-                            <td style="font-size:0.75rem;color:var(--text-muted)" title="${item.risk_tip || ''}">${item.risk_tip || '—'}</td>
-                        </tr>
-                    `;
-                });
-                tradeBody.innerHTML = html;
-            } else {
-                tradeBody.innerHTML = `
-                    <tr>
-                        <td colspan="8" class="empty-state" style="color: var(--text-muted)">
-                            ${data.total_flow_status === '中途终止' ? '⚠️ 全流程因风控拦截提前终止，无最终交易指令' : '暂无交易指令（没有标的满足全部筛选打分标准）'}
-                        </td>
-                    </tr>
-                `;
-            }
-            
-            // 9. 更新时间戳
-            const now = new Date();
-            timestampEl.textContent = `执行时间：${now.toLocaleString('zh-CN')}`;
-            showToast('全流程决策分析计算成功', 'success');
-            
-        } catch (err) {
-            console.error(err);
-            statusEl.textContent = '执行失败';
-            statusEl.style.color = 'var(--red-400)';
-            document.getElementById('wf-terminate-reason').textContent = `异常: ${err.message}`;
-            showToast('全流程执行异常：' + err.message, 'error');
-        } finally {
-            btn.disabled = false;
-            btn.style.opacity = '';
-            btn.style.cursor = '';
-            bolt.textContent = originalBoltText;
-            bolt.style.display = '';
-            bolt.style.animation = '';
-        }
-    };
-
-    /* ── 自动刷新决策流逻辑 ── */
-    let autoRefreshTimer = null;
-    
-    window.onToggleAutoRefresh = function() {
-        const toggle = document.getElementById('auto-refresh-toggle');
-        const title = document.getElementById('auto-refresh-title');
-        
-        if (toggle.checked) {
-            title.textContent = '自动刷新: 开';
-            showToast('🔄 首页自动刷新已开启，每60秒自动执行一次决策', 'success');
-            
-            // 立即执行一次以响应用户的开启操作
-            runDecisionWorkflow();
-            
-            // 设定每 60 秒循环执行
-            autoRefreshTimer = setInterval(async () => {
-                const btn = document.getElementById('decision-workflow-trigger-btn');
-                // 如果按钮已被禁用（代表有正在进行的请求），跳过当前循环，防止重复并发请求
-                if (btn && btn.disabled) {
-                    console.log('决策工作流当前正在运行中，跳过此轮自动刷新。');
-                    return;
-                }
-                console.log('触发60秒自动刷新决策流...');
-                await runDecisionWorkflow();
-            }, 60000);
-        } else {
-            title.textContent = '自动刷新: 关';
-            showToast('⏹ 自动刷新已关闭', 'info');
-            clearAutoRefreshTimer();
-        }
-    };
-    
-    function clearAutoRefreshTimer() {
-        if (autoRefreshTimer) {
-            clearInterval(autoRefreshTimer);
-            autoRefreshTimer = null;
-        }
-    }
-    
-    // 监听页面卸载，清除定时器防止内存泄露
-    window.addEventListener('beforeunload', () => {
-        clearAutoRefreshTimer();
-    });
-
-    /* ── Init ── */
-    window.onload = () => {
-        refreshStatus();
-        loadConfig();
-        loadAIConfig();
-        loadPortfolioStocks();
-        refreshCandidates();
-        setInterval(refreshStatus, 5000);
-        setInterval(refreshLogs, 2000);
-        refreshLogs();
-    };
-</script>
-<!-- AI 报告模态弹窗 -->
-<div id="ai-reports-modal" class="modal-overlay" style="display: none;">
-    <div class="modal-container">
-        <div class="modal-header">
-            <h3>📄 AI 深度诊断报告</h3>
-            <button class="modal-close" onclick="closeAIReportsModal()">×</button>
-        </div>
-        <div class="modal-tabs">
-            <div id="tab-reports-all" class="modal-tab active" onclick="changeReportsTab('all')">📑 历史报告列表</div>
-            <div id="tab-reports-today" class="modal-tab" onclick="changeReportsTab('today')">🔥 今日精选推送</div>
-        </div>
-        <div class="modal-body" id="modal-reports-list-container">
-            <table class="reports-table">
-                <thead>
-                    <tr>
-                        <th>时间</th>
-                        <th>代码</th>
-                        <th>股票名称</th>
-                        <th>评级</th>
-                        <th>得分</th>
-                        <th>操作</th>
-                    </tr>
-                </thead>
-                <tbody id="modal-reports-list-body">
-                    <tr>
-                        <td colspan="6" class="empty-state">加载中...</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-        <div class="modal-body" id="modal-report-detail-container" style="display: none;">
-            <button class="btn btn-ghost" onclick="backToReportsList()" style="margin-bottom: 15px; padding: 6px 12px; font-size: 0.8rem;">
-                ⬅ 返回列表
-            </button>
-            <div id="modal-report-content" class="markdown-body-custom"></div>
         </div>
     </div>
 
-</div>
+    <div id="ai-reports-modal" class="modal-overlay">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h3 style="font-size:14px; font-weight:700;">📄 漏斗第二层：本地大模型 (Ollama) 深度语义诊断白皮书</h3>
+                <button
+                    style="background:none; border:none; font-size:20px; color:var(--text-secondary); cursor:pointer;"
+                    onclick="closeAIReportsModal()">×</button>
+            </div>
+            <div class="modal-tabs">
+                <div id="tab-reports-all" class="modal-tab active" onclick="changeReportsTab('all')">📑 粗筛命中池历史语义底稿
+                </div>
+                <div id="tab-reports-today" class="modal-tab" onclick="changeReportsTab('today')">🔥 今日达到飞书推送线精选报告</div>
+            </div>
+            <div class="modal-body" id="modal-reports-list-container">
+                <table class="reports-table">
+                    <thead>
+                        <tr>
+                            <th>诊断时间</th>
+                            <th>股票代码</th>
+                            <th>股票名称</th>
+                            <th>综合评级</th>
+                            <th>量化总分</th>
+                            <th>深度阅读</th>
+                        </tr>
+                    </thead>
+                    <tbody id="modal-reports-list-body"></tbody>
+                </table>
+            </div>
+            <div class="modal-body" id="modal-report-detail-container" style="display: none;">
+                <button class="btn btn-ghost" onclick="backToReportsList()"
+                    style="margin-bottom: 12px; font-size:11px;">⬅ 返回底稿列表</button>
+                <div id="modal-report-content" class="markdown-body-custom" style="font-size:13px; line-height:1.6;">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast-container"></div>
+
+    <script>
+        /* ── 时钟守护 ── */
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('clock').textContent = now.toLocaleTimeString('zh-CN', { hour12: false });
+        }
+        setInterval(updateClock, 1000); updateClock();
+
+        /* ── 系统原生成型通知组件 ── */
+        function showToast(msg, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const el = document.createElement('div'); el.className = `toast`;
+            el.innerHTML = `<span>${msg}</span>`; container.appendChild(el);
+            setTimeout(() => el.remove(), 3000);
+        }
+
+        /* ── 全局异步交互控制内核 ── */
+        async function fetchAPI(url, options = {}) {
+            try {
+                const res = await fetch(url, options);
+                if (!res.ok) throw new Error(await res.text());
+                return await res.json();
+            } catch (err) {
+                showToast('内核通信中断: ' + err.message, 'error');
+                throw err;
+            }
+        }
+
+        /* ── 动态滚动数值增长特效 ── */
+        function countUp(el, target, duration = 800) {
+            const start = Date.now();
+            const from = parseInt(el.textContent.replace(/,/g, '')) || 0;
+            const to = parseInt(target); if (isNaN(to)) { el.textContent = target; return; }
+            const step = () => {
+                const elapsed = Date.now() - start; const progress = Math.min(elapsed / duration, 1);
+                el.textContent = Math.round(from + (to - from) * progress).toLocaleString();
+                if (progress < 1) requestAnimationFrame(step);
+            };
+            requestAnimationFrame(step);
+        }
+
+        /* ── 系统健康状态与底层数据库资产规模轮询 ── */
+        async function refreshStatus() {
+            let data; try { data = await fetchAPI('/api/status'); } catch (e) { return; }
+            const sBadge = document.getElementById('scheduler-badge');
+            if (data.scheduler_running) {
+                sBadge.className = 'badge badge-live'; sBadge.textContent = '常驻守护中';
+                document.getElementById('scheduler-toggle').checked = true;
+                document.getElementById('toggle-title').textContent = "挂机守护运行中";
+            } else {
+                sBadge.className = 'badge badge-idle'; sBadge.textContent = '已挂起';
+                document.getElementById('scheduler-toggle').checked = false;
+                document.getElementById('toggle-title').textContent = "挂机守护已停止";
+            }
+            const fBadge = document.getElementById('fetcher-badge');
+            fBadge.textContent = data.fetcher_running ? '拉取校准中…' : '就绪';
+            fBadge.className = data.fetcher_running ? 'badge badge-live' : 'badge badge-idle';
+
+            countUp(document.getElementById('db-stocks'), data.db.stock_count);
+            countUp(document.getElementById('db-daily'), data.db.daily_count);
+            countUp(document.getElementById('db-moneyflow'), data.db.moneyflow_count);
+            countUp(document.getElementById('db-holder'), data.db.holder_count);
+        }
+
+        /* ── 挂机调度事件挂接 ── */
+        async function onToggleScheduler() {
+            const checked = document.getElementById('scheduler-toggle').checked;
+            const action = checked ? 'start' : 'stop';
+            await fetchAPI('/api/scheduler', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action })
+            });
+            showToast(checked ? '🤖 无人值守常驻内核已启动' : '⏹ 常驻守护任务已安全卸载');
+            setTimeout(refreshStatus, 600);
+        }
+
+        /* ── 刷新第一层算力过滤池 ── */
+        async function refreshCandidates() {
+            const body = document.getElementById('candidates-body');
+            body.innerHTML = '<tr><td colspan="7" class="empty-state">正在遍历量化特征索引...</td></tr>';
+
+            let reportMap = {};
+            try {
+                const reportsData = await fetchAPI('/api/reports');
+                if (reportsData?.reports) {
+                    reportsData.reports.forEach(r => { if (r.type === 'ai_report') reportMap[r.ts_code] = r.filename; });
+                }
+            } catch (e) { }
+
+            const result = await fetchAPI('/api/candidates');
+            if (result?.candidates?.length > 0) {
+                body.innerHTML = result.candidates.map((c, i) => {
+                    const reportFile = reportMap[c.ts_code];
+                    const reportBtn = reportFile
+                        ? `<button class="btn btn-ghost" style="padding:2px 6px; font-size:10px;" onclick="viewCandidateReport('${reportFile}')">📄 阅读语义报告</button>`
+                        : '<span style="color:var(--text-muted)">LLM排队中</span>';
+                    return `
+                    <tr>
+                        <td><span style="font-family:'JetBrains Mono'; font-weight:700;">#${String(i + 1).padStart(2, '0')}</span></td>
+                        <td style="color:var(--blue-400); font-family:'JetBrains Mono';">${c.ts_code}</td>
+                        <td><strong>${c.name}</strong></td>
+                        <td><span style="color:var(--emerald-400); font-weight:700;">${c.score} 分</span></td>
+                        <td style="color:${c.pct_chg >= 0 ? 'var(--red-400)' : 'var(--emerald-400)'}">${c.pct_chg >= 0 ? '+' : ''}${c.pct_chg}%</td>
+                        <td>${c.industry || '-'}</td>
+                        <td>${reportBtn}</td>
+                    </tr>
+                `;
+                }).join('');
+            } else {
+                body.innerHTML = '<tr><td colspan="7" class="empty-state">第一层粗筛候选池目前为空。</td></tr>';
+            }
+        }
+
+        function viewCandidateReport(filename) { openAIReportsModal('all'); viewReportDetail(filename); }
+
+        /* ── LLM 诊断报告模态处理 ── */
+        let currentReportsTab = 'all';
+        async function openAIReportsModal(tabType = 'all') {
+            currentReportsTab = tabType; document.getElementById('ai-reports-modal').classList.add('show');
+            document.getElementById('tab-reports-all').classList.toggle('active', tabType === 'all');
+            document.getElementById('tab-reports-today').classList.toggle('active', tabType === 'today');
+            document.getElementById('modal-reports-list-container').style.display = 'block';
+            document.getElementById('modal-report-detail-container').style.display = 'none';
+            await loadReportsList();
+        }
+        function closeAIReportsModal() { document.getElementById('ai-reports-modal').classList.remove('show'); }
+        function changeReportsTab(tabType) { if (currentReportsTab === tabType) return; openAIReportsModal(tabType); }
+
+        async function loadReportsList() {
+            const body = document.getElementById('modal-reports-list-body');
+            body.innerHTML = '<tr><td colspan="6" class="empty-state">读取LLM文件底稿...</td></tr>';
+            try {
+                const data = await fetchAPI('/api/reports');
+                let reports = data.reports.filter(r => r.type === 'ai_report');
+                if (currentReportsTab === 'today') reports = reports.filter(r => r.score >= 70);
+
+                if (reports.length === 0) {
+                    body.innerHTML = '<tr><td colspan="6" class="empty-state">未排查到符合对应条件的诊断报告</td></tr>'; return;
+                }
+                body.innerHTML = reports.map(r => `
+                <tr>
+                    <td>${r.datetime}</td>
+                    <td style="color:var(--blue-400); font-family:'JetBrains Mono';">${r.ts_code}</td>
+                    <td><strong>${r.name}</strong></td>
+                    <td><span class="badge badge-live">${r.grade} 级</span></td>
+                    <td style="font-family:'JetBrains Mono'; font-weight:700; color:var(--emerald-400);">${r.score}分</td>
+                    <td><button class="btn btn-ghost" style="padding:4px 8px; font-size:11px;" onclick="viewReportDetail('${r.filename}')">调阅底稿</button></td>
+                </tr>
+            `).join('');
+            } catch (e) { body.innerHTML = '<tr><td colspan="6" class="empty-state">加载遭遇拦截</td></tr>'; }
+        }
+
+        async function viewReportDetail(filename) {
+            document.getElementById('modal-reports-list-container').style.display = 'none';
+            document.getElementById('modal-report-detail-container').style.display = 'block';
+            const contentDiv = document.getElementById('modal-report-content');
+            contentDiv.innerHTML = '<div class="empty-state">正在解密非结构化语义文本...</div>';
+            try {
+                const data = await fetchAPI(`/api/reports/content?filename=${encodeURIComponent(filename)}`);
+                contentDiv.innerHTML = markdownToHtml(data.content);
+            } catch (e) { contentDiv.innerHTML = '<div>解密文本失败</div>'; }
+        }
+        function backToReportsList() {
+            document.getElementById('modal-report-detail-container').style.display = 'none';
+            document.getElementById('modal-reports-list-container').style.display = 'block';
+        }
+
+        /* ── 第一阶段漏斗一键强刷过渡函数 ── */
+        async function runStrategyTrigger() {
+            showToast('⚡ 正在强制重新扫描全市场多因子特征矩阵...', 'info');
+            try {
+                await fetchAPI('/api/scan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ session_name: '强制重刷' }) });
+                showToast('✅ 第一层因子清洗重组完毕', 'success'); await refreshCandidates();
+            } catch (e) { }
+        }
+
+        /* ── [核心逻辑] 三层递进全流程整合体系控制 ── */
+        window.runDecisionWorkflow = async function () {
+            const btn = document.getElementById('decision-workflow-trigger-btn');
+            const bolt = document.getElementById('decision-btn-bolt');
+            const statusEl = document.getElementById('wf-total-status');
+
+            btn.disabled = true; bolt.style.transform = 'scale(1.3)';
+            statusEl.textContent = '核心网格计算中...'; statusEl.style.color = 'var(--amber-400)';
+
+            try {
+                const res = await fetchAPI('/api/run_total');
+                if (res.code !== 200) throw new Error(res.msg || '未知核心级错误');
+                const data = res.data;
+
+                // L1层解析绑定
+                const macroMode = data.macro_summary.operate_mode;
+                const macroModeEl = document.getElementById('wf-macro-mode');
+                macroModeEl.textContent = macroMode;
+                const macroDot = document.getElementById('wf-macro-dot');
+                if (macroMode === '进攻') { macroDot.style.background = 'var(--emerald-500)'; macroModeEl.style.color = 'var(--emerald-400)'; }
+                else if (macroMode === '谨慎') { macroDot.style.background = 'var(--amber-500)'; macroModeEl.style.color = 'var(--amber-400)'; }
+                else { macroDot.style.background = 'var(--red-500)'; macroModeEl.style.color = 'var(--red-400)'; }
+                document.getElementById('wf-macro-score').textContent = `加权得分：${data.macro_summary.total_score}分 | ${data.macro_summary.revise_desc || '无盘中修正'}`;
+
+                // L2层风格与二次虹吸判定绑定
+                document.getElementById('wf-board-style').textContent = data.board_summary.main_style || '风格轮动不显著';
+                document.getElementById('wf-board-rotate').textContent = `轮动强度：${data.board_summary.rotate_strength || '—'}`;
+                document.getElementById('wf-siphon-level').textContent = data.board_summary.siphon_level || '未触及虹吸警戒线';
+                document.getElementById('wf-market-pos').textContent = `全账户基础总仓位：${data.board_summary.market_position || '0.0%'}`;
+
+                // 全局终审拦截状态
+                statusEl.textContent = data.total_flow_status;
+                statusEl.style.color = data.total_flow_status === '正常完成' ? 'var(--emerald-400)' : 'var(--red-400)';
+                document.getElementById('wf-terminate-reason').textContent = data.terminate_reason ? `说明: ${data.terminate_reason}` : '全链路绿灯流转';
+
+                // 异常警示栏弹出
+                const alertContainer = document.getElementById('wf-alert-container');
+                const riskAlert = document.getElementById('wf-risk-alert');
+                const missingAlert = document.getElementById('wf-missing-alert');
+                let hasAlert = false;
+
+                if (data.global_risk_list?.length > 0) { riskAlert.textContent = `⚠️ 风控拦截：${data.global_risk_list.join(' | ')}`; riskAlert.style.display = 'block'; hasAlert = true; }
+                else riskAlert.style.display = 'none';
+                if (data.all_data_missing?.length > 0) { missingAlert.textContent = `⚠️ 数据缺环：${data.all_data_missing.join(', ')}`; missingAlert.style.display = 'block'; hasAlert = true; }
+                else missingAlert.style.display = 'none';
+                alertContainer.style.display = hasAlert ? 'flex' : 'none';
+
+                // L3个股级下单簿构建
+                const tradeBody = document.getElementById('wf-trade-body');
+                if (data.final_trade_list?.length > 0) {
+                    tradeBody.innerHTML = data.final_trade_list.map(item => `
+                    <tr>
+                        <td style="font-family:'JetBrains Mono'; font-weight:700; color:var(--blue-400);">${item.stock_code}</td>
+                        <td><strong>${item.stock_name}</strong></td>
+                        <td><span class="badge ${item.stock_level === '核心标的' ? 'badge-live' : 'badge-idle'}">${item.stock_level}</span></td>
+                        <td style="color:var(--amber-400); font-weight:700;">${item.entry_zone}</td>
+                        <td style="font-family:'JetBrains Mono';">${item.support_price} / ${item.pressure_price}</td>
+                        <td style="font-family:'JetBrains Mono'; text-align:left;"><span style="color:var(--red-400)">${item.stop_loss_price}</span> | <span style="color:var(--emerald-400)">${item.first_profit_price}</span></td>
+                        <td style="font-family:'JetBrains Mono'; font-weight:800; color:var(--emerald-400);">${(item.suggest_position * 100).toFixed(1)}%</td>
+                        <td style="font-size:11px; color:var(--text-secondary); max-w-xs; overflow:hidden; text-overflow:ellipsis;" title="${item.risk_tip}">${item.risk_tip || '参数传导健康'}</td>
+                    </tr>
+                `).join('');
+                } else {
+                    tradeBody.innerHTML = `<tr><td colspan="8" class="empty-state">${data.total_flow_status === '中途终止' ? '⚠️ 触发高阶风控一票否决熔断拦截，今日休战，无最终交易指令。' : '全因子多维匹配完成，未过滤出契合S级高分标准的执行标的。'}</td></tr>`;
+                }
+                document.getElementById('wf-timestamp').textContent = `矩阵刷新时间：${new Date().toLocaleString()}`;
+                showToast('三层整合决策网格构建成功');
+            } catch (err) {
+                statusEl.textContent = '异常中断';
+                document.getElementById('wf-terminate-reason').textContent = err.message;
+            } finally { btn.disabled = false; bolt.style.transform = ''; }
+        };
+
+        /* ── 动态自动轮询流水线机制 ── */
+        let autoRefreshTimer = null;
+        window.onToggleAutoRefresh = function () {
+            const toggle = document.getElementById('auto-refresh-toggle');
+            const title = document.getElementById('auto-refresh-title');
+            if (toggle.checked) {
+                title.textContent = '周期轮询: 60s'; showToast('🔄 生产环境自动轮询机制挂载成功 (每60秒刷新三层决策)');
+                runDecisionWorkflow();
+                autoRefreshTimer = setInterval(() => {
+                    const btn = document.getElementById('decision-workflow-trigger-btn');
+                    if (btn && !btn.disabled) runDecisionWorkflow();
+                }, 60000);
+            } else {
+                title.textContent = '周期轮询: 关'; clearInterval(autoRefreshTimer); autoRefreshTimer = null;
+            }
+        };
+
+        /* ── 参数热配置持久化调度 ── */
+        async function saveAllConfig() {
+            const token = document.getElementById('ai-market-env').value; // 借用原件逻辑对齐
+            const bias = parseInt(document.getElementById('ai-max-bias').value);
+            const sector = document.getElementById('ai-sector').value;
+            await fetchAPI('/api/ai_config', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ market_env: token, max_bias: bias, sector_focus: sector })
+            });
+            showToast('💾 超参数策略控制配置文件写入完毕');
+        }
+
+        function selectMarket(val) {
+            document.getElementById('ai-market-env').value = val;
+            showToast(`校准指令: 动态大盘逼迫锁定为 [${val}]`);
+        }
+
+        /* ── 单股洗盘形态剥离分析 ── */
+        async function runWashoutAnalysis() {
+            const tsCode = document.getElementById('washout-code').value.trim();
+            if (!tsCode) { showToast('需指定有效的个股代码'); return; }
+            showToast(`🧹 正在对 ${tsCode} 启动洗盘吸筹特征工程拆解...`, 'info');
+            try {
+                const data = await fetchAPI('/api/washout/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ts_code: tsCode }) });
+                const nw = window.open('', '_blank');
+                nw.document.write(`<html><body style="background:#040811; color:#f8fafc; padding:30px; font-family:sans-serif;">${markdownToHtml(data.report)}</body></html>`);
+                nw.document.close();
+            } catch (e) { }
+        }
+
+        /* ── 冷同步及底层日志桥接 ── */
+        async function triggerSync() {
+            try {
+                await fetchAPI('/api/fetch', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ workers: 2, mode: 'incremental' }) });
+                showToast('📥 增量行情数据抓取指令下发成功');
+            } catch (e) { }
+        }
+
+        async function refreshLogs() {
+            try { const data = await fetchAPI('/api/logs'); const term = document.getElementById('terminal-logs'); if (term.textContent !== data.logs) { term.textContent = data.logs; term.scrollTop = term.scrollHeight; } } catch (e) { }
+        }
+        function clearTerminal() { document.getElementById('terminal-logs').textContent = '— 事件线缓冲区已手动格式化清空 —'; }
+        function toggleSidebar() { document.getElementById('sidebar').classList.toggle('expanded'); }
+
+        /* ── 轻量非结构化文本渲染器 ── */
+        function markdownToHtml(md) {
+            return md.replace(/^### (.*$)/gim, '<h3 style="color:var(--blue-400); margin:12px 0;">$1</h3>')
+                .replace(/^## (.*$)/gim, '<h2 style="color:var(--blue-400); margin:16px 0;">$1</h2>')
+                .replace(/\*\*(.*)\*\*/g, '<strong style="color:var(--amber-400);">$1</strong>')
+                .replace(/\n/g, '<br>');
+        }
+
+        /* ── 线程主循环冷启动 ── */
+        window.onload = () => {
+            refreshStatus(); refreshCandidates();
+            setInterval(refreshStatus, 6000);
+            setInterval(refreshLogs, 2000); refreshLogs();
+        };
+    </script>
 </body>
+
 </html>

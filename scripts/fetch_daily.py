@@ -18,6 +18,15 @@ from threading import Lock
 import pandas as pd
 import tushare as ts
 
+import os
+import sys
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if ROOT_DIR not in sys.path:
+    sys.path.append(ROOT_DIR)
+
+from utils.mootdx_client import mootdx
+from utils.tencent_client import get_stock_valuation
+
 # ─── 路径配置 ─────────────────────────────────────────────────────────────────
 ROOT_DIR    = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB_DIR      = os.path.join(ROOT_DIR, "db")
@@ -331,20 +340,23 @@ def fetch_and_save_one(conn: sqlite3.Connection, ts_code: str, name: str,
 
     start, end = fetch_range
     try:
-        df = pro.daily(ts_code=ts_code, start_date=start, end_date=end,
-                       fields="ts_code,trade_date,open,high,low,close,pre_close,"
-                              "change,pct_chg,vol,amount")
-        time.sleep(RATE_LIMIT_SLEEP)
+        df = mootdx.get_daily(ts_code, start, end)
     except Exception as e:
-        log.warning("⚠️  %s daily() 失败：%s", ts_code, e)
+        log.warning("⚠️  %s mootdx get_daily 失败：%s", ts_code, e)
         return 0
 
     if df is None or df.empty:
         log.debug("🔹 %s [%s~%s] 无新数据", ts_code, start, end)
         return 0
 
-    adj_map = fetch_adj_factor(ts_code, start, end)
-    df["adj_factor"] = df["trade_date"].map(adj_map)
+    # mootdx 本身通常前复权了，为保持表结构，这里的 adj_factor 设为 1.0 或 None
+    df["adj_factor"] = 1.0
+    # mootdx 缺少前收盘价和涨跌额等，这里填充占位，或可进一步计算
+    df["pre_close"] = None
+    df["change"] = None
+    if "pct_chg" not in df.columns:
+        df["pct_chg"] = None
+
 
     rows = [
         (r.ts_code, r.trade_date,
@@ -482,29 +494,35 @@ def fetch_holder_one(conn: sqlite3.Connection, ts_code: str) -> int:
 # v2.3 新增拉取函数
 # ═══════════════════════════════════════════════════════════════════════════════
 def fetch_daily_basic_one(conn, ts_code, global_start, global_end):
-    rng = _get_incremental_range(conn, "daily_basic", ts_code, global_start, global_end)
-    if rng is None:
+    # 使用 tencent_client 获取最新估值（仅限当日/当前最新）
+    from utils.tencent_client import get_stock_valuation
+    val = get_stock_valuation(ts_code)
+    if not val or val.get('pe') is None and val.get('market_cap') is None:
         return 0
-    start, end = rng
-    try:
-        df = pro.daily_basic(ts_code=ts_code, start_date=start, end_date=end,
-                             fields="ts_code,trade_date,turnover_rate,volume_ratio,"
-                                    "pe,pb,ps,total_share,float_share,free_share,total_mv,circ_mv")
-        time.sleep(RATE_LIMIT_SLEEP)
-    except Exception as e:
-        log.debug("daily_basic 失败 %s: %s", ts_code, e)
-        return 0
-    if df is None or df.empty:
-        return 0
-    rows = [(r.ts_code, r.trade_date,
-             _safe(r,'turnover_rate'), _safe(r,'volume_ratio'),
-             _safe(r,'pe'), _safe(r,'pb'), _safe(r,'ps'),
-             _safe(r,'total_share'), _safe(r,'float_share'), _safe(r,'free_share'),
-             _safe(r,'total_mv'), _safe(r,'circ_mv')) for r in df.itertuples(index=False)]
+
+    # 我们只能记录当天的 snapshot，因此 trade_date 为今天
+    trade_date = datetime.now().strftime("%Y%m%d")
+    
+    # 转换为 daily_basic 的结构
+    turnover_rate = val.get('turnover')
+    volume_ratio = None
+    pe = val.get('pe')
+    pb = val.get('pb')
+    ps = None
+    total_share = None
+    float_share = None
+    free_share = None
+    total_mv = val.get('market_cap') * 10000 if val.get('market_cap') else None # 腾讯是亿，转回万元
+    circ_mv = total_mv # 暂用 total_mv 代替 circ_mv
+    
+    rows = [(ts_code, trade_date, turnover_rate, volume_ratio,
+             pe, pb, ps, total_share, float_share, free_share,
+             total_mv, circ_mv)]
+             
     with DB_LOCK:
         conn.executemany("INSERT OR REPLACE INTO daily_basic VALUES (?,?,?,?,?,?,?,?,?,?,?,?)", rows)
         conn.execute("INSERT OR REPLACE INTO daily_basic_log (ts_code,last_start,last_end,rows_total,updated_at) VALUES (?,?,?,COALESCE((SELECT rows_total FROM daily_basic_log WHERE ts_code=?),0)+?,datetime('now','localtime'))",
-                     (ts_code, start, end, ts_code, len(rows)))
+                     (ts_code, trade_date, trade_date, ts_code, len(rows)))
         conn.commit()
     return len(rows)
 
@@ -759,38 +777,48 @@ def fetch_by_date_main(global_start: str, global_end: str,
             
         # 1. 抓取日线与复权因子合并
         try:
-            log.info("  -> 拉取全市场日线行情...")
-            df_daily = pro.daily(trade_date=date_str, fields="ts_code,trade_date,open,high,low,close,pre_close,change,pct_chg,vol,amount")
-            time.sleep(RATE_LIMIT_SLEEP)
+            log.info("  -> 拉取全市场日线行情(mootdx 逐只)...")
             
-            log.info("  -> 拉取全市场复权因子...")
-            df_adj = pro.adj_factor(trade_date=date_str, fields="ts_code,adj_factor")
-            time.sleep(RATE_LIMIT_SLEEP)
+            # 从本地获取需要拉取的股票列表
+            stock_df = pd.read_sql("SELECT ts_code FROM stock_list", conn)
+            codes = stock_df['ts_code'].tolist()
             
-            if df_daily is not None and not df_daily.empty:
-                if df_adj is not None and not df_adj.empty:
-                    df_merged = pd.merge(df_daily, df_adj, on="ts_code", how="left")
-                else:
-                    df_merged = df_daily.copy()
-                    df_merged["adj_factor"] = None
-                    
-                rows = [
-                    (r.ts_code, r.trade_date,
-                     r.open, r.high, r.low, r.close, r.pre_close,
-                     r.change, r.pct_chg, r.vol, r.amount,
-                     r.adj_factor if pd.notna(r.adj_factor) else None)
-                    for r in df_merged.itertuples(index=False)
-                ]
-                with DB_LOCK:
-                    conn.executemany("""
-                        INSERT OR REPLACE INTO daily_prices
-                          (ts_code, trade_date, open, high, low, close, pre_close,
-                           change, pct_chg, vol, amount, adj_factor)
-                        VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
-                    """, rows)
-                    conn.commit()
-                log.info("  ✅ 成功写入日线: +%d 行", len(rows))
-                total_new_rows += len(rows)
+            all_data = []
+            import concurrent.futures
+            # 并发控制，提速
+            with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+                future_to_code = {executor.submit(mootdx.get_daily, code, date_str, date_str): code for code in codes}
+                for future in concurrent.futures.as_completed(future_to_code):
+                    df_res = future.result()
+                    if df_res is not None and not df_res.empty:
+                        all_data.append(df_res)
+                        
+            if all_data:
+                df_merged = pd.concat(all_data, ignore_index=True)
+                df_merged["pre_close"] = None
+                df_merged["change"] = None
+                df_merged["pct_chg"] = None
+                df_merged["adj_factor"] = 1.0
+            else:
+                df_merged = pd.DataFrame(columns=["ts_code", "trade_date", "open", "high", "low", "close", "pre_close", "change", "pct_chg", "vol", "amount", "adj_factor"])
+
+            rows = [
+                (r.ts_code, r.trade_date,
+                 r.open, r.high, r.low, r.close, r.pre_close,
+                 r.change, r.pct_chg, r.vol, r.amount,
+                 r.adj_factor if pd.notna(r.adj_factor) else None)
+                for r in df_merged.itertuples(index=False)
+            ]
+            with DB_LOCK:
+                conn.executemany("""
+                    INSERT OR REPLACE INTO daily_prices
+                      (ts_code, trade_date, open, high, low, close, pre_close,
+                       change, pct_chg, vol, amount, adj_factor)
+                    VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+                """, rows)
+                conn.commit()
+            log.info("  ✅ 成功写入日线: +%d 行", len(rows))
+            total_new_rows += len(rows)
         except Exception as e:
             log.warning("  ⚠️ 日线或复权因子写入失败: %s", e)
 
@@ -1001,6 +1029,18 @@ def main():
             fetch_bak        = not args.skip_bak,
             fetch_mins       = not args.skip_mins,
         )
+
+    log.info("📊 开始执行盘后板块数据聚合 (backend)...")
+    try:
+        from app.services.concept_updater import update_concept_mapping
+        from app.services.sector_aggregator import aggregate_sectors
+        
+        # trade_date 为 args.end (例如 "20260617")
+        update_concept_mapping(args.end)
+        aggregate_sectors(args.end)
+        log.info(f"✅ 板块聚合完成: {args.end}")
+    except Exception as e:
+        log.warning(f"板块聚合跳过或失败: {e}")
 
     log.info("✅ 全部完成！数据库路径：%s", DB_PATH)
 
