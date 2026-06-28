@@ -992,6 +992,10 @@
                 <div class="card-header">
                     <div class="card-title">📋 算力保护漏斗第一层过滤结果池 (Top 50 粗筛标的)</div>
                     <div style="display: flex; gap: 8px;">
+                        <button class="btn btn-ghost" style="font-size:11px; padding:4px 12px; border-color: var(--blue-500); color: var(--blue-400);"
+                            id="quickScanBtn" onclick="runQuickScan()">🚀 一键选股</button>
+                        <button class="btn btn-ghost" style="font-size:11px; padding:4px 12px; border-color: var(--emerald-500); color: var(--emerald-400);"
+                            id="mlScanBtn" onclick="runMLScan()">🧠 v4.0 ML 选股</button>
                         <button class="btn btn-ghost" style="font-size:11px; padding:4px 12px;"
                             onclick="openAIReportsModal('all')">📄 调阅本地 LLM 语义分析报告</button>
                         <button class="btn btn-ghost" style="font-size:11px; padding:4px 12px;"
@@ -1128,6 +1132,38 @@
                 </div>
             </div>
 
+            <!-- 策略进化与迭代历史记录 -->
+            <div class="card" style="padding: 16px;">
+                <div class="card-header" style="margin-bottom: 12px; display:flex; justify-content:space-between; align-items:center;">
+                    <div class="card-title">📊 策略进化与迭代历史记录</div>
+                    <span style="font-size:11px; color:var(--text-muted);">自动归档 Web 回测与一键选股历史轨迹</span>
+                </div>
+                <div class="candidates-table-container">
+                    <table class="candidates-table" id="evolutionTable">
+                        <thead>
+                            <tr>
+                                <th>回测/选股时间</th>
+                                <th>因子组合</th>
+                                <th>Top% 选股百分比</th>
+                                <th>持股周期</th>
+                                <th>组合总收益</th>
+                                <th>年化收益率</th>
+                                <th>回测胜率</th>
+                                <th>最大回撤</th>
+                                <th>组合夏普</th>
+                                <th>选股/交易数</th>
+                                <th>最优标定</th>
+                            </tr>
+                        </thead>
+                        <tbody id="evolutionBody">
+                            <tr>
+                                <td colspan="11" class="empty-state">暂无进化与迭代回测历史记录</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
             <div class="terminal-wrap">
                 <div class="terminal-header">
                     <span class="terminal-label">📊 整合框架决策系统核心流转实时日志 (自动刷新 2s)</span>
@@ -1137,6 +1173,21 @@
                 <div id="terminal-logs" class="terminal-body">正在加载核心事件总线日志监听流...</div>
             </div>
 
+        </div>
+    </div>
+
+    <!-- 一键选股异步结果弹窗 -->
+    <div id="scanResultModal" class="modal-overlay">
+        <div class="modal-container" style="max-width: 700px;">
+            <div class="modal-header">
+                <h3 style="font-size:14px; font-weight:700; display:flex; align-items:center; gap:6px;">🚀 一键选股运行结果</h3>
+                <button
+                    style="background:none; border:none; font-size:20px; color:var(--text-secondary); cursor:pointer;"
+                    onclick="closeScanResultModal()">×</button>
+            </div>
+            <div class="modal-body" id="scanResultBody" style="padding: 20px; font-size: 13px; line-height: 1.6; max-height: 450px; overflow-y: auto;">
+                <p>扫描启动中，请稍候...</p>
+            </div>
         </div>
     </div>
 
@@ -1497,9 +1548,199 @@
                 .replace(/\n/g, '<br>');
         }
 
+        /* ── v4.0 ML 策略选股接口 ── */
+        window.runMLScan = function () {
+            const modal = document.getElementById('scanResultModal');
+            const body = document.getElementById('scanResultBody');
+            body.innerHTML = '<div style="display:flex; align-items:center; gap:8px; color:var(--emerald-400);"><span>🧠</span> <span>正在启动 v4.0 ML 多因子策略选股，执行 Ridge 回归推理与行业中性化过滤...</span></div>';
+            modal.classList.add('show');
+
+            fetchAPI('/api/ml_scan', { method: 'POST' })
+                .then(data => {
+                    if (data.status === 'success') {
+                        const candidates = data.candidates || [];
+                        if (candidates.length === 0) {
+                            body.innerHTML = '<div style="color:var(--text-secondary);">v4.0 ML 策略扫描完成，今日未筛选出符合条件的标的。</div>';
+                            return;
+                        }
+                        let html = `
+                            <p style="margin-bottom:12px; color:var(--emerald-400); font-weight:700;">✅ v4.0 ML 多因子策略选股完成！共筛选出 ${data.count} 只候选标的：</p>
+                            <table class="candidates-table" style="font-size:12px;">
+                                <thead>
+                                    <tr>
+                                        <th>股票代码</th>
+                                        <th>股票名称</th>
+                                        <th>ML 回归得分</th>
+                                        <th>所属行业</th>
+                                        <th>板块排名</th>
+                                        <th>当日涨跌幅</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                        `;
+                        candidates.forEach(c => {
+                            const rank = c.sector_rank || '-';
+                            html += `
+                                <tr>
+                                    <td style="font-family:'JetBrains Mono'; font-weight:700; color:var(--blue-400);">${c.ts_code}</td>
+                                    <td><strong>${c.name}</strong></td>
+                                    <td style="font-weight:700; color:${c.score >= 0 ? 'var(--amber-400)' : 'var(--blue-400)'}">${(c.score * 100).toFixed(2)}%</td>
+                                    <td>${c.industry || '未知'}</td>
+                                    <td style="font-weight:700; color:${rank <= 3 ? 'var(--red-400)' : rank <= 5 ? 'var(--amber-400)' : 'var(--gray-400)'}">${rank}</td>
+                                    <td style="color:${c.pct_chg >= 0 ? 'var(--red-400)' : 'var(--emerald-400)'}"">${c.pct_chg >= 0 ? '+' : ''}${c.pct_chg}%</td>
+                                </tr>
+                            `;
+                        });
+                        html += '</tbody></table>';
+                        body.innerHTML = html;
+                        refreshCandidates();
+                    } else {
+                        body.innerHTML = `<p style="color:var(--red-400); font-weight:700;">❌ ML 策略执行失败</p>`;
+                    }
+                })
+                .catch(err => {
+                    body.innerHTML = `<p style="color:var(--red-400); font-weight:700;">❌ v4.0 ML 选股接口调用失败: ${err.message}</p>`;
+                });
+        };
+
+        /* ── 异步一键选股及轮询 ── */
+        window.runQuickScan = function () {
+            const modal = document.getElementById('scanResultModal');
+            const body = document.getElementById('scanResultBody');
+            body.innerHTML = '<div style="display:flex; align-items:center; gap:8px; color:var(--blue-400);"><span>🔄</span> <span>正在后台启动多核扫描，开始全天行情及因子校验，请稍候...</span></div>';
+            modal.classList.add('show');
+
+            fetchAPI('/api/quick_scan', { method: 'POST' })
+                .then(data => {
+                    const taskId = data.task_id;
+                    let counter = 0;
+                    const interval = setInterval(() => {
+                        counter += 2;
+                        body.innerHTML = `<div style="display:flex; align-items:center; gap:8px; color:var(--blue-400);"><span>🔄</span> <span>正在后台执行扫描 (${counter}s)... 选股计算与大模型评估需要一定的时间，请不要关闭弹窗</span></div>`;
+                        
+                        fetchAPI(`/api/scan_result/${taskId}`)
+                            .then(task => {
+                                if (task.status === 'completed') {
+                                    clearInterval(interval);
+                                    const candidates = task.candidates || [];
+                                    if (candidates.length === 0) {
+                                        body.innerHTML = '<div style="color:var(--text-secondary);">全市场扫描完成，但今日未筛选出符合 S 级强量化特征的标的。</div>';
+                                        return;
+                                    }
+                                    let html = `
+                                        <p style="margin-bottom:12px; color:var(--emerald-400); font-weight:700;">✅ 扫描已成功完成！共筛选出 ${candidates.length} 只符合主力吸筹特征的标的：</p>
+                                        <table class="candidates-table" style="font-size:12px;">
+                                            <thead>
+                                                <tr>
+                                                    <th>股票代码</th>
+                                                    <th>股票名称</th>
+                                                    <th>选股综合得分</th>
+                                                    <th>所属申万行业</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                    `;
+                                    candidates.forEach(c => {
+                                        html += `
+                                            <tr>
+                                                <td style="font-family:'JetBrains Mono'; font-weight:700; color:var(--blue-400);">${c.ts_code}</td>
+                                                <td><strong>${c.name}</strong></td>
+                                                <td style="font-weight:700; color:var(--amber-400);">${c.total_score} 分</td>
+                                                <td>${c.industry || '未知'}</td>
+                                            </tr>
+                                        `;
+                                    });
+                                    html += '</tbody></table>';
+                                    body.innerHTML = html;
+                                    loadEvolution(); // 重刷进化历史表格
+                                    refreshCandidates(); // 顺便重刷首页主表格
+                                } else if (task.status === 'failed') {
+                                    clearInterval(interval);
+                                    body.innerHTML = `<p style="color:var(--red-400); font-weight:700;">❌ 后端计算节点异常，扫描任务失败：</p><pre style="background:rgba(255,255,255,0.02); padding:10px; border-radius:4px; font-family:'JetBrains Mono'; font-size:11px; overflow-x:auto;">${task.error}</pre>`;
+                                }
+                            })
+                            .catch(err => {
+                                clearInterval(interval);
+                                body.innerHTML = `<p style="color:var(--red-400); font-weight:700;">❌ 获取扫描结果网络异常: ${err.message}</p>`;
+                            });
+                    }, 2000);
+                })
+                .catch(err => {
+                    body.innerHTML = `<p style="color:var(--red-400); font-weight:700;">❌ 启动异步一键选股任务失败: ${err.message}</p>`;
+                });
+        };
+
+        window.closeScanResultModal = function () {
+            document.getElementById('scanResultModal').classList.remove('show');
+        };
+
+        /* ── 策略进化历史载入与设为最优 ── */
+        window.loadEvolution = async function () {
+            try {
+                const data = await fetchAPI('/api/evolution/history?limit=20');
+                const tbody = document.getElementById('evolutionBody');
+                if (!data || data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="11" class="empty-state">暂无进化与迭代回测历史记录</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = data.map(row => {
+                    let factorsList = [];
+                    try {
+                        factorsList = JSON.parse(row.factors);
+                    } catch (e) {
+                        factorsList = [row.factors];
+                    }
+                    const factorStr = factorsList.join(', ');
+                    const runTimeStr = new Date(row.run_time).toLocaleString();
+                    const topPctStr = row.top_pct ? `${(row.top_pct * 100).toFixed(0)}%` : '—';
+                    const holdDaysStr = row.hold_days ? `${row.hold_days}天` : '—';
+                    
+                    // 判断是否是一键选股产生的数据（收益都为0且有特殊的notes）
+                    const isScanOnly = (row.total_return === 0 && row.annual_return === 0 && row.win_rate === 0 && row.max_drawdown === 0 && row.sharpe_ratio === 0);
+                    
+                    const totRet = isScanOnly ? '—' : `${(row.total_return || 0).toFixed(2)}%`;
+                    const annRet = isScanOnly ? '—' : `${(row.annual_return || 0).toFixed(2)}%`;
+                    const winRt = isScanOnly ? '—' : `${(row.win_rate || 0).toFixed(2)}%`;
+                    const maxDd = isScanOnly ? '—' : `${(row.max_drawdown || 0).toFixed(2)}%`;
+                    const sharpe = isScanOnly ? '—' : (row.sharpe_ratio || 0).toFixed(3);
+                    
+                    const bestText = row.is_best ? '⭐ <span style="font-size:10px; color:var(--amber-400); font-weight:700;">BEST</span>' : 
+                        `<button class="btn btn-ghost" style="font-size:10px; padding:2px 6px;" onclick="setBestEvolution(${row.id})">标为最优</button>`;
+                        
+                    return `
+                        <tr>
+                            <td style="font-size:11px; color:var(--text-secondary);">${runTimeStr}</td>
+                            <td><code style="font-family:'JetBrains Mono'; font-size:11px; color:var(--blue-400);">${factorStr}</code></td>
+                            <td style="font-family:'JetBrains Mono';">${topPctStr}</td>
+                            <td style="font-family:'JetBrains Mono';">${holdDaysStr}</td>
+                            <td style="font-family:'JetBrains Mono'; font-weight:700; color:${row.total_return >= 0 ? 'var(--emerald-400)' : 'var(--red-400)'}">${totRet}</td>
+                            <td style="font-family:'JetBrains Mono';">${annRet}</td>
+                            <td style="font-family:'JetBrains Mono';">${winRt}</td>
+                            <td style="font-family:'JetBrains Mono'; color:var(--red-400);">${maxDd}</td>
+                            <td style="font-family:'JetBrains Mono'; font-weight:700; color:var(--amber-400);">${sharpe}</td>
+                            <td style="font-family:'JetBrains Mono';">${row.trade_count}</td>
+                            <td>${bestText}</td>
+                        </tr>
+                    `;
+                }).join('');
+            } catch (err) {
+                console.error("加载进化历史失败:", err);
+            }
+        };
+
+        window.setBestEvolution = async function (id) {
+            try {
+                await fetchAPI(`/api/evolution/best?id=${id}`, { method: 'POST' });
+                showToast('🏆 已将当前迭代成功标记为最优迭代版本');
+                loadEvolution();
+            } catch (e) {
+                showToast('设置最优版本失败', 'error');
+            }
+        };
+
         /* ── 线程主循环冷启动 ── */
         window.onload = () => {
-            refreshStatus(); refreshCandidates();
+            refreshStatus(); refreshCandidates(); loadEvolution();
             setInterval(refreshStatus, 6000);
             setInterval(refreshLogs, 2000); refreshLogs();
         };

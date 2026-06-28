@@ -23,14 +23,7 @@ def _get_db():
     from app.core.database import get_db_conn
     return get_db_conn()
 
-def _get_mootdx():
-    """获取 mootdx 客户端（优先从 backend/app/core 加载，备用 utils）"""
-    try:
-        from app.core.mootdx_client import MootdxClient
-        return MootdxClient()
-    except ImportError:
-        from utils.mootdx_client import mootdx
-        return mootdx
+# 已移除对 mootdx 客户端的依赖方法定义
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -64,15 +57,15 @@ def get_funds_data(trade_date: str = None) -> Dict[str, Any]:
             if row and row['total_amount']:
                 result['total_amount'] = round(row['total_amount'], 2)
         except Exception as e:
-            logger.warning(f"本地成交额汇总失败，尝试 mootdx 指数成交: {e}")
+            logger.warning(f"本地成交额汇总失败，尝试 Tushare 指数成交: {e}")
             try:
-                mx = _get_mootdx()
                 # 从上证/深证指数 amount 字段推算（单只指数代表两市整体）
-                df_idx = mx.get_index_daily('000001.SH', trade_date, trade_date)
-                if not df_idx.empty and 'amount' in df_idx.columns:
-                    result['total_amount'] = round(float(df_idx['amount'].iloc[0]) / 1e8, 2)
+                df_idx = _fetch_with_retry(pro.index_daily, ts_code='000001.SH', start_date=trade_date, end_date=trade_date)
+                if df_idx is not None and not df_idx.empty and 'amount' in df_idx.columns:
+                    # Tushare 接口指数的 amount 单位为千元，换算成亿元需要除以 100000.0 (1e5)
+                    result['total_amount'] = round(float(df_idx['amount'].iloc[0]) / 1e5, 2)
             except Exception as e2:
-                logger.warning(f"mootdx 成交额降级也失败: {e2}")
+                logger.warning(f"Tushare 成交额降级也失败: {e2}")
 
         # 北向资金净流入
         try:
@@ -208,25 +201,7 @@ def get_index_position(trade_date: str = None, ma_period: int = 20) -> Dict[str,
                 result['above_ma'] = deviation >= 0
             return result
 
-        # 降级：使用 mootdx（优先于 Tushare）
-        try:
-            mx = _get_mootdx()
-            start_date = (datetime.strptime(trade_date, '%Y%m%d') - timedelta(days=60)).strftime('%Y%m%d')
-            df_idx = mx.get_index_daily('000001.SH', start_date, trade_date)
-            if df_idx is not None and not df_idx.empty:
-                df_idx = df_idx.sort_values('trade_date', ascending=False).reset_index(drop=True)
-                closes = df_idx['close'].tolist()
-                result['index_close'] = closes[0]
-                if len(closes) >= ma_period:
-                    ma = sum(closes[:ma_period]) / ma_period
-                    result['ma20'] = round(ma, 2)
-                    deviation = (closes[0] - ma) / ma * 100.0
-                    result['deviation'] = round(deviation, 2)
-                    result['above_ma'] = deviation >= 0
-                return result
-        except Exception as emx:
-            logger.warning(f"mootdx 指数数据降级失败，再试 Tushare: {emx}")
-
+        # 降级：使用 Tushare
         pro = _get_pro()
         start_date = (datetime.strptime(trade_date, '%Y%m%d') - timedelta(days=60)).strftime('%Y%m%d')
         df_idx = _fetch_with_retry(pro.index_daily, ts_code='000001.SH',

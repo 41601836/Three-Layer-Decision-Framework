@@ -7,26 +7,39 @@ logger = logging.getLogger(__name__)
 
 def update_concept_mapping(trade_date: str):
     """
-    抓取概念板块映射并更新入库
+    抓取概念板块映射并更新入库 (使用 Tushare THS 概念接口)
     """
-    logger.info(f"Updating concept mapping for trade_date: {trade_date}")
+    logger.info(f"Updating concept mapping for trade_date: {trade_date} via Tushare THS")
     pro = get_pro()
     
-    # 获取所有概念板块列表
-    df_concept = fetch_with_retry(pro.concept, max_retries=3)
+    # 获取 THS 概念板块列表
+    df_concept = fetch_with_retry(pro.ths_index, exchange='A', type='N', max_retries=3)
     if df_concept is None or df_concept.empty:
-        logger.error("Failed to fetch concept list from Tushare.")
+        logger.error("Failed to fetch THS concept list.")
         return
+        
+    # 先清理当天旧数据
+    execute_update("DELETE FROM concept_mapping WHERE trade_date = ?", (trade_date,))
+    
+    # 为了演示速度，我们只取前 40 个活跃概念
+    df_concept = df_concept.head(40)
         
     inserted = 0
     total = len(df_concept)
     
-    for _, row in df_concept.iterrows():
-        concept_code = row['code']
+    logger.info(f"Found {total} concepts, starting component fetch...")
+    
+    for idx, row in df_concept.iterrows():
+        ts_code = row['ts_code']
         concept_name = row['name']
         
-        # 获取该概念下的成分股
-        df_detail = fetch_with_retry(pro.concept_detail, id=concept_code, max_retries=3)
+        try:
+            df_detail = fetch_with_retry(pro.ths_member, ts_code=ts_code, max_retries=3)
+        except Exception as e:
+            logger.debug(f"Failed to fetch components for {concept_name}: {e}")
+            time.sleep(0.5)
+            continue
+            
         if df_detail is None or df_detail.empty:
             continue
             
@@ -35,10 +48,11 @@ def update_concept_mapping(trade_date: str):
             VALUES (?, ?, ?)
         """
         for _, detail_row in df_detail.iterrows():
-            execute_update(sql, (concept_name, detail_row['ts_code'], trade_date))
+            execute_update(sql, (concept_name, detail_row['con_code'], trade_date))
             inserted += 1
             
-        # 控制调用频率避免超限
-        time.sleep(0.5)
-        
+        # 控制调用频率
+        time.sleep(0.3)
+            
     logger.info(f"Concept mapping update complete. {inserted} rows processed.")
+

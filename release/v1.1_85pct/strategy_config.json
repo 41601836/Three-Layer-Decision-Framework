@@ -1,0 +1,28 @@
+{
+  "strategy_file": "release/v1.0_75pct/training_result_70pct.json",
+  "max_signals_per_day": 30,
+  "hold_days": 10,
+  "stop_loss_pct": 0.05,
+  "min_score": 0.4,
+  "factors": [
+    "pb",
+    "ret_20d",
+    "circ_mv_yi",
+    "winner_rate"
+  ],
+  "weights": [
+    0.8,
+    1.8,
+    0.8,
+    1.0
+  ],
+  "thresholds": {
+    "pb": 0.65,
+    "ret_20d": 0.55,
+    "circ_mv_yi": 0.40,
+    "winner_rate": 0.28
+  },
+  "win_rate": 0.8571,
+  "total_return": 0.4341,
+  "max_drawdown": 0.0669
+}

@@ -1,0 +1,88 @@
+# ============================================================
+# StockAI ML 多因子策略配置文件
+# 版本：v1.0  |  固化时间：2026-06-25
+# ============================================================
+
+ml_strategy:
+  version: "v1.0"
+  description: "3因子 Ridge 回归吸筹选股策略（PB + 振幅 + PE）"
+  created_at: "2026-06-25"
+
+  # ── 模型配置 ────────────────────────────────────────────
+  model:
+    type: "Ridge"
+    factors:
+      - name: "pb"
+        description: "市净率（越低越好，低估值信号）"
+      - name: "price_range"
+        description: "振幅（越低越好，吸筹过程通常低振幅）"
+      - name: "pe"
+        description: "市盈率（越低越好，盈利能力估值）"
+
+  # ── 选股参数 ────────────────────────────────────────────
+  selection:
+    top_pct: 10              # 每日从全市场选取 ML 得分前 10% 为候选池
+    score_floor: 0.0         # 预测得分正值门槛（排除负超额收益预测）
+
+  # ── 仓位管理 ────────────────────────────────────────────
+  position:
+    hold_days: 10            # 波段持仓天数（10交易日 ≈ 2周）
+    single_pos_pct: 0.03     # 单只股票建仓上限（总资产的 3%）
+    industry_pos_limit: 0.15 # 单行业仓位上限（总资产的 15%）
+    initial_capital: 1000000 # 回测初始资金（100万元）
+
+  # ── 大盘颜色仓位约束 ─────────────────────────────────────
+  market_limits:
+    green:  0.70   # 绿色（多头趋势）：总仓位上限 70%
+    yellow: 0.40   # 黄色（震荡整理）：总仓位上限 40%
+    red:    0.20   # 红色（下行风险）：总仓位上限 20%
+    black:  0.00   # 黑色（极端下跌）：强制全清仓
+
+  # ── 过滤器开关 ────────────────────────────────────────────
+  filters:
+    market_cap_limit: true       # 大盘颜色仓位约束
+    industry_strength: true      # 行业强度共振过滤（需在前10强行业）
+    stop_loss:
+      enabled: true
+      fixed_loss_pct: -8.0       # 固定止损线（-8%）
+      breakeven_trigger_pct: 5.0 # 盈利超过 5% 后移动止损至成本价
+    top_inst_filter: false       # 龙虎榜机构触发器（已验证与价值因子逻辑冲突，关闭）
+
+  # ── 基准绩效（2025全年样本内，已验证）──────────────────────
+  benchmark_performance:
+    period: "20250101 ~ 20251231"
+    trades: 435
+    win_rate: "43.0%"
+    avg_return_per_trade: "+0.94%"
+    total_return: "+12.97%"
+    annual_return: "+13.48%"
+    max_drawdown: "-3.01%"
+    sharpe_ratio: 1.746
+    notes: "3因子 Ridge | top10% | hold10天 | 大盘限仓ON | 行业过滤ON"
+
+  # ── 样本外验证绩效（2026至今，已验证）──────────────────────
+  out_of_sample_performance:
+    period: "20260101 ~ 20260625"
+    trades: 173
+    win_rate: "17.3%"
+    avg_return_per_trade: "-0.90%"
+    total_return: "-4.50%"
+    annual_return: "-9.85%"
+    max_drawdown: "-5.65%"
+    sharpe_ratio: -2.232
+    notes: "3因子 Ridge | top10% | hold10天 | 大盘限仓ON | 行业过滤ON"
+
+  # ── 运行命令（标准执行） ────────────────────────────────────
+  run_command: >
+    python backtest_ml_strategy.py
+    --start 20250101
+    --end 20251231
+    --top_pct 10
+    --hold_days 10
+
+  # ── 已否定的方案（勿再尝试） ───────────────────────────────
+  rejected_approaches:
+    - name: "龙虎榜机构触发器（--require_top_inst）"
+      reason: "ML价值因子与龙虎榜异动因子逻辑对立，交叉率仅0.1%，全年仅触发4笔"
+    - name: "周一/周二建仓节奏限制（--weekday_filter 0,1）"
+      reason: "价值因子（PB/PE/振幅）无星期效应，限制建仓日只丢失机会"

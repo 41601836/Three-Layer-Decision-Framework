@@ -23,7 +23,7 @@ def aggregate_sectors(trade_date: str):
         SELECT 
             c.concept_name as sector_name,
             AVG(d.pct_chg) as pct_chg,
-            SUM(d.amount) / 100000.0 as amount, -- 转为亿元
+            SUM(d.amount) / 100000000.0 as amount, -- 转为亿元 (mootdx 单位是元)
             SUM(COALESCE(m.net_mf_amount, 0)) / 10000.0 as net_mf_amount, -- 转为亿元
             SUM(CASE WHEN d.pct_chg >= 9.5 THEN 1 ELSE 0 END) as limit_up_count,
             COUNT(DISTINCT c.ts_code) as total_stocks

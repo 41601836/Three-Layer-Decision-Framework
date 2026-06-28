@@ -24,7 +24,7 @@ ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if ROOT_DIR not in sys.path:
     sys.path.append(ROOT_DIR)
 
-from utils.mootdx_client import mootdx
+# 已移除对 mootdx 的导入
 from utils.tencent_client import get_stock_valuation
 
 # ─── 路径配置 ─────────────────────────────────────────────────────────────────
@@ -340,23 +340,21 @@ def fetch_and_save_one(conn: sqlite3.Connection, ts_code: str, name: str,
 
     start, end = fetch_range
     try:
-        df = mootdx.get_daily(ts_code, start, end)
+        df = pro.daily(ts_code=ts_code, start_date=start, end_date=end)
+        time.sleep(RATE_LIMIT_SLEEP)
     except Exception as e:
-        log.warning("⚠️  %s mootdx get_daily 失败：%s", ts_code, e)
+        log.warning("⚠️  %s tushare daily 失败：%s", ts_code, e)
         return 0
 
     if df is None or df.empty:
         log.debug("🔹 %s [%s~%s] 无新数据", ts_code, start, end)
         return 0
 
-    # mootdx 本身通常前复权了，为保持表结构，这里的 adj_factor 设为 1.0 或 None
+    # Tushare amount 单位是千元，换算为元
+    df["amount"] = df["amount"] * 1000
     df["adj_factor"] = 1.0
-    # mootdx 缺少前收盘价和涨跌额等，这里填充占位，或可进一步计算
-    df["pre_close"] = None
-    df["change"] = None
-    if "pct_chg" not in df.columns:
-        df["pct_chg"] = None
-
+    cols = ["ts_code", "trade_date", "open", "high", "low", "close", "pre_close", "change", "pct_chg", "vol", "amount", "adj_factor"]
+    df = df[cols]
 
     rows = [
         (r.ts_code, r.trade_date,
@@ -777,28 +775,17 @@ def fetch_by_date_main(global_start: str, global_end: str,
             
         # 1. 抓取日线与复权因子合并
         try:
-            log.info("  -> 拉取全市场日线行情(mootdx 逐只)...")
+            log.info("  -> 拉取全市场日线行情(Tushare)...")
             
-            # 从本地获取需要拉取的股票列表
-            stock_df = pd.read_sql("SELECT ts_code FROM stock_list", conn)
-            codes = stock_df['ts_code'].tolist()
-            
-            all_data = []
-            import concurrent.futures
-            # 并发控制，提速
-            with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
-                future_to_code = {executor.submit(mootdx.get_daily, code, date_str, date_str): code for code in codes}
-                for future in concurrent.futures.as_completed(future_to_code):
-                    df_res = future.result()
-                    if df_res is not None and not df_res.empty:
-                        all_data.append(df_res)
+            df_merged = pro.daily(trade_date=date_str)
+            time.sleep(RATE_LIMIT_SLEEP)
                         
-            if all_data:
-                df_merged = pd.concat(all_data, ignore_index=True)
-                df_merged["pre_close"] = None
-                df_merged["change"] = None
-                df_merged["pct_chg"] = None
+            if df_merged is not None and not df_merged.empty:
+                # Tushare amount 单位是千元，换算为元
+                df_merged["amount"] = df_merged["amount"] * 1000
                 df_merged["adj_factor"] = 1.0
+                cols = ["ts_code", "trade_date", "open", "high", "low", "close", "pre_close", "change", "pct_chg", "vol", "amount", "adj_factor"]
+                df_merged = df_merged[cols]
             else:
                 df_merged = pd.DataFrame(columns=["ts_code", "trade_date", "open", "high", "low", "close", "pre_close", "change", "pct_chg", "vol", "amount", "adj_factor"])
 
@@ -1032,6 +1019,7 @@ def main():
 
     log.info("📊 开始执行盘后板块数据聚合 (backend)...")
     try:
+        # pyrefly: ignore [missing-import]
         from app.services.concept_updater import update_concept_mapping
         from app.services.sector_aggregator import aggregate_sectors
         

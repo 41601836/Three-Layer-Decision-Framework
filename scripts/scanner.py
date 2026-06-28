@@ -32,10 +32,17 @@ if ROOT_DIR not in sys.path:
 if BACKEND_DIR not in sys.path:
     sys.path.append(BACKEND_DIR)
 
+import tushare as ts
+
 try:
-    from app.core.mootdx_client import mootdx_client as mootdx
+    from scripts.tokens import TOKEN as TUSHARE_TOKEN
 except ImportError:
-    from utils.mootdx_client import mootdx
+    try:
+        from tokens import TOKEN as TUSHARE_TOKEN
+    except ImportError:
+        TUSHARE_TOKEN = os.environ.get("TUSHARE_TOKEN", "")
+
+pro = ts.pro_api(TUSHARE_TOKEN)
 
 log = logging.getLogger(__name__)
 
@@ -57,7 +64,8 @@ def is_trade_day(date_str: str = None) -> bool:
     if not _trade_cal_cache:
         try:
             year = datetime.now().year
-            dates = mootdx.get_trade_dates(f"{year}0101", f"{year}1231")
+            cal_df = pro.trade_cal(exchange="SSE", start_date=f"{year}0101", end_date=f"{year}1231", is_open="1")
+            dates = cal_df["cal_date"].tolist() if cal_df is not None and not cal_df.empty else []
             _trade_cal_cache = {d: 1 for d in dates}
             log.info("交易日历已加载 %d 条", len(_trade_cal_cache))
         except Exception as e:

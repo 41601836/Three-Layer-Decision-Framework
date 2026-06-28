@@ -1,0 +1,39 @@
+{
+  "version_name": "high_precision_sniper_v1.0",
+  "archive_time": "2026-06-28T13:08:52.718606",
+  "params": {
+    "weights": {
+      "pb": 0.8,
+      "ret_20d": 1.8,
+      "circ_mv_yi": 0.8,
+      "winner_rate": 1.0
+    },
+    "thresholds": {
+      "pb": 0.75,
+      "ret_20d": 0.6,
+      "circ_mv_yi": 0.45,
+      "winner_rate": 0.35
+    },
+    "factor_directions": {
+      "pb": "lower_better",
+      "ret_20d": "higher_better",
+      "circ_mv_yi": "higher_better",
+      "winner_rate": "higher_better"
+    },
+    "min_score_ratio": 0.7,
+    "daily_max_signals": 2,
+    "position_per_signal": 0.08,
+    "hold_days": 10,
+    "max_exposure": 0.16
+  },
+  "results": {
+    "win_rate": 0.615,
+    "total_return": 0.008,
+    "max_drawdown": 0.015,
+    "signal_per_day": 1.0,
+    "trade_count": 13,
+    "avg_return_per_trade": 0.0073,
+    "period": "2026-01-01 to 2026-06-25"
+  },
+  "notes": ""
+}

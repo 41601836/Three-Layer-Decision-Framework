@@ -41,7 +41,7 @@ export TUSHARE_TOKEN="bcfb8db101b928d1dfff5685dff95f2441d8c1b4395e2ecd067116ea"
 echo ""
 echo "🚀 启动 StockAI Funnel 服务..."
 echo "📍 UI 界面将在浏览器中打开"
-echo "📍 服务端口：http://localhost:8000"
+echo "📍 服务端口：http://localhost:8001"
 echo ""
 
 # 在后台启动服务器
@@ -52,7 +52,7 @@ SERVER_PID=$!
 sleep 3
 
 # 打开浏览器
-open "http://localhost:8000"
+open "http://localhost:8001"
 
 # 等待服务器结束
 wait $SERVER_PID

@@ -33,7 +33,7 @@ AI_CONFIG = {
     "max_concurrent": 2,       # 1.5b 占用低，推荐并发 2 以提升速度
     "timeout_conn":   15,      # 连接超时（秒）
     "timeout_read":   180,     # 读取超时（秒）
-    "trigger_score":  40,      # Python 分低于此值不触发 AI
+    "trigger_score":  100,     # Python 分低于此值不触发 AI（设置为100禁用AI）
     "output_dir":     os.path.join(ROOT_DIR, "data", "ai_results"),
 }
 

@@ -36,12 +36,13 @@ app.add_middleware(
 )
 
 # ─── 注册路由 ─────────────────────────────────────────────────────────────────
-from app.api.v1 import layer1, layer2, monday, layer3, ai
+from app.api.v1 import layer1, layer2, monday, layer3, ai, sniffer
 app.include_router(layer1.router, prefix="/api/v1")
 app.include_router(layer2.router, prefix="/api/v1")
 app.include_router(layer3.router, prefix="/api/v1")
 app.include_router(monday.router, prefix="/api/v1")
 app.include_router(ai.router, prefix="/api/v1")
+app.include_router(sniffer.router, prefix="/api/v1")
 
 @app.get("/health", tags=["系统"])
 async def health_check():

@@ -4,6 +4,10 @@ import psutil
 import subprocess
 import sqlite3
 import re
+import threading
+import uuid
+import json
+from datetime import datetime
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -23,6 +27,31 @@ SCRIPTS_DIR = os.path.join(ROOT_DIR, "scripts")
 STATIC_DIR = os.path.join(ROOT_DIR, "static")
 DB_PATH = os.path.join(ROOT_DIR, "db", "stock_daily.db")
 TOKENS_PATH = os.path.join(SCRIPTS_DIR, "tokens.py")
+
+def init_evolution_table():
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS strategy_evolution (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            run_time TEXT NOT NULL,
+            factors TEXT NOT NULL,          -- JSON数组，如 ["pb","pe","price_range"]
+            top_pct REAL,
+            hold_days INTEGER,
+            total_return REAL,
+            annual_return REAL,
+            win_rate REAL,
+            max_drawdown REAL,
+            sharpe_ratio REAL,
+            trade_count INTEGER,
+            is_best BOOLEAN DEFAULT 0,
+            notes TEXT
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+# 在启动时自动建表
+init_evolution_table()
 
 os.makedirs(STATIC_DIR, exist_ok=True)
 
@@ -423,6 +452,7 @@ class StockAnalysisRequest(BaseModel):
     ts_code: str
 
 @app.post("/api/stock_analysis")
+@app.post("/api/decision/stock_analysis")
 def analyze_stock(req: StockAnalysisRequest):
     ts_code = req.ts_code.strip()
     if not ts_code:
@@ -1224,6 +1254,126 @@ async def get_candidates():
             return {"candidates": []}
     return {"candidates": []}
 
+# ── 异步一键选股与进化系统 API ──
+scan_tasks = {}
+
+def record_evolution(factors, top_pct, hold_days, total_return, annual_return,
+                     win_rate, max_drawdown, sharpe_ratio, trade_count,
+                     is_best=False, notes=""):
+    """记录一次进化结果到数据库"""
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute("""
+        INSERT INTO strategy_evolution (
+            run_time, factors, top_pct, hold_days, total_return, annual_return,
+            win_rate, max_drawdown, sharpe_ratio, trade_count, is_best, notes
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (
+        datetime.now().isoformat(),
+        json.dumps(factors),
+        top_pct,
+        hold_days,
+        total_return,
+        annual_return,
+        win_rate,
+        max_drawdown,
+        sharpe_ratio,
+        trade_count,
+        1 if is_best else 0,
+        notes
+    ))
+    conn.commit()
+    conn.close()
+
+def run_scan_task(task_id, session_name):
+    """在后台线程中执行扫描"""
+    try:
+        import subprocess
+        command = [sys.executable, os.path.join(SCRIPTS_DIR, "scheduler.py"), "--now", "--session", session_name]
+        result = subprocess.run(command, cwd=ROOT_DIR, capture_output=True, text=True, timeout=300)
+        
+        candidates = []
+        if result.returncode == 0:
+            candidates_file = os.path.join(ROOT_DIR, "last_candidates.json")
+            if os.path.exists(candidates_file):
+                with open(candidates_file, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    if isinstance(data, list):
+                        candidates = data
+                    else:
+                        candidates = data.get("candidates", [])
+        
+        # 记录进化数据
+        if candidates:
+            # 计算平均得分并沉淀进化档案
+            scores = [c.get("total_score", 0) for c in candidates]
+            avg_score = sum(scores) / len(scores) if scores else 0
+            record_evolution(
+                factors=["pb", "pe", "price_range"],
+                top_pct=0.10,
+                hold_days=10,
+                total_return=0.0,
+                annual_return=0.0,
+                win_rate=0.0,
+                max_drawdown=0.0,
+                sharpe_ratio=0.0,
+                trade_count=len(candidates),
+                is_best=False,
+                notes=f"一键选股候选 {len(candidates)} 只，均分 {avg_score:.1f}"
+            )
+        
+        scan_tasks[task_id] = {
+            "status": "completed",
+            "candidates": candidates,
+            "error": None
+        }
+    except Exception as e:
+        scan_tasks[task_id] = {
+            "status": "failed",
+            "error": str(e),
+            "candidates": []
+        }
+
+@app.post("/api/quick_scan")
+def quick_scan():
+    """一键选股：异步启动扫描，返回任务ID"""
+    task_id = str(uuid.uuid4())
+    scan_tasks[task_id] = {"status": "running", "candidates": [], "error": None}
+    thread = threading.Thread(target=run_scan_task, args=(task_id, "一键选股"))
+    thread.daemon = True
+    thread.start()
+    return {"task_id": task_id}
+
+@app.get("/api/scan_result/{task_id}")
+def get_scan_result(task_id: str):
+    """获取扫描结果"""
+    task = scan_tasks.get(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    return task
+
+@app.get("/api/evolution/history")
+def get_evolution_history(limit: int = 50):
+    """获取进化历史记录"""
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    rows = conn.execute("""
+        SELECT * FROM strategy_evolution
+        ORDER BY run_time DESC
+        LIMIT ?
+    """, (limit,)).fetchall()
+    conn.close()
+    return [dict(row) for row in rows]
+
+@app.post("/api/evolution/best")
+def set_best_evolution(id: int):
+    """将某条记录设为最佳（is_best=1）"""
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute("UPDATE strategy_evolution SET is_best = 0")
+    conn.execute("UPDATE strategy_evolution SET is_best = 1 WHERE id = ?", (id,))
+    conn.commit()
+    conn.close()
+    return {"status": "success"}
+
 @app.get("/backtest")
 async def backtest_page():
     return FileResponse("static/backtest.html")
@@ -1435,11 +1585,28 @@ async def run_backtest(req: BacktestRequest):
         df_res = pd.DataFrame(results)
         
         if df_res.empty:
-            return {
+            result = {
                 "total_return": 0.0, "annual_return": 0.0, "win_rate": 0.0,
                 "max_drawdown": 0.0, "sharpe_ratio": 0.0, "trade_count": 0,
                 "equity_curve": [], "trades": []
             }
+            try:
+                record_evolution(
+                    factors=["pb", "pe", "price_range"],
+                    top_pct=req.threshold / 100.0,
+                    hold_days=req.holding_days,
+                    total_return=0.0,
+                    annual_return=0.0,
+                    win_rate=0.0,
+                    max_drawdown=0.0,
+                    sharpe_ratio=0.0,
+                    trade_count=0,
+                    is_best=False,
+                    notes=f"Web回测 {req.strategy} (无信号)"
+                )
+            except Exception as ev_err:
+                print(f"[EVOLUTION ERROR] 自动归档空回测失败: {ev_err}")
+            return result
             
         win_rate = float((df_res["exit_pct"] > 0).mean() * 100)
         
@@ -1490,7 +1657,7 @@ async def run_backtest(req: BacktestRequest):
                 "return": float(round(r["exit_pct"], 2))
             })
             
-        return {
+        result = {
             "total_return": round(total_return, 2),
             "annual_return": round(annual_return, 2),
             "win_rate": round(win_rate, 2),
@@ -1500,8 +1667,306 @@ async def run_backtest(req: BacktestRequest):
             "equity_curve": equity_curve,
             "trades": trades
         }
+        
+        # 自动沉淀进化迭代数据
+        if 'total_return' in result:
+            try:
+                record_evolution(
+                    factors=["pb", "pe", "price_range"],
+                    top_pct=req.threshold / 100.0,
+                    hold_days=req.holding_days,
+                    total_return=result['total_return'],
+                    annual_return=result['annual_return'],
+                    win_rate=result['win_rate'],
+                    max_drawdown=result['max_drawdown'],
+                    sharpe_ratio=result['sharpe_ratio'],
+                    trade_count=result['trade_count'],
+                    is_best=False,
+                    notes=f"Web回测 {req.strategy}"
+                )
+            except Exception as ev_err:
+                print(f"[EVOLUTION ERROR] 自动归档失败: {ev_err}")
+                
+        return result
     finally:
         conn.close()
+
+# ──────────────────────────────────────────────────────────────
+# v4.0 ML 策略回测 API
+# ──────────────────────────────────────────────────────────────
+
+class BacktestMLRequest(BaseModel):
+    top_pct: int = 15
+    hold_days: int = 10
+    start_date: str
+    end_date: str
+    no_industry_filter: bool = False
+    no_market_limit: bool = False
+    require_top_inst: bool = False
+    weekday_filter: str = None
+    require_ma5_filter: bool = False
+
+@app.post("/api/backtest_ml")
+@app.post("/api/decision/backtest_ml")
+async def run_backtest_ml(req: BacktestMLRequest):
+    import pandas as pd
+    import numpy as np
+    from datetime import datetime, timedelta
+    
+    try:
+        start_str = datetime.strptime(req.start_date, "%Y-%m-%d").strftime("%Y%m%d")
+        end_str = datetime.strptime(req.end_date, "%Y-%m-%d").strftime("%Y%m%d")
+    except ValueError:
+        raise HTTPException(status_code=400, detail="日期格式错误，请使用 YYYY-MM-DD")
+    
+    d_start = datetime.strptime(req.start_date, "%Y-%m-%d")
+    d_end = datetime.strptime(req.end_date, "%Y-%m-%d")
+    if (d_end - d_start).days > 750:
+        raise HTTPException(status_code=400, detail="为了系统性能，Web 端单次回测区间最大支持 2 年，请缩短时间范围。")
+    
+    # 解析星期过滤参数
+    allowed_weekdays = None
+    if req.weekday_filter:
+        allowed_weekdays = [int(x.strip()) for x in req.weekday_filter.split(",")]
+    
+    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+    conn.execute("PRAGMA journal_mode=WAL;")
+    conn.execute("PRAGMA temp_store=MEMORY;")
+    
+    try:
+        # 调用 backtest_ml_strategy.py 的核心回测函数
+        from backtest_ml_strategy import load_all_data, run_ml_backtest, analyze_performance
+        
+        # 行情数据预留温热期（从 start_date 前60天开始加载）
+        warm_start = (d_start - timedelta(days=60)).strftime("%Y%m%d")
+        daily = load_all_data(conn, warm_start, end_str)
+        
+        if daily.empty:
+            return {
+                "total_return": 0.0, "annual_return": 0.0, "win_rate": 0.0,
+                "max_drawdown": 0.0, "sharpe_ratio": 0.0, "trade_count": 0,
+                "equity_curve": [], "trades": []
+            }
+        
+        trade_dates = sorted(
+            daily[daily["trade_date"] >= start_str]["trade_date"].unique().tolist()
+        )
+        
+        df_equity, df_trades = run_ml_backtest(
+            daily, trade_dates, conn,
+            top_pct=req.top_pct,
+            no_industry_filter=req.no_industry_filter,
+            no_market_limit=req.no_market_limit,
+            require_top_inst=req.require_top_inst,
+            allowed_weekdays=allowed_weekdays,
+            require_ma5_filter=req.require_ma5_filter
+        )
+        
+        # 计算绩效指标
+        if df_equity.empty:
+            return {
+                "total_return": 0.0, "annual_return": 0.0, "win_rate": 0.0,
+                "max_drawdown": 0.0, "sharpe_ratio": 0.0, "trade_count": 0,
+                "equity_curve": [], "trades": []
+            }
+        
+        initial_cap = df_equity.iloc[0]["equity"]
+        final_cap = df_equity.iloc[-1]["equity"]
+        total_ret = (final_cap - initial_cap) / initial_cap
+        df_equity["daily_ret"] = df_equity["equity"].pct_change().fillna(0)
+        ann_ret = (1 + total_ret) ** (252 / len(df_equity)) - 1
+        ann_vol = df_equity["daily_ret"].std() * np.sqrt(252)
+        sharpe = (ann_ret - 0.02) / ann_vol if ann_vol > 0 else 0
+        
+        df_equity["peak"] = df_equity["equity"].cummax()
+        df_equity["drawdown"] = (df_equity["equity"] - df_equity["peak"]) / df_equity["peak"]
+        max_dd = df_equity["drawdown"].min()
+        
+        if not df_trades.empty:
+            win_rate = (df_trades["exit_pct"] > 0).mean()
+            total_trades = len(df_trades)
+        else:
+            win_rate, total_trades = 0.0, 0
+        
+        # 构建 equity_curve
+        equity_curve = []
+        for _, row in df_equity.iterrows():
+            equity_curve.append({
+                "date": row["trade_date"],
+                "value": round(row["equity"], 2),
+                "color": row.get("color", "green")
+            })
+        
+        # 构建 trades 列表
+        stock_names = dict(conn.execute("SELECT ts_code, name FROM stock_list").fetchall())
+        trades = []
+        for _, row in df_trades.iterrows():
+            trades.append({
+                "date": row["exit_date"],
+                "ts_code": row["ts_code"],
+                "name": stock_names.get(row["ts_code"], row["ts_code"]),
+                "buy_price": round(row["entry_price"], 2),
+                "sell_price": round(row["exit_price"], 2),
+                "holding_days": row["hold_days"],
+                "return": round(row["exit_pct"], 2),
+                "reason": row["reason"]
+            })
+        
+        result = {
+            "total_return": round(total_ret * 100, 2),
+            "annual_return": round(ann_ret * 100, 2),
+            "win_rate": round(win_rate * 100, 2),
+            "max_drawdown": round(max_dd * 100, 2),
+            "sharpe_ratio": round(sharpe, 2),
+            "trade_count": total_trades,
+            "equity_curve": equity_curve,
+            "trades": trades[:50]
+        }
+        
+        # 记录进化数据
+        try:
+            record_evolution(
+                factors=["ML_score", "industry_strength", "market_color"],
+                top_pct=req.top_pct / 100.0,
+                hold_days=req.hold_days,
+                total_return=round(total_ret * 100, 2),
+                annual_return=round(ann_ret * 100, 2),
+                win_rate=round(win_rate * 100, 2),
+                max_drawdown=round(max_dd * 100, 2),
+                sharpe_ratio=round(sharpe, 2),
+                trade_count=total_trades,
+                is_best=False,
+                notes=f"v4.0 ML策略回测"
+            )
+        except Exception as ev_err:
+            print(f"[EVOLUTION ERROR] 自动归档失败: {ev_err}")
+        
+        return result
+        
+    finally:
+        conn.close()
+
+# ──────────────────────────────────────────────────────────────
+# 策略配置 API
+# ──────────────────────────────────────────────────────────────
+
+import yaml
+
+class StrategyConfig(BaseModel):
+    top_pct: int = 15
+    hold_days: int = 10
+    no_industry_filter: bool = False
+    no_market_limit: bool = False
+    require_top_inst: bool = False
+    weekday_filter: str = ""
+
+@app.get("/api/strategy_config")
+async def get_strategy_config():
+    config_path = os.path.join(ROOT_DIR, "strategy_config.yaml")
+    if os.path.exists(config_path):
+        try:
+            with open(config_path, "r", encoding="utf-8") as f:
+                config = yaml.safe_load(f)
+            return config
+        except Exception as e:
+            print(f"[CONFIG ERROR] 读取配置失败: {e}")
+    
+    # 返回默认配置
+    return {
+        "top_pct": 15,
+        "hold_days": 10,
+        "no_industry_filter": False,
+        "no_market_limit": False,
+        "require_top_inst": False,
+        "weekday_filter": ""
+    }
+
+@app.post("/api/strategy_config")
+async def save_strategy_config(config: StrategyConfig):
+    config_path = os.path.join(ROOT_DIR, "strategy_config.yaml")
+    config_dict = {
+        "top_pct": config.top_pct,
+        "hold_days": config.hold_days,
+        "no_industry_filter": config.no_industry_filter,
+        "no_market_limit": config.no_market_limit,
+        "require_top_inst": config.require_top_inst,
+        "weekday_filter": config.weekday_filter
+    }
+    try:
+        with open(config_path, "w", encoding="utf-8") as f:
+            yaml.dump(config_dict, f, default_flow_style=False, allow_unicode=True)
+        return {"status": "success", "message": "策略配置已保存"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"保存配置失败: {e}")
+
+# ──────────────────────────────────────────────────────────────
+# 进化记录 API
+# ──────────────────────────────────────────────────────────────
+
+@app.get("/api/evolution")
+async def get_evolution_records(limit: int = 20):
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    rows = conn.execute("""
+        SELECT * FROM strategy_evolution
+        ORDER BY run_time DESC
+        LIMIT ?
+    """, (limit,)).fetchall()
+    conn.close()
+    return [dict(row) for row in rows]
+
+@app.post("/api/evolution/best")
+async def set_best_evolution(id: int):
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute("UPDATE strategy_evolution SET is_best = 0")
+    conn.execute("UPDATE strategy_evolution SET is_best = 1 WHERE id = ?", (id,))
+    conn.commit()
+    conn.close()
+    return {"status": "success"}
+
+@app.delete("/api/evolution/{id}")
+async def delete_evolution(id: int):
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute("DELETE FROM strategy_evolution WHERE id = ?", (id,))
+    conn.commit()
+    conn.close()
+    return {"status": "success"}
+
+# ──────────────────────────────────────────────────────────────
+# v4.0 ML 策略手动触发 API
+# ──────────────────────────────────────────────────────────────
+
+@app.post("/api/ml_scan")
+@app.post("/api/decision/ml_scan")
+async def run_ml_scan():
+    """手动触发 v4.0 ML 选股"""
+    try:
+        from ml_pipeline import run_ml_pipeline
+        import sqlite3
+        
+        conn = sqlite3.connect('db/stock_daily.db')
+        cursor = conn.cursor()
+        cursor.execute('SELECT MAX(trade_date) FROM daily_prices')
+        trade_date = cursor.fetchone()[0]
+        conn.close()
+        
+        if not trade_date:
+            raise Exception("数据库中没有交易数据")
+        
+        candidates = run_ml_pipeline(
+            trade_date=trade_date,
+            top_pct=0.10,
+            require_ma5=False,
+            require_industry=False
+        )
+        
+        return {
+            "status": "success",
+            "count": len(candidates),
+            "candidates": candidates[:10]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/portfolio")
 async def portfolio_page():
@@ -1757,8 +2222,32 @@ def get_report_content(filename: str):
 # ──────────────────────────────────────────────────────────────
 
 @app.get("/api/run_total")
+@app.get("/api/decision/run_total")
 def api_run_total():
     try:
+        # 智能同步一次当前的宏观数据，防止空数据降级
+        try:
+            from scheduler.extend_jobs.macro_jobs import (
+                job_daily_before_trade,
+                job_intraday_snapshot_1030,
+                job_intraday_snapshot_1400,
+                job_daily_after_trade,
+                job_monthly_macro
+            )
+            decision_log.info("🌐 API 触发：正在智能刷新宏观与快照数据...")
+            now_hour = datetime.now().hour
+            if now_hour < 9:
+                job_daily_before_trade()
+            elif 9 <= now_hour < 12:
+                job_intraday_snapshot_1030()
+            elif 12 <= now_hour < 15:
+                job_intraday_snapshot_1400()
+            else:
+                job_daily_after_trade()
+                job_monthly_macro()
+        except Exception as e:
+            decision_log.warning(f"盘中宏观数据自动刷新失败: {e}")
+
         result = total_workflow.run()
         return {"code": 200, "msg": "success", "data": result}
     except Exception as e:
@@ -1766,8 +2255,32 @@ def api_run_total():
         return {"code": 500, "msg": f"服务异常: {str(e)}", "data": None}
 
 @app.get("/api/get_macro")
+@app.get("/api/decision/get_macro")
 def api_get_macro():
     try:
+        # 智能同步一次当前的宏观数据，防止空数据降级
+        try:
+            from scheduler.extend_jobs.macro_jobs import (
+                job_daily_before_trade,
+                job_intraday_snapshot_1030,
+                job_intraday_snapshot_1400,
+                job_daily_after_trade,
+                job_monthly_macro
+            )
+            decision_log.info("🌐 API 触发：正在智能刷新宏观与快照数据...")
+            now_hour = datetime.now().hour
+            if now_hour < 9:
+                job_daily_before_trade()
+            elif 9 <= now_hour < 12:
+                job_intraday_snapshot_1030()
+            elif 12 <= now_hour < 15:
+                job_intraday_snapshot_1400()
+            else:
+                job_daily_after_trade()
+                job_monthly_macro()
+        except Exception as e:
+            decision_log.warning(f"盘中宏观数据自动刷新失败: {e}")
+
         s_res = macro_score.run()
         v_res = macro_veto.run()
         pre_expect = {
@@ -1787,6 +2300,7 @@ def api_get_macro():
         return {"code": 500, "msg": f"服务异常: {str(e)}", "data": None}
 
 @app.get("/api/get_board")
+@app.get("/api/decision/get_board")
 def api_get_board():
     try:
         result = board_link_siphon.run()
@@ -1796,6 +2310,7 @@ def api_get_board():
         return {"code": 500, "msg": f"服务异常: {str(e)}", "data": None}
 
 @app.get("/api/get_stock")
+@app.get("/api/decision/get_stock")
 def api_get_stock():
     try:
         result = stock_trade_risk.run()
@@ -1980,6 +2495,49 @@ def api_restart_scheduler():
             "msg": f"重启调度器失败: {str(e)}",
             "data": None
         }
+
+
+@app.get("/api/decision/ml_signal")
+def api_get_ml_signal(ts_code: str):
+    """
+    个股机器学习预测信号与历史评分查询接口
+    """
+    ts_code = ts_code.strip()
+    if not ts_code:
+        raise HTTPException(status_code=400, detail="股票代码不能为空")
+        
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    try:
+        # 查询最近30天ml信号
+        rows = conn.execute(
+            "SELECT * FROM ml_signals WHERE ts_code = ? ORDER BY trade_date DESC LIMIT 30", 
+            (ts_code,)
+        ).fetchall()
+        
+        # 还要获取股票的名称
+        stock_name = ""
+        stock_row = conn.execute("SELECT name FROM stock_list WHERE ts_code = ?", (ts_code,)).fetchone()
+        if stock_row:
+            stock_name = stock_row['name']
+            
+        data = []
+        for r in rows:
+            data.append({
+                "trade_date": r['trade_date'],
+                "ts_code": r['ts_code'],
+                "score": r['score'],
+                "signal_type": r['signal_type'],
+                "left_signal": r['left_signal'],
+                "right_signal": r['right_signal'],
+                "created_at": r['created_at']
+            })
+            
+        return {"code": 200, "msg": "success", "data": {"name": stock_name, "history": data}}
+    except Exception as e:
+        return {"code": 500, "msg": str(e), "data": None}
+    finally:
+        conn.close()
 
 
 if __name__ == "__main__":

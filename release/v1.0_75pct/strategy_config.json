@@ -1,0 +1,18 @@
+{
+  "name": "Strategy_0119",
+  "target_win_rate": 0.75,
+  "strategy_file": "release/v1.0_75pct/training_result_70pct.json",
+  "max_signals_per_day": 30,
+  "hold_days": 10,
+  "stop_loss_pct": 0.05,
+  "min_score": 0.5,
+  "factors": [
+    {"name": "relative_strength", "weight": 1.24},
+    {"name": "ret_20d", "weight": 0.76},
+    {"name": "roe", "weight": 1.14},
+    {"name": "net_main_intensity", "weight": 1.45}
+  ],
+  "win_rate": 0.8571,
+  "total_return": 0.4341,
+  "max_drawdown": 0.0669
+}

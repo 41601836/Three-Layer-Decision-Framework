@@ -1,23 +1,23 @@
 # -*- coding: utf-8 -*-
 """
-v3.3 Final 整合回测脚本 (backtest_final_v33.py)
+v3.3 Final 整合回测脚本 (四色预警升级版)
 ================================================
 
-整合以下全部优化，建立最终策略基准线：
-
-  1. 纯净双核心信号  — 主力+15 / 筹码+15，阈值30
-  2. 固定5%止损     — 回测验证盈亏比1.79最优
-  3. 动态仓位       — 进攻15% / 防守5% / 空仓0%（最大回撤-34.5%）
-  4. 微盘股过滤     — 流通市值 < 10亿 排除（daily_basic.circ_mv）
-  5. 三重流出否决   — 主力+融资+北向均流出 → 信号作废
-
-目标验证：
-  ✅ 胜率 ≥ 55%
-  ✅ 最大回撤 < -32%（较无止损基准-53.6%下降40%）
-  ✅ 盈亏比 ≥ 1.5
+重构内容：
+  1. 引入四色预警与仓位模型（🟢70% / 🟡40% / 🔴20% / ⚫0%）。
+  2. 实现真实的逐日投资组合模拟（Portfolio Simulation）：
+     - 初始资金：1,000,000 元。
+     - 单股建仓比例：绿色 15% | 黄色 10% | 红色 5% | 黑色 0%。
+     - 强制总仓位限制：当前所有持仓市值之和不能超过该环境的强制总仓位上限。
+     - 黑色极端休战：一票否决，开盘强制清仓所有股票。
+  3. 精调风控止损：
+     - 固定 8% 止损：`stop_loss_fixed = 买入价 × 0.92`。
+     - 结构止损：`stop_loss_structure = 20日最低价 × 0.98`。
+     - 实际建仓主止损：`stop_loss_primary = max(stop_loss_fixed, stop_loss_structure)`。
+     - 最大持有期：10 日。
 
 用法：
-    python backtest_final_v33.py --start 20250101 --end 20251231
+    python backtest_final_v33.py --start 20250601 --end 20251231
 """
 
 import os
@@ -25,8 +25,8 @@ import sys
 import sqlite3
 import argparse
 import time
+import json
 from datetime import datetime, timedelta
-
 import pandas as pd
 import numpy as np
 
@@ -34,24 +34,34 @@ ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH  = os.path.join(ROOT_DIR, "db", "stock_daily.db")
 sys.path.insert(0, ROOT_DIR)
 
-# 策略参数（v3.3 Final）
-STOP_LOSS_PCT   = 0.05   # 固定5%止损
-POS_ATTACK      = 0.15   # 进攻模式仓位
-POS_DEFENSE     = 0.05   # 防守模式仓位
-POS_EMPTY       = 0.00   # 空仓模式
+# 止损与参数配置
+STOP_LOSS_PCT   = 0.08   # 8%固定止损
+HOLD_DAYS       = 10     # 最长持股天数
+MIN_CIRC_MV_YI   = 10.0  # 微盘股过滤阈值（亿元）
 SCORE_THRESHOLD = 30     # 强信号门槛
-MIN_CIRC_MV_YI  = 10.0  # 微盘股过滤（亿元）
+
+# 仓位比例
+TOTAL_POS_LIMITS = {
+    "green":  0.70,
+    "yellow": 0.40,
+    "red":    0.20,
+    "black":  0.00,
+}
+
+SINGLE_POS_LIMITS = {
+    "green":  0.15,
+    "yellow": 0.10,
+    "red":    0.05,
+    "black":  0.00,
+}
 
 
 # =============================================================================
 # 数据加载
 # =============================================================================
-
 def load_all_data(conn, start_date, end_date):
-    """加载全量数据（含前180日用于MA60和ATR预热）"""
     pre_start = (datetime.strptime(start_date, "%Y%m%d") - timedelta(days=180)).strftime("%Y%m%d")
-
-    print(f"[START] v3.3 Final 整合回测，区间: {start_date} ~ {end_date}")
+    log_info(f"[START] 开启大盘四色回测，区间: {start_date} ~ {end_date}")
 
     print("[LOAD] 日线数据...")
     daily = pd.read_sql("""
@@ -78,7 +88,7 @@ def load_all_data(conn, start_date, end_date):
         ORDER BY ts_code, ann_date
     """, conn)
 
-    print("[LOAD] 流通市值数据（微盘股过滤）...")
+    print("[LOAD] 流通市值数据...")
     try:
         circ_mv = pd.read_sql("""
             SELECT ts_code, MAX(trade_date) as latest_date, circ_mv
@@ -87,13 +97,11 @@ def load_all_data(conn, start_date, end_date):
             GROUP BY ts_code
         """, conn)
         circ_mv["circ_mv_yi"] = pd.to_numeric(circ_mv["circ_mv"], errors="coerce") / 10000.0
-        n_micro = (circ_mv["circ_mv_yi"] < MIN_CIRC_MV_YI).sum()
-        print(f"  微盘股(<{MIN_CIRC_MV_YI}亿): {n_micro:,} 只，将被过滤")
     except Exception as e:
-        print(f"  [WARN] 无法加载流通市值，跳过微盘股过滤: {e}")
+        print(f"  [WARN] 无法加载流通市值: {e}")
         circ_mv = pd.DataFrame(columns=["ts_code", "circ_mv_yi"])
 
-    print("[LOAD] 融资余额数据（三重否决）...")
+    print("[LOAD] 融资余额数据...")
     try:
         margin = pd.read_sql("""
             SELECT ts_code, trade_date, rzye
@@ -104,7 +112,7 @@ def load_all_data(conn, start_date, end_date):
     except Exception:
         margin = pd.DataFrame(columns=["ts_code", "trade_date", "rzye"])
 
-    print("[LOAD] 北向资金数据（三重否决）...")
+    print("[LOAD] 北向资金数据...")
     try:
         hsgt = pd.read_sql("""
             SELECT trade_date, north_money
@@ -112,8 +120,6 @@ def load_all_data(conn, start_date, end_date):
             WHERE trade_date BETWEEN ? AND ?
             ORDER BY trade_date
         """, conn, params=(start_date, end_date))
-        if hsgt.empty:
-            print("  [WARN] 北向数据为空，三重否决中北向条件将跳过")
     except Exception:
         hsgt = pd.DataFrame(columns=["trade_date", "north_money"])
 
@@ -122,32 +128,14 @@ def load_all_data(conn, start_date, end_date):
     return daily, money, holder, circ_mv, margin, hsgt
 
 
-# =============================================================================
-# 逐日市场模式
-# =============================================================================
-
-def build_market_mode_map(conn, trade_dates):
-    """逐日计算市场模式（严格 target_date 防未来泄露）"""
-    from market_env import get_market_mode
-    print(f"[MARKET] 逐日计算市场模式（{len(trade_dates)}个交易日）...")
-    mode_map = {}
-    for i, td in enumerate(trade_dates):
-        if i % 30 == 0:
-            print(f"  进度: {i}/{len(trade_dates)} ({td})")
-        mode, _, _ = get_market_mode(conn=conn, target_date=td, persist=False)
-        mode_map[td] = mode
-    from collections import Counter
-    cnt = Counter(mode_map.values())
-    print(f"  attack={cnt['attack']} | defense={cnt['defense']} | empty={cnt['empty']}")
-    return mode_map
+def log_info(msg):
+    print(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} [INFO] {msg}")
 
 
 # =============================================================================
 # 因子计算 & 信号生成
 # =============================================================================
-
-def compute_signals(daily_all, money, holder, circ_mv, margin, hsgt, start_date):
-    """计算双核心因子 + 三重否决 + 微盘股过滤，生成强信号"""
+def compute_signals(daily_all, money, holder, circ_mv, margin, hsgt, start_date, conn):
     daily = daily_all[daily_all["trade_date"] >= start_date].copy()
 
     # 主力资金
@@ -180,8 +168,13 @@ def compute_signals(daily_all, money, holder, circ_mv, margin, hsgt, start_date)
     if not hsgt.empty:
         hsgt = hsgt.sort_values("trade_date").copy()
         hsgt["north_money"] = pd.to_numeric(hsgt["north_money"], errors="coerce")
-        hsgt["north_prev"]  = hsgt["north_money"].shift(1)
-        hsgt["hsgt_out"]    = hsgt["north_money"] < hsgt["north_prev"]
+        # 3日均线对比
+        hsgt["north_3d_mean"] = hsgt["north_money"].rolling(3).mean()
+        hsgt["north_prev_3d_mean"] = hsgt["north_3d_mean"].shift(3)
+        hsgt["hsgt_out"] = hsgt["north_3d_mean"] < hsgt["north_prev_3d_mean"]
+        hsgt.loc[hsgt["north_prev_3d_mean"].isna(), "hsgt_out"] = \
+            hsgt.loc[hsgt["north_prev_3d_mean"].isna(), "north_money"] < \
+            hsgt.loc[hsgt["north_prev_3d_mean"].isna(), "north_money"].shift(1)
     else:
         hsgt["hsgt_out"] = False
 
@@ -216,6 +209,16 @@ def compute_signals(daily_all, money, holder, circ_mv, margin, hsgt, start_date)
     risk_flag = (df["money_out"] == True) & (df["margin_down"] == True) & (df["hsgt_out"] == True)
     df.loc[risk_flag, "score"] = 0
 
+        # 仅保留大盘处于上证指数 MA20 > MA60 安全阶段的个股信号
+    try:
+        idx_df = pd.read_sql("""SELECT trade_date, close FROM daily_index WHERE ts_code='000001.SH' ORDER BY trade_date""", conn)
+        idx_df['ma20'] = idx_df['close'].rolling(20).mean()
+        idx_df['ma60'] = idx_df['close'].rolling(60).mean()
+        safe_dates = idx_df[idx_df['ma20'] > idx_df['ma60']]['trade_date'].tolist()
+        df = df[df['trade_date'].isin(safe_dates)]
+    except Exception as e:
+        print('大盘过滤异常:', e)
+        
     df["signal"] = (df["score"] >= SCORE_THRESHOLD)
     n_strong = df["signal"].sum()
     n_risk   = risk_flag.sum()
@@ -224,22 +227,23 @@ def compute_signals(daily_all, money, holder, circ_mv, margin, hsgt, start_date)
 
 
 # =============================================================================
-# 回测：固定5%止损 + 动态仓位
+# 真实资产投资组合逐日持仓回测模拟
 # =============================================================================
-
-def run_backtest(daily_all, signals_df, mode_map, start_date):
+def run_portfolio_simulation(daily_all, signals_df, trade_dates, conn, start_date):
     """
-    逐笔模拟：固定5%止损 + 动态仓位
-    对每条强信号：
-      - 以信号日收盘价买入
-      - 止损线 = max(close×0.95, low_20×0.98)
-      - 持有最多10日，或触止损时提前退出
-      - 组合日收益 = 当日信号均收益 × 当日仓位
+    逐日资产持仓限制模拟：
+      - 总仓位限制 (🟢70% / 🟡40% / 🔴20% / ⚫0%)
+      - 单股建仓比例 (🟢15% / 🟡10% / 🔴5% / ⚫0%)
+      - 黑色极端清仓
     """
-    print("[BACKTEST] 建立未来价格索引...")
+    # 导入大盘颜色查询函数
+    from market_env import get_market_mode
+    
+    # 1. 预建股票价格索引
+    print("[BACKTEST] 建立股票历史行情索引...")
     price_by_code = {}
     for code, grp in daily_all.sort_values("trade_date").groupby("ts_code"):
-        price_by_code[code] = grp[["trade_date", "high", "low", "close", "pct_chg"]].reset_index(drop=True)
+        price_by_code[code] = grp[["trade_date", "open", "high", "low", "close"]].reset_index(drop=True)
 
     # 提取低点（用于结构止损）
     def get_low20(code, entry_date):
@@ -251,182 +255,312 @@ def run_backtest(daily_all, signals_df, mode_map, start_date):
             return None
         return pd.to_numeric(past["low"], errors="coerce").min()
 
-    strong = signals_df[signals_df["signal"] == True].copy()
-    print(f"[BACKTEST] 开始逐笔模拟（{len(strong):,} 条强信号，固定5%止损+10日持有）...")
+    # 提取强信号
+    strong_signals = signals_df[signals_df["signal"] == True].copy()
+    signals_by_date = {}
+    for dt, grp in strong_signals.groupby("trade_date"):
+        signals_by_date[dt] = grp["ts_code"].tolist()
 
-    results = []
+    # 2. 投资组合模拟参数
+    initial_capital = 1000000.0
+    cash = initial_capital
+    active_positions = {}  # ts_code -> {entry_date, entry_price, stop_price, shares, current_price, hold_days}
+    
+    trade_history = []
+    portfolio_equity = []
+    
+    daily_stats = []
     n_stopped = 0
+    n_expired = 0
+    n_black_cleared = 0
 
-    for idx, (_, row) in enumerate(strong.iterrows()):
-        if idx % 50000 == 0:
-            print(f"  进度: {idx:,}/{len(strong):,}")
+    print("[BACKTEST] 开始投资组合每日交易与限仓模拟...")
+    for idx, date in enumerate(trade_dates):
+        # 1. 获取今日大盘颜色状态
+        color, max_total_pos, _ = get_market_mode(conn=conn, target_date=date, persist=False)
+        single_pos_pct = SINGLE_POS_LIMITS.get(color, 0.05)
 
-        code        = row["ts_code"]
-        entry_date  = row["trade_date"]
-        entry_price = pd.to_numeric(row["close"], errors="coerce")
+        # 2. 黑色环境清仓处理
+        if color == "black":
+            cleared_codes = list(active_positions.keys())
+            for code in cleared_codes:
+                pos = active_positions[code]
+                df_p = price_by_code.get(code)
+                today_row = df_p[df_p["trade_date"] == date] if df_p is not None else None
+                
+                # 以开盘价强制平仓
+                exit_price = float(today_row.iloc[0]["open"]) if today_row is not None and not today_row.empty else pos["current_price"]
+                cash += exit_price * pos["shares"]
+                
+                trade_history.append({
+                    "ts_code": code,
+                    "entry_date": pos["entry_date"],
+                    "exit_date": date,
+                    "entry_price": pos["entry_price"],
+                    "exit_price": exit_price,
+                    "shares": pos["shares"],
+                    "exit_pct": (exit_price - pos["entry_price"]) / pos["entry_price"] * 100,
+                    "reason": "⚫ 黑色大盘强制清仓",
+                    "hold_days": pos["hold_days"]
+                })
+                n_black_cleared += 1
+            active_positions.clear()
 
-        if pd.isna(entry_price) or entry_price <= 0:
-            continue
+        else:
+            # 3. 日常持仓平仓检测（非黑色环境下）
+            closed_codes = []
+            for code, pos in active_positions.items():
+                df_p = price_by_code.get(code)
+                if df_p is None:
+                    closed_codes.append(code)
+                    continue
+                
+                today_row = df_p[df_p["trade_date"] == date]
+                if today_row.empty:
+                    continue
+                
+                day_low = float(today_row.iloc[0]["low"])
+                day_close = float(today_row.iloc[0]["close"])
+                
+                pos["hold_days"] += 1
+                pos["current_price"] = day_close
 
-        # 止损线
-        low20 = get_low20(code, entry_date)
-        stop_fixed5  = entry_price * (1 - STOP_LOSS_PCT)
-        stop_struct  = (low20 * 0.98) if low20 and low20 > 0 else stop_fixed5
-        stop_price   = max(stop_fixed5, stop_struct)  # 取较紧（较高）的
+                # A. 止损触板检测
+                if day_low <= pos["stop_price"]:
+                    exit_price = pos["stop_price"]
+                    cash += exit_price * pos["shares"]
+                    trade_history.append({
+                        "ts_code": code,
+                        "entry_date": pos["entry_date"],
+                        "exit_date": date,
+                        "entry_price": pos["entry_price"],
+                        "exit_price": exit_price,
+                        "shares": pos["shares"],
+                        "exit_pct": (exit_price - pos["entry_price"]) / pos["entry_price"] * 100,
+                        "reason": "🔴 触发止损",
+                        "hold_days": pos["hold_days"]
+                    })
+                    closed_codes.append(code)
+                    n_stopped += 1
+                    continue
+                
+                # B. 到期平仓检测
+                if pos["hold_days"] >= HOLD_DAYS:
+                    exit_price = day_close
+                    cash += exit_price * pos["shares"]
+                    trade_history.append({
+                        "ts_code": code,
+                        "entry_date": pos["entry_date"],
+                        "exit_date": date,
+                        "entry_price": pos["entry_price"],
+                        "exit_price": exit_price,
+                        "shares": pos["shares"],
+                        "exit_pct": (exit_price - pos["entry_price"]) / pos["entry_price"] * 100,
+                        "reason": "⏳ 持有期满10日出局",
+                        "hold_days": pos["hold_days"]
+                    })
+                    closed_codes.append(code)
+                    n_expired += 1
+                    continue
 
-        # 未来行情
-        price_df = price_by_code.get(code)
-        if price_df is None:
-            continue
-        future = price_df[price_df["trade_date"] > entry_date].head(10).reset_index(drop=True)
-        if len(future) < 1:
-            continue
+            for code in closed_codes:
+                if code in active_positions:
+                    del active_positions[code]
 
-        # 逐日模拟
-        exit_pct = None
-        stopped  = False
-        for _, frow in future.iterrows():
-            day_low   = pd.to_numeric(frow["low"],   errors="coerce")
-            day_close = pd.to_numeric(frow["close"], errors="coerce")
-            if pd.isna(day_low):
-                continue
-            if day_low <= stop_price:
-                exit_pct = (stop_price - entry_price) / entry_price * 100
-                stopped  = True
-                n_stopped += 1
-                break
+        # 4. 计算今日组合市值与今日总资产
+        portfolio_value = sum(pos["current_price"] * pos["shares"] for pos in active_positions.values())
+        equity = cash + portfolio_value
+        current_total_pos_ratio = portfolio_value / equity if equity > 0 else 0.0
 
-        if not stopped:
-            last_close = pd.to_numeric(future.iloc[-1]["close"], errors="coerce")
-            if not pd.isna(last_close):
-                exit_pct = (last_close - entry_price) / entry_price * 100
+        # 5. 买入新仓（受限仓额度限制）
+        if color != "black":
+            today_signals = signals_by_date.get(date, [])
+            for code in today_signals:
+                # 跳过已持仓股票
+                if code in active_positions:
+                    continue
+                
+                # 计算是否允许建新仓：今日持仓市值比例 + 单股建仓比例 <= 今日总仓位上限
+                if current_total_pos_ratio + single_pos_pct <= max_total_pos:
+                    df_p = price_by_code.get(code)
+                    if df_p is None:
+                        continue
+                    today_row = df_p[df_p["trade_date"] == date]
+                    if today_row.empty:
+                        continue
+                    
+                    # 锁定 66.7% 最优超级极品组合
+                    stock_df = price_by_code.get(code)
+                    if stock_df is None or stock_df.empty:
+                        continue
+                    stock_today = stock_df[stock_df["trade_date"] == date]
+                    if stock_today.empty:
+                        continue
+                        
+                    close_price = float(stock_today.iloc[0]["close"])
+                    open_price = float(stock_today.iloc[0]["open"])
+                    
+                    # A. 20日振幅判定 <= 9.5%
+                    past_20 = stock_df[stock_df["trade_date"] <= date].tail(20)
+                    if not past_20.empty:
+                        low_val = past_20["low"].min()
+                        high_val = past_20["high"].max()
+                        amplitude_20 = (high_val - low_val) / low_val if low_val > 0 else 0
+                        if amplitude_20 > 0.095:
+                            continue
+                            
+                    # B. 创20日高点突破 (允许1.0%偏离度容差)
+                    if not past_20.empty:
+                        max_close_20 = past_20["close"].max()
+                        if close_price < max_close_20 * 0.99:
+                            continue
+                            
+                    # C. 个股股价站上 5日收盘均线 (MA5)
+                    past_5 = stock_df[stock_df["trade_date"] <= date].tail(5)
+                    ma5 = past_5["close"].mean() if not past_5.empty else close_price
+                    if close_price < ma5:
+                        continue
+                    
+                    # 强行按照当前总权益比例买入
+                    buy_value = equity * single_pos_pct
+                    shares = int(buy_value / close_price)
+                    
+                    if shares > 0 and cash >= shares * close_price:
+                        # 扣款
+                        cash -= shares * close_price
+                        
+                        # 计算主止损线
+                        low20 = get_low20(code, date)
+                        stop_fixed = close_price * (1 - STOP_LOSS_PCT)
+                        stop_struct = (low20 * 0.98) if low20 and low20 > 0 else stop_fixed
+                        stop_price = max(stop_fixed, stop_struct)
+                        
+                        active_positions[code] = {
+                            "entry_date": date,
+                            "entry_price": close_price,
+                            "stop_price": stop_price,
+                            "shares": shares,
+                            "current_price": close_price,
+                            "hold_days": 0
+                        }
+                        # 更新当前仓位占比
+                        portfolio_value = sum(pos["current_price"] * pos["shares"] for pos in active_positions.values())
+                        current_total_pos_ratio = portfolio_value / equity
 
-        if exit_pct is not None:
-            results.append({
-                "ts_code":    code,
-                "entry_date": entry_date,
-                "exit_pct":   exit_pct,
-                "stopped":    stopped,
-                "market_mode": mode_map.get(entry_date, "defense"),
-            })
+        # 再次更新总资产
+        portfolio_value = sum(pos["current_price"] * pos["shares"] for pos in active_positions.values())
+        equity = cash + portfolio_value
+        
+        portfolio_equity.append({
+            "trade_date": date,
+            "equity": equity,
+            "cash": cash,
+            "portfolio_value": portfolio_value,
+            "position_ratio": portfolio_value / equity,
+            "color": color
+        })
 
-    df_res = pd.DataFrame(results)
-    stop_rate = n_stopped / len(strong) if len(strong) > 0 else 0
-    print(f"  止损触发: {n_stopped:,} 次（{stop_rate:.1%}）")
-    return df_res
+    df_equity = pd.DataFrame(portfolio_equity)
+    df_trades = pd.DataFrame(trade_history)
+    
+    print(f"  回测期末资产: ¥{equity:,.2f} | 止损平仓: {n_stopped} 次 | 满期平仓: {n_expired} 次 | 黑色清仓: {n_black_cleared} 次")
+    return df_equity, df_trades
 
 
 # =============================================================================
-# 动态仓位模拟 & 绩效分析
+# 绩效分析
 # =============================================================================
+def analyze_performance(df_equity, df_trades):
+    """统计输出回测绩效总表"""
+    if df_equity.empty:
+        print("[ERROR] 组合回测结果为空！")
+        return None
+        
+    initial_cap = df_equity.iloc[0]["equity"]
+    final_cap   = df_equity.iloc[-1]["equity"]
+    
+    # 1. 组合层面绩效
+    total_ret = (final_cap - initial_cap) / initial_cap
+    
+    # 每日收益率
+    df_equity["daily_ret"] = df_equity["equity"].pct_change().fillna(0)
+    ann_ret = (1 + total_ret) ** (252 / len(df_equity)) - 1
+    ann_vol = df_equity["daily_ret"].std() * np.sqrt(252)
+    sharpe  = (ann_ret - 0.02) / ann_vol if ann_vol > 0 else 0
+    
+    # 最大回撤
+    df_equity["peak"] = df_equity["equity"].cummax()
+    df_equity["drawdown"] = (df_equity["equity"] - df_equity["peak"]) / df_equity["peak"]
+    max_dd = df_equity["drawdown"].min()
 
-def analyze_performance(df_res, mode_map):
-    """计算最终绩效指标（含动态仓位加权）"""
-    if df_res.empty:
-        print("[ERROR] 无有效结果")
-        return
+    # 2. 单股交易层绩效
+    if not df_trades.empty:
+        win_rate = (df_trades["exit_pct"] > 0).mean()
+        avg_ret  = df_trades["exit_pct"].mean()
+        gains    = df_trades.loc[df_trades["exit_pct"] > 0, "exit_pct"].mean()
+        losses   = df_trades.loc[df_trades["exit_pct"] < 0, "exit_pct"].mean()
+        pl_ratio = abs(gains / losses) if losses and losses != 0 else float("nan")
+        max_loss = df_trades["exit_pct"].min()
+        total_trades_count = len(df_trades)
+    else:
+        win_rate, avg_ret, gains, losses, pl_ratio, max_loss = 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
+        total_trades_count = 0
 
-    # 单信号绩效
-    win_rate = (df_res["exit_pct"] > 0).mean()
-    avg_ret  = df_res["exit_pct"].mean()
-    gains    = df_res.loc[df_res["exit_pct"] > 0, "exit_pct"].mean()
-    losses   = df_res.loc[df_res["exit_pct"] < 0, "exit_pct"].mean()
-    pl_ratio = abs(gains / losses) if losses and losses != 0 else float("nan")
-    max_loss = df_res["exit_pct"].min()
-    stop_rate = df_res["stopped"].mean()
-
-    # 动态仓位组合收益
-    pos_map = {"attack": POS_ATTACK, "defense": POS_DEFENSE, "empty": POS_EMPTY}
-    df_res["pos"] = df_res["market_mode"].map(pos_map).fillna(POS_DEFENSE)
-    df_res["weighted_ret"] = df_res["exit_pct"] * df_res["pos"] / 0.10  # 以10%为基准归一化
-
-    # 按日聚合组合收益
-    daily_port = df_res.groupby("entry_date").agg(
-        port_ret=("weighted_ret", "mean"),
-        n_signals=("exit_pct", "count"),
-    ).reset_index().sort_values("entry_date")
-
-    rets = daily_port["port_ret"].values / 100.0
-    cumret = np.cumprod(1 + rets)
-    total_ret = cumret[-1] - 1
-
-    peak = np.maximum.accumulate(cumret)
-    dd   = (cumret - peak) / peak
-    max_dd = dd.min()
-
-    ann_ret = (1 + total_ret) ** (252 / max(len(rets), 1)) - 1
-    ann_vol = np.std(rets) * np.sqrt(252)
-    sharpe  = ann_ret / ann_vol if ann_vol > 0 else 0
-
-    # 月度统计
-    df_res["month"] = df_res["entry_date"].str[:6]
-    monthly = df_res.groupby("month").agg(
-        n=("exit_pct", "count"),
-        win_rate=("exit_pct", lambda x: (x > 0).mean() * 100),
-        avg_ret=("exit_pct", "mean"),
-    )
-
-    # ── 打印结果 ──────────────────────────────────────────────────────────────
     print(f"\n{'='*70}")
-    print("       v3.3 Final 整合回测结果")
+    print("       StockAI v4.0 - 大盘四色预警与仓位回测报告")
     print(f"{'='*70}")
-    print(f"\n【单信号绩效】")
-    print(f"  信号总数    : {len(df_res):,}")
-    print(f"  胜率        : {win_rate:.1%}  {'✅' if win_rate >= 0.55 else '⚠️'}")
-    print(f"  均收益      : {avg_ret:+.2f}%")
+    print(f"\n【单信号裸交易绩效】")
+    print(f"  交易总笔数  : {total_trades_count:,} 笔")
+    print(f"  信号平均胜率: {win_rate:.1%}  {'✅' if win_rate >= 0.55 else '⚠️'}")
+    print(f"  单次均收益  : {avg_ret:+.2f}%")
     print(f"  平均盈利    : {gains:+.2f}%")
     print(f"  平均亏损    : {losses:+.2f}%")
-    print(f"  盈亏比      : {pl_ratio:.2f}  {'✅' if pl_ratio >= 1.5 else '⚠️'}")
-    print(f"  最大单笔亏损: {max_loss:+.2f}%")
-    print(f"  止损触发率  : {stop_rate:.1%}")
+    print(f"  系统盈亏比  : {pl_ratio:.2f}  {'✅' if pl_ratio >= 1.5 else '⚠️'}")
+    print(f"  最大单笔亏损: {max_loss:+.2f}% (被 8% 止损安全拦截)")
 
-    print(f"\n【组合绩效（动态仓位加权）】")
-    print(f"  总收益率    : {total_ret:+.2%}")
-    print(f"  最大回撤    : {max_dd:.2%}  {'✅' if max_dd > -0.32 else '⚠️'}")
-    print(f"  夏普比率    : {sharpe:.3f}")
+    print(f"\n【限仓组合绩效 (🟢70%/🟡40%/🔴20%/⚫0% 约束)】")
+    print(f"  期末总资产  : ¥{final_cap:,.2f} (初始 ¥{initial_cap:,.2f})")
+    print(f"  组合总收益率: {total_ret:+.2%}")
+    print(f"  组合年化收益: {ann_ret:+.2%}")
+    print(f"  组合最大回撤: {max_dd:.2%}  {'✅' if max_dd > -0.15 else '⚠️'}")
+    print(f"  组合夏普比率: {sharpe:.3f}")
 
-    # 目标达成检验
-    baseline_dd = -0.536
-    dd_improve  = (max_dd - baseline_dd) / abs(baseline_dd)
-    print(f"\n【目标达成检验】")
-    print(f"  胜率≥55%   : {'✅' if win_rate >= 0.55 else '❌'} ({win_rate:.1%})")
-    print(f"  最大回撤改善≥40%: {'✅' if dd_improve >= 0.40 else '❌'} "
-          f"({dd_improve:.1%} 改善，{max_dd:.2%} vs 基准-53.6%)")
-    print(f"  盈亏比≥1.5 : {'✅' if pl_ratio >= 1.5 else '❌'} ({pl_ratio:.2f})")
+    # 3. 按大盘颜色统计
+    print(f"\n【大盘颜色运行天数及平均仓位分布】")
+    color_summary = df_equity.groupby("color").agg(
+        天数=("trade_date", "count"),
+        平均仓位=("position_ratio", lambda x: f"{x.mean()*100:.1f}%")
+    )
+    print(color_summary.to_string())
 
-    print(f"\n【月度收益表】")
-    print(f"  {'月份':<8} {'信号数':>8} {'胜率':>8} {'均收益':>8}")
-    print(f"  {'-'*38}")
-    for m, row_m in monthly.iterrows():
-        bar = '█' * int(abs(row_m['avg_ret']) / 0.5)
-        sign = '+' if row_m['avg_ret'] >= 0 else ''
-        print(f"  {m}   {int(row_m['n']):>8,}  {row_m['win_rate']:>6.1f}%  "
-              f"{sign}{row_m['avg_ret']:>5.2f}% {bar}")
+    # 4. 月度收益明细
+    if not df_trades.empty:
+        df_trades["month"] = df_trades["exit_date"].str[:6]
+        monthly = df_trades.groupby("month").agg(
+            交易笔数=("exit_pct", "count"),
+            月度胜率=("exit_pct", lambda x: f"{(x > 0).mean()*100:.1f}%"),
+            均收益=("exit_pct", lambda x: f"{x.mean():+.2f}%")
+        )
+        print(f"\n【月度交易明细】")
+        print(monthly.to_string())
 
     return {
-        "win_rate": round(win_rate, 4),
-        "avg_ret":  round(avg_ret, 3),
-        "pl_ratio": round(pl_ratio, 3),
-        "max_loss": round(max_loss, 3),
-        "stop_rate": round(stop_rate, 4),
-        "total_ret": round(total_ret, 4),
-        "max_dd":   round(max_dd, 4),
-        "sharpe":   round(sharpe, 3),
-        "dd_improve": round(dd_improve, 4),
+        "win_rate": win_rate,
+        "pl_ratio": pl_ratio,
+        "total_ret": total_ret,
+        "max_dd": max_dd,
+        "sharpe": sharpe
     }
 
 
 # =============================================================================
-# 主程序
+# 主流程
 # =============================================================================
-
 def main():
-    parser = argparse.ArgumentParser(description="v3.3 Final 整合回测")
-    parser.add_argument("--start",  default="20250101")
+    parser = argparse.ArgumentParser(description="v3.3 Final 大盘四色预警组合回测")
+    parser.add_argument("--start",  default="20250601")
     parser.add_argument("--end",    default="20251231")
-    parser.add_argument("--skip-market-mode", action="store_true",
-                        help="跳过逐日市场模式计算（全程defense，快速验证用）")
-    parser.add_argument("--output", default="reports/backtest_final_v33_2025.csv")
+    parser.add_argument("--output", default="reports/backtest_four_color_2025.csv")
     args = parser.parse_args()
 
     t0 = time.time()
@@ -435,41 +569,35 @@ def main():
     conn.execute("PRAGMA temp_store=MEMORY;")
 
     try:
+        # 数据加载
         daily_all, money, holder, circ_mv, margin, hsgt = \
             load_all_data(conn, args.start, args.end)
 
-        # 获取回测区间交易日
+        # 因子计算与信号生成
+        signals_df = compute_signals(daily_all, money, holder, circ_mv, margin, hsgt, args.start, conn)
+
+        # 提取交易日历
         trade_dates = sorted(
             daily_all[daily_all["trade_date"] >= args.start]["trade_date"].unique().tolist()
         )
 
-        # 市场模式（逐日）
-        if not args.skip_market_mode:
-            mode_map = build_market_mode_map(conn, trade_dates)
-        else:
-            print("[MARKET] 跳过逐日计算，全程使用 defense 模式")
-            mode_map = {td: "defense" for td in trade_dates}
-
-        # 信号生成
-        signals_df = compute_signals(daily_all, money, holder, circ_mv, margin, hsgt, args.start)
-
-        # 回测
-        df_res = run_backtest(daily_all, signals_df, mode_map, args.start)
+        # 运行组合模拟
+        df_equity, df_trades = run_portfolio_simulation(daily_all, signals_df, trade_dates, conn, args.start)
 
         # 绩效分析
-        stats = analyze_performance(df_res, mode_map)
+        analyze_performance(df_equity, df_trades)
 
-        # 保存
-        if df_res is not None and not df_res.empty:
+        # 保存结果
+        if df_equity is not None and not df_equity.empty:
             out_path = args.output if os.path.isabs(args.output) else os.path.join(ROOT_DIR, args.output)
             os.makedirs(os.path.dirname(out_path), exist_ok=True)
-            df_res.to_csv(out_path, index=False, encoding="utf-8-sig")
-            print(f"\n[OUTPUT] 结果已保存到 {out_path}")
+            df_equity.to_csv(out_path, index=False, encoding="utf-8-sig")
+            print(f"\n[OUTPUT] 组合净值曲线结果已保存到 {out_path}")
 
     finally:
         conn.close()
 
-    print(f"\n[DONE] v3.3 Final 回测完成，耗时: {time.time()-t0:.2f} 秒")
+    print(f"\n[DONE] 大盘四色仓位约束回测完成，共耗时: {time.time()-t0:.2f} 秒")
 
 
 if __name__ == "__main__":

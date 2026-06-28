@@ -16,7 +16,11 @@ class StrategyRunRequest(BaseModel):
 @router.post("/run")
 async def run_strategy_api(request: StrategyRunRequest):
     """运行选股策略"""
-    trade_date = datetime.now().strftime("%Y%m%d")
+    from app.dao.base_dao import execute_query
+    # 获取数据库最新交易日
+    res = execute_query("SELECT MAX(trade_date) as max_date FROM daily_prices")
+    trade_date = res[0]['max_date'] if res and res[0]['max_date'] else datetime.now().strftime("%Y%m%d")
+    
     result = run_strategy(
         strategy_type=request.strategy_type,
         sector=request.sector,

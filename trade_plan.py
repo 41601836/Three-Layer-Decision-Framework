@@ -1,34 +1,22 @@
 # -*- coding: utf-8 -*-
 """
-trade_plan.py —— StockAI v4.0 标准化交易计划生成模块
+trade_plan.py —— StockAI v4.0 标准化交易计划生成模块 (四色预警版)
 =====================================================================
 对通过三层漏斗精选的每只股票，输出结构化 JSON 交易计划：
     - 理想买入区间
-    - 仓位百分比（基于大盘模式 × 综合得分）
+    - 仓位百分比（直接基于大盘四色模式下的单股仓位建议）
     - 止损价（初始止损 + 移动止损规则）
     - 加仓条件
     - 跟踪规则
 
 仓位计算逻辑：
-    基础仓位 = f(综合得分)
-    score >= 85 → 15%  (顶格)
-    score >= 75 → 10%
-    score >= 60 → 6%
-    其他        → 3%
+    🟢 绿色积极进攻： 强信号单股 15% | 中信号 8%
+    🟡 黄色谨慎参与： 强信号单股 10% | 中信号 5%
+    🔴 红色防守休息： 强信号单股 5%  | 中信号 2%
+    ⚫ 黑色极端休战： 强信号单股 0%  | 中信号 0% (不建仓)
 
-    最终仓位 = min(基础仓位, 大盘仓位上限 × 20%)
-    单股上限始终 ≤ 20%（铁律）
-
-止损逻辑（回测验证 2026-06-09，25.4万条强信号）：
-    ★ 固定8%止损（主止损）= 买入价 × 0.92
-      → 胜率 49.1%，盈亏比 1.57，止损触发率 27.5%（接近目标25%）
-    ★ 20日最低价 × 0.98（结构止损）= 辅助参考
-      → 两者取较高值作为实际止损线
-    移动止损规则文字描述（非实时计算，由执行层负责跟踪）
-
-买入区间：
-    ideal_low  = max(20日低点, 收盘价 × 0.97)   ← 5MA支撑附近
-    ideal_high = 收盘价                           ← 不追高，在当前价以内介入
+止损逻辑（固定8%止损为主，结构止损为辅）：
+    止损价 = max(买入价 × 0.92, 20日最低价 × 0.98)
 """
 
 import os
@@ -48,18 +36,18 @@ log = logging.getLogger(__name__)
 try:
     from config_loader import get_config
     
-    # 单股仓位上限（从配置读取）
-    SINGLE_STOCK_MAX_POS = get_config("strategy.max_single_stock", 0.08)
+    # 单股绝对上限
+    SINGLE_STOCK_MAX_POS = get_config("strategy.max_single_stock", 0.20)
     
-    # 得分 → 基础仓位映射（v3.3 Final 最终版 2026-06-09）
-    # 决策依据：固定8%止损 + 动态仓位框架，防守仓位与止损幅度匹配
+    # 四色大盘对应单股建议仓位分配
     POSITION_LIMITS = get_config("strategy.position_limits", {
-        "attack":  {"strong": 0.00, "medium": 0.00},   # 进攻：不开新仓（2025年数据验证）
-        "defense": {"strong": 0.12, "medium": 0.05},   # 防守：强信号12%（集中火力）
-        "empty":   {"strong": 0.00, "medium": 0.00},   # 空仓：不开仓
+        "green":  {"strong": 0.15, "medium": 0.08},   # 绿色积极进攻
+        "yellow": {"strong": 0.10, "medium": 0.05},   # 黄色谨慎参与
+        "red":    {"strong": 0.05, "medium": 0.02},   # 红色防守休息
+        "black":  {"strong": 0.00, "medium": 0.00},   # 黑色极端休战
     })
 
-    # 阈值配置
+    # 信号强弱得分阈值配置
     THRESHOLDS = get_config("strategy.thresholds", {
         "strong": 30,
         "medium": 15,
@@ -67,35 +55,33 @@ try:
     })
     
 except ImportError:
-    # 降级方案（v4.0 修正版 2026-06-09）
-    # 决策依据：进攻模式不开新仓（2025年数据验证胜率低），防守模式集中火力
+    # 降级方案
     SINGLE_STOCK_MAX_POS = 0.20   # 单股绝对上限20%（铁律）
     POSITION_LIMITS = {
-        "attack":  {"strong": 0.00, "medium": 0.00},   # 进攻：不开新仓
-        "defense": {"strong": 0.12, "medium": 0.05},   # 防守：强信号12%（集中火力）
-        "empty":   {"strong": 0.00, "medium": 0.00},   # 空仓：不开仓
+        "green":  {"strong": 0.15, "medium": 0.08},
+        "yellow": {"strong": 0.10, "medium": 0.05},
+        "red":    {"strong": 0.05, "medium": 0.02},
+        "black":  {"strong": 0.00, "medium": 0.00},
     }
     THRESHOLDS = {"strong": 30, "medium": 15, "filter": 0}
 
 
-
-def _get_base_position(score: float, market_mode: str = "defense") -> float:
+def _get_base_position(score: float, market_mode: str = "red") -> float:
     """根据综合得分和市场模式获取基础仓位建议。"""
-    limits = POSITION_LIMITS.get(market_mode, POSITION_LIMITS["defense"])
+    limits = POSITION_LIMITS.get(market_mode, POSITION_LIMITS["red"])
     
     if score >= THRESHOLDS["strong"]:
         return limits["strong"]
     elif score >= THRESHOLDS["medium"]:
         return limits["medium"]
     else:
-        return 0.02
+        return 0.01
 
 
 def _load_price_context(ts_code: str,
                         conn: sqlite3.Connection) -> Dict:
     """
     从 SQLite 加载个股价格上下文（止损计算所需数据）。
-    返回包含 close / low_20 / low_60 / ma5 / ma20 的字典。
     """
     try:
         df = pd.read_sql(
@@ -135,8 +121,8 @@ def generate_trade_plan(
     ts_code:      str,
     score:        float,
     score_card:   Dict,
-    market_mode:  str   = "defense",
-    max_pos:      float = 0.30,
+    market_mode:  str   = "red",
+    max_pos:      float = 0.20,
     price_ctx:    Dict  = None,
     conn:         sqlite3.Connection = None,
     db_path:      str   = DB_PATH,
@@ -147,20 +133,12 @@ def generate_trade_plan(
     参数：
         ts_code     股票代码
         score       综合得分（Python分 + AI分）
-        score_card  评分明细字典（含 volume_price / chip_structure 等）
-        market_mode 大盘模式（"attack" / "defense" / "empty"）
+        score_card  评分明细字典
+        market_mode 大盘四色模式（"green" / "yellow" / "red" / "black"）
         max_pos     大盘仓位上限（0.0 ~ 1.0），来自 market_env
         price_ctx   价格上下文字典（若不传则自动从DB加载）
         conn        SQLite 连接（可选）
         db_path     数据库路径
-
-    返回：
-        结构化 JSON dict，含：
-            ts_code, score, market_mode,
-            entry_zone, position_pct, position_desc,
-            stop_loss_initial, stop_loss_60d,
-            trailing_stop_rules, add_position_conditions,
-            tracking_rules, generated_at
     """
     # ── 加载价格上下文 ────────────────────────────────────────────────────────
     if price_ctx is None:
@@ -185,15 +163,9 @@ def generate_trade_plan(
     ma20   = price_ctx.get("ma20",   close)
 
     # ── 仓位计算 ──────────────────────────────────────────────────────────────
-    base_pos   = _get_base_position(score)
-    # 进攻模式可满仓；防守模式打折；空仓模式强制0
-    mode_factor = {"attack": 1.0, "defense": 0.5, "empty": 0.0}.get(market_mode, 0.5)
-    # 最终仓位 = min(基础仓位, 大盘上限×20%, 单股绝对上限)
-    final_pos = min(
-        base_pos * mode_factor,       # 基础仓位 × 大盘系数
-        max_pos * SINGLE_STOCK_MAX_POS,  # 大盘上限 × 单股比例
-        SINGLE_STOCK_MAX_POS,         # 绝对红线 20%
-    )
+    base_pos = _get_base_position(score, market_mode=market_mode)
+    # 最终单股上限
+    final_pos = min(base_pos, SINGLE_STOCK_MAX_POS)
     final_pos = round(final_pos, 4)
 
     # ── 买入区间 ──────────────────────────────────────────────────────────────
@@ -201,57 +173,54 @@ def generate_trade_plan(
     ideal_low  = round(max(low_20, ma5 * 0.98, close * 0.97), 2)
     ideal_high = round(close, 2)   # 不追高，在当前价内介入
 
-    # ── 止损价（回测验证：固定8%止损胜率最高49.1%，触发率27.5%）────────────
-    # 主止损：买入价 × 0.92（固定8%止损，回测2025全年验证最优）
+    # ── 止损价（回测验证：固定8%止损）──────────────────────────────────────
     stop_loss_fixed8 = round(close * 0.92, 2)
-    # 参考止损：20日低点 × 0.98（结构性支撑，作为辅助参考）
+    # 参考止损：20日低点 × 0.98
     stop_loss_initial = round(low_20 * 0.98, 2)
-    # 兜底止损：60日低点 × 0.97（极端情况）
-    stop_loss_60d     = round(low_60 * 0.97, 2)
-    # 实际止损幅度（固定8%为主，取两者中更紧的一个）
-    stop_loss_primary = max(stop_loss_fixed8, stop_loss_initial)  # 取较高的，更紧的止损
+    # 实际主止损线（取较高/更紧的）
+    stop_loss_primary = max(stop_loss_fixed8, stop_loss_initial)
     stop_pct = (close - stop_loss_primary) / close if close > 0 else 0.08
 
-    # ── 移动止损规则（文字）────────────────────────────────────────────────────
+    # ── 移动止损与跟踪规则 ───────────────────────────────────────────────────
     trailing_rules = [
-        f"【主止损】固定8%止损：跌破 ¥{stop_loss_fixed8}（买入价-8%）即当日收盘执行（回测验证胜率49.1%）",
-        f"【辅助参考】20日低点支撑：¥{stop_loss_initial}（结构止损，两者取较高值作为实际止损线）",
-        f"实际止损位：¥{stop_loss_primary}（亏损幅度约 {stop_pct:.1%}）",
-        "盈利 +5%：止损上移至成本价（保本止损）",
-        "盈利 +10%：止损上移至成本价 +3%（锁定部分收益）",
-        "盈利 +15%：止损上移至最高点回撤 -5%（移动跟踪）",
-        "触发条件：收盘价跌破止损位即次日开盘执行，不等反弹",
+        f"【主止损】固定8%止损：跌破 ¥{stop_loss_fixed8}（买入价-8%）即当日收盘强制执行",
+        f"【结构支撑】20日低点支撑：¥{stop_loss_initial}（结构止损，两者取较高值 ¥{stop_loss_primary} 作为实际止损）",
+        f"实际建仓止损位：¥{stop_loss_primary}（跌幅空间约 {stop_pct:.1%}）",
+        "盈利达 +5%：止损位平移至建仓成本价（保本策略）",
+        "盈利达 +10%：止损位上移至 成本价 + 3%（锁定基本利润）",
+        "盈利达 +15%：触发移动跟踪止损，以 最高点价格 × 0.95 跟踪（锁定多数利润）",
+        "触发条件：收盘价跌破止损位即次日开盘无条件平仓，不等反弹",
     ]
 
     # ── 加仓条件 ──────────────────────────────────────────────────────────────
-    # 根据评分结构动态生成
     chip_score = score_card.get("chip_structure", 0) if score_card else 0
     add_conditions = [
-        f"建仓后股价有效站稳 MA5（¥{ma5:.2f}）连续3个交易日",
+        f"建仓后股价有效站稳今日 MA5（¥{ma5:.2f}）连续 3 个交易日",
     ]
     if chip_score >= 15:
-        add_conditions.append("筹码高度集中已确认，可在突破近期高点时加仓至仓位上限")
+        add_conditions.append("主力筹码高度集中，可在股价突破近期整理高点时分批加仓")
     else:
-        add_conditions.append("等待股东户数进一步下降数据（下期公告确认后可考虑加仓）")
+        add_conditions.append("股东户数暂未明显下降，不建议盲目追加，观望下期公告")
 
-    if market_mode == "attack":
-        add_conditions.append(f"大盘进攻模式：突破近20日高点放量（量比>1.5）时可加仓，上限¥{ideal_high * 1.03:.2f}")
+    if market_mode == "green":
+        add_conditions.append(f"🟢 大盘积极进攻：突破近20日平台且放量（量比>1.5）时可加仓，最大加仓位 ¥{ideal_high * 1.03:.2f}")
+    elif market_mode == "yellow":
+        add_conditions.append("🟡 大盘谨慎参与：仅限轻仓加仓，严格执行单股10%仓位上限")
     else:
-        add_conditions.append("防守模式：暂不追加，等待大盘信号明确后再评估")
+        add_conditions.append("🔴🔴 红色/⚫黑色环境：严禁加仓，控制持仓，多看少动")
 
     # ── 跟踪规则 ──────────────────────────────────────────────────────────────
     tracking_rules = [
-        "每日收盘后检查：是否跌破 MA5，若连续2日跌破则减半仓",
-        "每周检查资金流向：主力连续3日净流出则触发止盈评估",
-        "重要时间节点：季报/半年报发布前5日，提前评估基本面风险",
-        f"MA20（¥{ma20:.2f}）为关键支撑：跌破则清仓不做等待",
+        "每日收盘后检查：是否跌破 MA5，若连续 2 日跌破则减半仓",
+        "每周检查资金流向：主力连续 3 日净流出则触发止盈评估",
+        f"MA20（¥{ma20:.2f}）为生命线：收盘跌破则无条件清仓出局",
     ]
 
     # ── 仓位描述 ──────────────────────────────────────────────────────────────
-    mode_zh  = {"attack": "进攻", "defense": "防守", "empty": "空仓"}.get(market_mode, "防守")
+    mode_zh = {"green": "🟢绿色积极进攻", "yellow": "🟡黄色谨慎参与", "red": "🔴红色防守休息", "black": "⚫黑色极端休战"}.get(market_mode, "🔴红色防守休息")
     pos_desc = (
-        f"大盘{mode_zh}模式 | 综合得分{score:.0f}分 → "
-        f"建议仓位 {final_pos*100:.1f}%（单股上限20%，大盘上限{max_pos*100:.0f}%）"
+        f"大盘处于{mode_zh}环境 | 综合得分 {score:.0f}分 → "
+        f"建议单股仓位 {final_pos*100:.1f}%（强制全市场总仓位上限为 {max_pos*100:.0f}%）"
     )
 
     plan = {
@@ -273,7 +242,7 @@ def generate_trade_plan(
 
         # 止损
         "stop_loss_initial":  stop_loss_initial,
-        "stop_loss_60d":      stop_loss_60d,
+        "stop_loss_60d":      low_60 * 0.97,
         "stop_loss_pct":      round(stop_pct, 4),
 
         # 规则
@@ -293,29 +262,28 @@ def generate_trade_plan(
 
 def format_plan_for_feishu(plan: Dict, name: str = "") -> str:
     """
-    将交易计划 dict 格式化为飞书 Markdown 字符串，
-    可直接追加到 send_stock_report 的 report_md 末尾。
+    将交易计划 dict 格式化为飞书 Markdown 字符串。
     """
     if "error" in plan:
         return f"\n> ⚠️ 交易计划生成失败：{plan['error']}\n"
 
-    ez     = plan.get("entry_zone", {})
-    pos    = plan.get("position_pct", 0) * 100
-    sl     = plan.get("stop_loss_initial", 0)
-    sl_60d = plan.get("stop_loss_60d", 0)
-    mode_zh = plan.get("market_mode_zh", "防守")
-    score  = plan.get("score", 0)
+    ez      = plan.get("entry_zone", {})
+    pos     = plan.get("position_pct", 0) * 100
+    sl      = plan.get("stop_loss_initial", 0)
+    sl_60d  = plan.get("stop_loss_60d", 0)
+    mode_zh = plan.get("market_mode_zh", "🔴红色防守休息")
+    score   = plan.get("score", 0)
 
     lines = [
         "\n---",
-        "## 📋 标准化交易计划",
+        "## 📋 标准化交易计划 (四色预警版)",
         "",
-        f"| 要素 | 内容 |",
+        f"| 计划要素 | 配置内容 |",
         f"|:---|:---|",
         f"| **买入区间** | ¥{ez.get('ideal_low', 0):.2f} ~ ¥{ez.get('ideal_high', 0):.2f} |",
-        f"| **建议仓位** | **{pos:.1f}%**（大盘{mode_zh}模式 × 得分{score:.0f}分）|",
-        f"| **初始止损** | ¥{sl:.2f}（止损幅度约 {plan.get('stop_loss_pct', 0)*100:.1f}%）|",
-        f"| **极限止损** | ¥{sl_60d:.2f}（60日低点 -3%）|",
+        f"| **单股建仓** | **{pos:.1f}%**（大盘 {mode_zh} × 评分 {score:.0f}分）|",
+        f"| **结构止损** | ¥{sl:.2f}（止损幅度约 {plan.get('stop_loss_pct', 0)*100:.1f}%）|",
+        f"| **极限止损** | ¥{sl_60d:.2f}（60日极限低点 -3%）|",
         "",
         "**移动止损规则**：",
     ]
@@ -331,35 +299,26 @@ def format_plan_for_feishu(plan: Dict, name: str = "") -> str:
 
     lines += [
         "",
-        "**跟踪规则**：",
+        "**生命线跟踪规则**：",
     ]
     for rule in plan.get("tracking_rules", []):
         lines.append(f"- {rule}")
 
     lines.append(f"\n> _交易计划生成时间：{plan.get('generated_at', '')}_ "
-                 f"| _⚠️ 本计划仅供量化参考，不构成投资建议_")
+                 f"| _⚠️ 本计划由 StockAI 自动生成，仅供量化参考_")
 
     return "\n".join(lines)
 
 
 def batch_generate_plans(
     candidates:  List[Dict],
-    market_mode: str   = "defense",
-    max_pos:     float = 0.30,
+    market_mode: str   = "red",
+    max_pos:     float = 0.20,
     conn:        sqlite3.Connection = None,
     db_path:     str   = DB_PATH,
 ) -> List[Dict]:
     """
-    批量生成交易计划（供主流程调用）。
-
-    参数：
-        candidates   已通过AI精选的股票列表，每项需含 ts_code / total_score / score_card
-        market_mode  大盘模式
-        max_pos      大盘仓位上限
-        conn         SQLite 连接（可选，不传则自动建连）
-
-    返回：
-        List[Dict]，每项为对应股票的交易计划 JSON
+    批量生成交易计划。
     """
     _own_conn = conn is None
     if _own_conn:
@@ -392,43 +351,32 @@ def batch_generate_plans(
 
 
 # =============================================================================
-# CLI 独立测试入口
+# CLI 独立测试
 # =============================================================================
 if __name__ == "__main__":
     import logging as _logging
-    _logging.basicConfig(
-        level=_logging.INFO,
-        format="%(asctime)s [%(levelname)s] %(message)s"
-    )
+    _logging.basicConfig(level=_logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
     print("=" * 60)
-    print("  StockAI v4.0 · 标准化交易计划生成模块测试")
+    print("  StockAI v4.0 · 四色大盘环境交易计划测试")
     print("=" * 60)
 
-    # 测试：使用真实DB数据
     test_code  = "000001.SZ"
-    test_score = 82.0
-    test_card  = {"volume_price": 22, "chip_structure": 20,
-                  "market_behavior": 18, "catalyst": 22}
+    test_score = 85.0
+    test_card  = {"volume_price": 22, "chip_structure": 20, "market_behavior": 18}
 
     plan = generate_trade_plan(
         ts_code     = test_code,
         score       = test_score,
         score_card  = test_card,
-        market_mode = "defense",
-        max_pos     = 0.30,
+        market_mode = "green",
+        max_pos     = 0.70,
     )
 
     print(f"\n  股票代码  : {plan.get('ts_code')}")
     print(f"  综合得分  : {plan.get('score')}")
-    print(f"  大盘模式  : {plan.get('market_mode_zh')}")
-    if "entry_zone" in plan:
-        ez = plan["entry_zone"]
-        print(f"  买入区间  : ¥{ez['ideal_low']} ~ ¥{ez['ideal_high']}")
     print(f"  建议仓位  : {plan.get('position_pct', 0)*100:.1f}%")
-    print(f"  初始止损  : ¥{plan.get('stop_loss_initial')}")
-
-    print("\n  飞书格式化输出（前10行）：")
-    feishu_text = format_plan_for_feishu(plan, name="平安银行")
-    for line in feishu_text.split("\n")[:12]:
-        print(f"  {line}")
+    print(f"  大盘模式  : {plan.get('market_mode_zh')}")
+    
+    print("\n  飞书消息体渲染测试:")
+    print(format_plan_for_feishu(plan, name="平安银行"))

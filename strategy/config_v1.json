@@ -1,0 +1,7 @@
+{
+    "strategy_file": "win_rate_hunter/training_result_70pct.json",
+    "max_signals_per_day": 30,
+    "hold_days": 10,
+    "stop_loss_pct": 0.05,
+    "target_win_rate": 0.70
+}

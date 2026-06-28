@@ -1,0 +1,282 @@
+{
+  "target_win_rate": 0.7,
+  "achieved_win_rate": 0.5333333333333333,
+  "best_strategy": {
+    "name": "Strategy_0026",
+    "factors": [
+      "pct_chg",
+      "winner_rate",
+      "ret_20d",
+      "roe",
+      "circ_mv_yi"
+    ],
+    "weights": [
+      1.7886752797300391,
+      0.8732107068657426,
+      1.0980776121326477,
+      1.5491257765392108,
+      1.100549460526649
+    ],
+    "thresholds": {
+      "pct_chg": 0.4567787986500613,
+      "winner_rate": 0.592123986907196,
+      "ret_20d": 0.7483210388707908,
+      "roe": 0.48039942861772567,
+      "circ_mv_yi": 0.6559198024645545
+    },
+    "hold_days": 11,
+    "generation": 0
+  },
+  "backtest_result": {
+    "win_rate": 0.5333333333333333,
+    "total_return": -0.2883223204813139,
+    "max_drawdown": 0.24687380599639108,
+    "signal_count": 111,
+    "trade_count": 15,
+    "execution_time": 0.2812230587005615,
+    "status": "success"
+  },
+  "training_history": [
+    {
+      "generation": 1,
+      "win_rate": 0.42857142857142855,
+      "total_return": -0.39019018110462844,
+      "max_drawdown": 0.4408823706506173,
+      "signal_count": 210,
+      "trade_count": 21
+    },
+    {
+      "generation": 2,
+      "win_rate": 0.42857142857142855,
+      "total_return": -0.39019018110462844,
+      "max_drawdown": 0.4408823706506173,
+      "signal_count": 210,
+      "trade_count": 21
+    },
+    {
+      "generation": 3,
+      "win_rate": 0.4375,
+      "total_return": -0.4431507094123297,
+      "max_drawdown": 0.41232079445638026,
+      "signal_count": 117,
+      "trade_count": 16
+    },
+    {
+      "generation": 4,
+      "win_rate": 0.4375,
+      "total_return": -0.4431507094123297,
+      "max_drawdown": 0.41232079445638026,
+      "signal_count": 117,
+      "trade_count": 16
+    },
+    {
+      "generation": 5,
+      "win_rate": 0.4375,
+      "total_return": -0.4431507094123297,
+      "max_drawdown": 0.41232079445638026,
+      "signal_count": 117,
+      "trade_count": 16
+    },
+    {
+      "generation": 6,
+      "win_rate": 0.4375,
+      "total_return": -0.4431507094123297,
+      "max_drawdown": 0.41232079445638026,
+      "signal_count": 117,
+      "trade_count": 16
+    },
+    {
+      "generation": 7,
+      "win_rate": 0.4375,
+      "total_return": -0.4431507094123297,
+      "max_drawdown": 0.41232079445638026,
+      "signal_count": 117,
+      "trade_count": 16
+    },
+    {
+      "generation": 8,
+      "win_rate": 0.4375,
+      "total_return": -0.4431507094123297,
+      "max_drawdown": 0.41232079445638026,
+      "signal_count": 117,
+      "trade_count": 16
+    },
+    {
+      "generation": 9,
+      "win_rate": 0.4375,
+      "total_return": -0.4431507094123297,
+      "max_drawdown": 0.41232079445638026,
+      "signal_count": 117,
+      "trade_count": 16
+    },
+    {
+      "generation": 10,
+      "win_rate": 0.4375,
+      "total_return": -0.4431507094123297,
+      "max_drawdown": 0.41232079445638026,
+      "signal_count": 117,
+      "trade_count": 16
+    },
+    {
+      "generation": 11,
+      "win_rate": 0.4444444444444444,
+      "total_return": -0.4555353311140171,
+      "max_drawdown": 0.4238253978614922,
+      "signal_count": 122,
+      "trade_count": 18
+    },
+    {
+      "generation": 12,
+      "win_rate": 0.47058823529411764,
+      "total_return": -0.4252863577917054,
+      "max_drawdown": 0.3918147070580986,
+      "signal_count": 120,
+      "trade_count": 17
+    },
+    {
+      "generation": 13,
+      "win_rate": 0.47058823529411764,
+      "total_return": -0.4252863577917054,
+      "max_drawdown": 0.3918147070580986,
+      "signal_count": 120,
+      "trade_count": 17
+    },
+    {
+      "generation": 14,
+      "win_rate": 0.47058823529411764,
+      "total_return": -0.4252863577917054,
+      "max_drawdown": 0.3918147070580986,
+      "signal_count": 120,
+      "trade_count": 17
+    },
+    {
+      "generation": 15,
+      "win_rate": 0.47058823529411764,
+      "total_return": -0.4252863577917054,
+      "max_drawdown": 0.3918147070580986,
+      "signal_count": 120,
+      "trade_count": 17
+    },
+    {
+      "generation": 16,
+      "win_rate": 0.5,
+      "total_return": -0.36370989612653104,
+      "max_drawdown": 0.3266519971000378,
+      "signal_count": 114,
+      "trade_count": 16
+    },
+    {
+      "generation": 17,
+      "win_rate": 0.5,
+      "total_return": -0.36370989612653104,
+      "max_drawdown": 0.3266519971000378,
+      "signal_count": 114,
+      "trade_count": 16
+    },
+    {
+      "generation": 18,
+      "win_rate": 0.5,
+      "total_return": -0.36370989612653104,
+      "max_drawdown": 0.3266519971000378,
+      "signal_count": 114,
+      "trade_count": 16
+    },
+    {
+      "generation": 19,
+      "win_rate": 0.5,
+      "total_return": -0.36370989612653104,
+      "max_drawdown": 0.3266519971000378,
+      "signal_count": 114,
+      "trade_count": 16
+    },
+    {
+      "generation": 20,
+      "win_rate": 0.5,
+      "total_return": -0.36370989612653104,
+      "max_drawdown": 0.3266519971000378,
+      "signal_count": 114,
+      "trade_count": 16
+    },
+    {
+      "generation": 21,
+      "win_rate": 0.5,
+      "total_return": -0.36370989612653104,
+      "max_drawdown": 0.3266519971000378,
+      "signal_count": 114,
+      "trade_count": 16
+    },
+    {
+      "generation": 22,
+      "win_rate": 0.5,
+      "total_return": -0.36370989612653104,
+      "max_drawdown": 0.3266519971000378,
+      "signal_count": 114,
+      "trade_count": 16
+    },
+    {
+      "generation": 23,
+      "win_rate": 0.5,
+      "total_return": -0.36370989612653104,
+      "max_drawdown": 0.3266519971000378,
+      "signal_count": 114,
+      "trade_count": 16
+    },
+    {
+      "generation": 24,
+      "win_rate": 0.5,
+      "total_return": -0.36370989612653104,
+      "max_drawdown": 0.3266519971000378,
+      "signal_count": 114,
+      "trade_count": 16
+    },
+    {
+      "generation": 25,
+      "win_rate": 0.5,
+      "total_return": -0.36370989612653104,
+      "max_drawdown": 0.3266519971000378,
+      "signal_count": 114,
+      "trade_count": 16
+    },
+    {
+      "generation": 26,
+      "win_rate": 0.5,
+      "total_return": -0.36370989612653104,
+      "max_drawdown": 0.3266519971000378,
+      "signal_count": 114,
+      "trade_count": 16
+    },
+    {
+      "generation": 27,
+      "win_rate": 0.5333333333333333,
+      "total_return": -0.2883223204813139,
+      "max_drawdown": 0.24687380599639108,
+      "signal_count": 111,
+      "trade_count": 15
+    },
+    {
+      "generation": 28,
+      "win_rate": 0.5333333333333333,
+      "total_return": -0.2883223204813139,
+      "max_drawdown": 0.24687380599639108,
+      "signal_count": 111,
+      "trade_count": 15
+    },
+    {
+      "generation": 29,
+      "win_rate": 0.5333333333333333,
+      "total_return": -0.2883223204813139,
+      "max_drawdown": 0.24687380599639108,
+      "signal_count": 111,
+      "trade_count": 15
+    },
+    {
+      "generation": 30,
+      "win_rate": 0.5333333333333333,
+      "total_return": -0.2883223204813139,
+      "max_drawdown": 0.24687380599639108,
+      "signal_count": 111,
+      "trade_count": 15
+    }
+  ],
+  "timestamp": "2026-06-27 14:57:21"
+}

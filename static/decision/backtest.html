@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>策略回测 - StockAI Funnel</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #0a1628 0%, #0d1d33 50%, #0a1628 100%);
+            min-height: 100vh;
+            color: #e6edf3;
+        }
+
+        .container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            width: 64px;
+            background: rgba(13, 29, 51, 0.9);
+            backdrop-filter: blur(20px);
+            border-right: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 16px 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: fixed;
+            height: 100vh;
+            z-index: 100;
+            transition: width 0.3s ease;
+        }
+
+        .sidebar.expanded {
+            width: 200px;
+            align-items: flex-start;
+            padding-left: 16px;
+        }
+
+        .sidebar .logo {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #10b981, #06b6d4);
+            border-radius: 12px;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .sidebar .logo:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
+        }
+
+        .nav-items, .tools {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            width: 100%;
+            padding: 0 8px;
+        }
+
+        .sidebar.expanded .nav-items, .sidebar.expanded .tools {
+            padding: 0;
+        }
+
+        .nav-item, .tool-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: #86909c;
+            text-decoration: none;
+        }
+
+        .nav-item:hover, .tool-item:hover {
+            background: rgba(16, 185, 129, 0.1);
+            color: #10b981;
+        }
+
+        .nav-item.active {
+            background: rgba(16, 185, 129, 0.15);
+            color: #10b981;
+            box-shadow: 0 0 15px rgba(16, 185, 129, 0.2);
+        }
+
+        .nav-item i, .tool-item i {
+            font-size: 20px;
+            width: 24px;
+            text-align: center;
+        }
+
+        .nav-item span, .tool-item span {
+            font-size: 13px;
+            display: none;
+        }
+
+        .sidebar.expanded .nav-item span, .sidebar.expanded .tool-item span {
+            display: block;
+        }
+
+        .divider {
+            height: 1px;
+            background: rgba(255, 255, 255, 0.1);
+            margin: 16px 8px;
+        }
+
+        .main-content {
+            flex: 1;
+            margin-left: 64px;
+            padding: 24px;
+            transition: margin-left 0.3s ease;
+        }
+
+        .sidebar.expanded + .main-content {
+            margin-left: 200px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            font-weight: 600;
+            background: linear-gradient(135deg, #10b981, #06b6d4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .section {
+            background: rgba(13, 29, 51, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #e6edf3;
+        }
+
+        .config-panel {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .config-item {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .config-item label {
+            font-size: 13px;
+            color: #86909c;
+        }
+
+        .config-item select, .config-item input {
+            padding: 10px 12px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            color: #e6edf3;
+            font-size: 14px;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .config-item select:focus, .config-item input:focus {
+            border-color: #10b981;
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.2);
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: none;
+            outline: none;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #10b981, #06b6d4);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .stat-card.positive {
+            border-color: rgba(239, 68, 68, 0.3);
+        }
+
+        .stat-card.negative {
+            border-color: rgba(16, 185, 129, 0.3);
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #86909c;
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #e6edf3;
+        }
+
+        .stat-value.positive {
+            color: #ef4444;
+        }
+
+        .stat-value.negative {
+            color: #10b981;
+        }
+
+        .chart-container {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            height: 350px;
+            position: relative;
+        }
+
+        .chart-canvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        .backtest-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .backtest-table th, .backtest-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .backtest-table th {
+            font-size: 12px;
+            color: #86909c;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .backtest-table tr:hover {
+            background: rgba(16, 185, 129, 0.05);
+        }
+
+        .backtest-table .profit {
+            color: #ef4444;
+            font-weight: 600;
+        }
+
+        .backtest-table .loss {
+            color: #10b981;
+            font-weight: 600;
+        }
+
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 40px;
+            color: #86909c;
+        }
+
+        .loading::after {
+            content: '';
+            width: 24px;
+            height: 24px;
+            border: 2px solid rgba(16, 185, 129, 0.3);
+            border-top-color: #10b981;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 12px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .badge {
+            position: relative;
+        }
+
+        .badge::after {
+            content: '';
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            width: 8px;
+            height: 8px;
+            background: #ef4444;
+            border-radius: 50%;
+            border: 2px solid rgba(13, 29, 51, 0.9);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar" id="sidebar">
+            <div class="logo" id="toggleSidebar">📊</div>
+            <div class="nav-items">
+                <a href="/" class="nav-item" id="nav-home">
+                    <i>🏠</i>
+                    <span>首页仪表盘</span>
+                </a>
+                <a href="/macro" class="nav-item" id="nav-macro">
+                    <i>📈</i>
+                    <span>个股诊股</span>
+                </a>
+                <a href="/market" class="nav-item" id="nav-market">
+                    <i>📊</i>
+                    <span>市场主线</span>
+                </a>
+                <a href="/backtest" class="nav-item active" id="nav-backtest">
+                    <i>🔬</i>
+                    <span>策略回测</span>
+                </a>
+                <a href="/portfolio" class="nav-item badge" id="nav-portfolio">
+                    <i>💼</i>
+                    <span>持仓跟踪</span>
+                </a>
+            </div>
+            <div class="divider"></div>
+            <div class="tools">
+                <div class="tool-item" id="tool-config" onclick="showConfig()">
+                    <i>⚙️</i>
+                    <span>系统配置</span>
+                </div>
+                <div class="tool-item" id="tool-logs" onclick="showLogs()">
+                    <i>📜</i>
+                    <span>数据日志</span>
+                </div>
+                <div class="tool-item" id="tool-sync" onclick="syncData()">
+                    <i>🔄</i>
+                    <span>数据同步</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <div class="header">
+                <div>
+                    <h1>策略回测</h1>
+                    <p style="color: #86909c; font-size: 14px; margin-top: 4px;">验证多因子模型历史有效性，优化策略参数</p>
+                </div>
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="padding: 8px 16px; background: rgba(16, 185, 129, 0.15); border-radius: 8px; font-size: 13px; color: #10b981;">
+                        🟢 系统在线
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-header">
+                    <div class="section-title">回测配置</div>
+                    <button class="btn btn-primary" id="runBacktest" onclick="runBacktest()">
+                        开始回测
+                    </button>
+                </div>
+                
+                <div class="config-panel">
+                    <div class="config-item">
+                        <label>策略类型</label>
+                        <select id="strategyType">
+                            <option value="multi_factor">多因子策略</option>
+                            <option value="momentum">动量策略</option>
+                            <option value="mean_reversion">均值回归</option>
+                        </select>
+                    </div>
+                    <div class="config-item">
+                        <label>起始日期</label>
+                        <input type="date" id="startDate" value="2024-01-01">
+                    </div>
+                    <div class="config-item">
+                        <label>结束日期</label>
+                        <input type="date" id="endDate" value="2025-12-31">
+                    </div>
+                    <div class="config-item">
+                        <label>信号阈值</label>
+                        <select id="signalThreshold">
+                            <option value="5">5分以上</option>
+                            <option value="6">6分以上</option>
+                            <option value="7">7分以上</option>
+                            <option value="8">8分以上</option>
+                        </select>
+                    </div>
+                    <div class="config-item">
+                        <label>持仓天数</label>
+                        <select id="holdingDays">
+                            <option value="5">5天</option>
+                            <option value="10">10天</option>
+                            <option value="20">20天</option>
+                            <option value="30">30天</option>
+                        </select>
+                    </div>
+                    <div class="config-item">
+                        <label>最大持仓数</label>
+                        <select id="maxPositions">
+                            <option value="5">5只</option>
+                            <option value="10">10只</option>
+                            <option value="20">20只</option>
+                            <option value="30">30只</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-header">
+                    <div class="section-title">回测结果概览</div>
+                </div>
+                
+                <div class="stats-grid">
+                    <div class="stat-card positive">
+                        <div class="stat-label">总收益率</div>
+                        <div class="stat-value positive" id="totalReturn">--</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">年化收益率</div>
+                        <div class="stat-value" id="annualReturn">--</div>
+                    </div>
+                    <div class="stat-card positive">
+                        <div class="stat-label">胜率</div>
+                        <div class="stat-value positive" id="winRate">--</div>
+                    </div>
+                    <div class="stat-card negative">
+                        <div class="stat-label">最大回撤</div>
+                        <div class="stat-value negative" id="maxDrawdown">--</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">夏普比率</div>
+                        <div class="stat-value" id="sharpeRatio">--</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">交易次数</div>
+                        <div class="stat-value" id="tradeCount">--</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-header">
+                    <div class="section-title">收益曲线</div>
+                </div>
+                <div class="chart-container" id="equityChart">
+                    <canvas class="chart-canvas" id="equityCanvas"></canvas>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-header">
+                    <div class="section-title">交易记录</div>
+                </div>
+                <table class="backtest-table" id="tradeTable">
+                    <thead>
+                        <tr>
+                            <th>日期</th>
+                            <th>股票代码</th>
+                            <th>股票名称</th>
+                            <th>买入价</th>
+                            <th>卖出价</th>
+                            <th>持仓天数</th>
+                            <th>收益率</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td colspan="7" style="text-align: center; color: #86909c;">点击"开始回测"运行策略</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('toggleSidebar').addEventListener('click', () => {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('expanded');
+            localStorage.setItem('sidebarExpanded', sidebar.classList.contains('expanded'));
+        });
+
+        if (localStorage.getItem('sidebarExpanded') === 'true') {
+            document.getElementById('sidebar').classList.add('expanded');
+        }
+
+        async function runBacktest() {
+            const btn = document.getElementById('runBacktest');
+            btn.disabled = true;
+            btn.textContent = '回测中...';
+            
+            const params = {
+                strategy: document.getElementById('strategyType').value,
+                start_date: document.getElementById('startDate').value,
+                end_date: document.getElementById('endDate').value,
+                threshold: parseInt(document.getElementById('signalThreshold').value),
+                holding_days: parseInt(document.getElementById('holdingDays').value),
+                max_positions: parseInt(document.getElementById('maxPositions').value)
+            };
+            
+            try {
+                const response = await fetch('/api/backtest', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(params)
+                });
+                const data = await response.json();
+                displayResults(data);
+            } catch (error) {
+                console.error('Backtest failed:', error);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '开始回测';
+            }
+        }
+
+        function displayResults(data) {
+            document.getElementById('totalReturn').textContent = `${data.total_return >= 0 ? '+' : ''}${data.total_return.toFixed(2)}%`;
+            document.getElementById('totalReturn').className = `stat-value ${data.total_return >= 0 ? 'positive' : 'negative'}`;
+            
+            document.getElementById('annualReturn').textContent = `${data.annual_return >= 0 ? '+' : ''}${data.annual_return.toFixed(2)}%`;
+            document.getElementById('annualReturn').className = `stat-value ${data.annual_return >= 0 ? 'positive' : 'negative'}`;
+            
+            document.getElementById('winRate').textContent = `${data.win_rate.toFixed(1)}%`;
+            document.getElementById('maxDrawdown').textContent = `${data.max_drawdown.toFixed(2)}%`;
+            document.getElementById('sharpeRatio').textContent = data.sharpe_ratio.toFixed(2);
+            document.getElementById('tradeCount').textContent = data.trade_count;
+            
+            drawEquityChart(data.equity_curve);
+            displayTrades(data.trades);
+        }
+
+        function drawEquityChart(data) {
+            const canvas = document.getElementById('equityCanvas');
+            const ctx = canvas.getContext('2d');
+            
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * window.devicePixelRatio;
+            canvas.height = rect.height * window.devicePixelRatio;
+            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+            
+            const width = rect.width;
+            const height = rect.height;
+            
+            ctx.fillStyle = '#0d1d33';
+            ctx.fillRect(0, 0, width, height);
+            
+            const padding = { top: 30, right: 30, bottom: 40, left: 50 };
+            const chartWidth = width - padding.left - padding.right;
+            const chartHeight = height - padding.top - padding.bottom;
+            
+            if (!data || data.length === 0) {
+                ctx.fillStyle = '#86909c';
+                ctx.font = '14px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('暂无数据', width / 2, height / 2);
+                return;
+            }
+            
+            const maxVal = Math.max(...data.map(d => d.value));
+            const minVal = Math.min(...data.map(d => d.value));
+            const range = maxVal - minVal || 1;
+            
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= 5; i++) {
+                const y = padding.top + (chartHeight / 5) * i;
+                ctx.beginPath();
+                ctx.moveTo(padding.left, y);
+                ctx.lineTo(width - padding.right, y);
+                ctx.stroke();
+                
+                const val = maxVal - (range / 5) * i;
+                ctx.fillStyle = '#86909c';
+                ctx.font = '11px sans-serif';
+                ctx.textAlign = 'right';
+                ctx.fillText(val.toFixed(0), padding.left - 10, y + 4);
+            }
+            
+            const xStep = chartWidth / (data.length - 1);
+            ctx.beginPath();
+            ctx.strokeStyle = '#10b981';
+            ctx.lineWidth = 2;
+            
+            data.forEach((point, i) => {
+                const x = padding.left + i * xStep;
+                const y = padding.top + chartHeight - ((point.value - minVal) / range) * chartHeight;
+                
+                if (i === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            });
+            ctx.stroke();
+            
+            const gradient = ctx.createLinearGradient(0, padding.top, 0, padding.top + chartHeight);
+            gradient.addColorStop(0, 'rgba(16, 185, 129, 0.3)');
+            gradient.addColorStop(1, 'rgba(16, 185, 129, 0)');
+            
+            ctx.beginPath();
+            ctx.moveTo(padding.left, padding.top + chartHeight);
+            data.forEach((point, i) => {
+                const x = padding.left + i * xStep;
+                const y = padding.top + chartHeight - ((point.value - minVal) / range) * chartHeight;
+                ctx.lineTo(x, y);
+            });
+            ctx.lineTo(padding.left + (data.length - 1) * xStep, padding.top + chartHeight);
+            ctx.closePath();
+            ctx.fillStyle = gradient;
+            ctx.fill();
+            
+            ctx.fillStyle = '#86909c';
+            ctx.font = '11px sans-serif';
+            ctx.textAlign = 'center';
+            const labelStep = Math.ceil(data.length / 6);
+            data.forEach((point, i) => {
+                if (i % labelStep === 0) {
+                    const x = padding.left + i * xStep;
+                    ctx.fillText(point.date, x, height - 15);
+                }
+            });
+            
+            ctx.fillStyle = '#10b981';
+            ctx.font = 'bold 11px sans-serif';
+            ctx.textAlign = 'left';
+            ctx.fillText('策略收益', padding.left, 20);
+        }
+
+        function displayTrades(trades) {
+            const tbody = document.querySelector('#tradeTable tbody');
+            tbody.innerHTML = '';
+            
+            trades.forEach(trade => {
+                const row = document.createElement('tr');
+                const profitClass = trade.return >= 0 ? 'profit' : 'loss';
+                row.innerHTML = `
+                    <td>${trade.date}</td>
+                    <td>${trade.ts_code}</td>
+                    <td>${trade.name}</td>
+                    <td>${trade.buy_price.toFixed(2)}</td>
+                    <td>${trade.sell_price.toFixed(2)}</td>
+                    <td>${trade.holding_days}</td>
+                    <td class="${profitClass}">${trade.return >= 0 ? '+' : ''}${trade.return.toFixed(2)}%</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function showConfig() {
+            alert('系统配置功能开发中...');
+        }
+
+        function showLogs() {
+            alert('数据日志功能开发中...');
+        }
+
+        function syncData() {
+            alert('数据同步功能开发中...');
+        }
+    </script>
+</body>
+</html>

@@ -1,8 +1,8 @@
 {
-  "mode": "attack",
-  "mode_zh": "进攻",
-  "max_pos": 0.8,
-  "detail": "最新日期 20260615 | 上涨占比 70.9% | 5日均量 > 20日均量",
-  "timestamp": "2026-06-16T15:21:59.561672",
-  "date": "2026-06-16"
+  "mode": "red",
+  "mode_zh": "红色防守休息",
+  "max_pos": 0.2,
+  "detail": "{\"source\": \"akshare_fallback\", \"sh_close\": 3000.0, \"sh_ma60\": 3000.0, \"explode_rate\": 0.3763, \"max_con_limit\": 6, \"promotion_rate\": 0.1207}",
+  "timestamp": "2026-06-26T14:31:58.038540",
+  "date": "2026-06-26"
 }

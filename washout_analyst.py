@@ -335,7 +335,7 @@ def get_moneyflow_summary(ts_code: str) -> dict:
         
         # 融资余额变化趋势
         cursor.execute("""
-            SELECT rzye FROM stk_margin 
+            SELECT rzye FROM margin_detail 
             WHERE ts_code = ? ORDER BY trade_date DESC LIMIT 5
         """, (ts_code,))
         rows = cursor.fetchall()

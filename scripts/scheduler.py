@@ -238,6 +238,42 @@ def run_full_pipeline(session_name: str = "手动触发", no_feishu: bool = Fals
     log.info("[数据] %s", data_label)
 
     # =========================================================================
+    # 步骤 -1：自动拉取与补全宏观/快照数据
+    # =========================================================================
+    try:
+        from scheduler.extend_jobs.macro_jobs import (
+            job_daily_before_trade,
+            job_intraday_snapshot_1030,
+            job_intraday_snapshot_1400,
+            job_daily_after_trade,
+            job_monthly_macro
+        )
+        log.info("[数据] 正在执行宏观与快照数据自动采集同步...")
+        if session_name == "盘前前瞻":
+            job_daily_before_trade()
+        elif session_name == "早盘异动":
+            job_intraday_snapshot_1030()
+        elif session_name == "尾盘信号":
+            job_intraday_snapshot_1400()
+        elif session_name == "盘后复盘":
+            job_daily_after_trade()
+            job_monthly_macro()
+        elif session_name == "手动触发":
+            # 根据当前时间智能推断要跑的任务
+            now_hour = datetime.now().hour
+            if now_hour < 9:
+                job_daily_before_trade()
+            elif 9 <= now_hour < 12:
+                job_intraday_snapshot_1030()
+            elif 12 <= now_hour < 15:
+                job_intraday_snapshot_1400()
+            else:
+                job_daily_after_trade()
+                job_monthly_macro()
+    except Exception as ex_macro:
+        log.warning("[数据] 宏观数据同步采集失败: %s", ex_macro)
+
+    # =========================================================================
     # 步骤0：盘后时段强制更新数据
     # =========================================================================
     if session_name == AFTER_HOURS_SESSION:
@@ -361,43 +397,83 @@ def run_full_pipeline(session_name: str = "手动触发", no_feishu: bool = Fals
         log.warning("持仓体检失败: %s", e)
 
     # =========================================================================
-    # 步骤4：三层漏斗选股 (使用新的 layer3_service)
+    # 步骤4：选股策略 (v4.0 ML 策略或 v3.3 三层漏斗)
     # =========================================================================
     selected_stocks = []
-    try:
-        # 使用 scanner 进行预筛选
-        from scripts.scanner import scan_market
-        scan_df = scan_market(min_python_score=25, max_stocks=100)
-        
-        if scan_df.empty:
-            log.info("无候选股，跳过策略选股")
-        else:
-            # 提取候选股列表
-            candidate_pool = scan_df['ts_code'].tolist()
-            sector = "全市场"
+    
+    if session_name == AFTER_HOURS_SESSION:
+        # v4.0 ML 多因子策略
+        try:
+            from ml_pipeline import run_ml_pipeline
             
-            # 调用策略服务
-            from backend.app.services.layer3_service import run_strategy
+            log.info("[选股] 使用 v4.0 ML 多因子策略...")
+            candidates = run_ml_pipeline(
+                trade_date=today,
+                top_pct=0.10,
+                require_ma5=True,
+                require_industry=True
+            )
             
-            for strategy_type in ['A', 'B', 'C']:
-                result = run_strategy(
-                    strategy_type=strategy_type,
-                    sector=sector,
-                    trade_date=today,
-                    candidate_pool=candidate_pool
-                )
-                log.info("策略 %s 筛选出 %d 只候选股", strategy_type, result.get("total_count", 0))
-                
-                # mock selected stocks
-                for cand in result.get("candidates", []):
+            if candidates:
+                log.info("[选股] v4.0 ML 策略筛选出 %d 只候选股", len(candidates))
+                for c in candidates[:10]:
                     selected_stocks.append({
-                        "ts_code": cand.get("ts_code", ""),
-                        "name": cand.get("name", ""),
-                        "score": cand.get("score", 0),
-                        "suggestion": f"策略{strategy_type}精选"
+                        "ts_code": c.get("ts_code", ""),
+                        "name": c.get("name", ""),
+                        "score": int(c.get("score", 0) * 100),
+                        "suggestion": "ML精选",
+                        "industry": c.get("industry", ""),
+                        "pct_chg": c.get("pct_chg", 0)
                     })
-    except Exception as e:
-        log.error("三层漏斗任务异常: %s", e)
+                
+                if not no_feishu:
+                    summary_data = [
+                        {"ts_code": c["ts_code"], "name": c["name"],
+                         "industry": c["industry"], "total_score": int(c["score"] * 100),
+                         "grade": "S"}
+                        for c in candidates[:5]
+                    ]
+                    send_daily_summary(summary_data, session_name="v4.0 ML 选股", total_scanned=len(candidates))
+            else:
+                log.info("[选股] v4.0 ML 策略今日无符合条件的标的")
+                if not no_feishu:
+                    send_text("📊 v4.0 ML 策略今日无符合条件的标的。")
+                    
+        except Exception as e:
+            log.error("v4.0 ML 策略执行失败: %s", e)
+            
+    else:
+        # v3.3 三层漏斗选股 (使用新的 layer3_service)
+        try:
+            from scripts.scanner import scan_market
+            scan_df = scan_market(min_python_score=25, max_stocks=100)
+            
+            if scan_df.empty:
+                log.info("无候选股，跳过策略选股")
+            else:
+                candidate_pool = scan_df['ts_code'].tolist()
+                sector = "全市场"
+                
+                from backend.app.services.layer3_service import run_strategy
+                
+                for strategy_type in ['A', 'B', 'C']:
+                    result = run_strategy(
+                        strategy_type=strategy_type,
+                        sector=sector,
+                        trade_date=today,
+                        candidate_pool=candidate_pool
+                    )
+                    log.info("策略 %s 筛选出 %d 只候选股", strategy_type, result.get("total_count", 0))
+                    
+                    for cand in result.get("candidates", []):
+                        selected_stocks.append({
+                            "ts_code": cand.get("ts_code", ""),
+                            "name": cand.get("name", ""),
+                            "score": cand.get("score", 0),
+                            "suggestion": f"策略{strategy_type}精选"
+                        })
+        except Exception as e:
+            log.error("三层漏斗任务异常: %s", e)
 
     # =========================================================================
     # 步骤5：保存候选结果到文件（供前端调用）
@@ -405,17 +481,25 @@ def run_full_pipeline(session_name: str = "手动触发", no_feishu: bool = Fals
     try:
         candidates_file = os.path.join(ROOT_DIR, "last_candidates.json")
         all_candidates = []
-        if 'candidates' in locals() and candidates:
+        
+        if session_name == AFTER_HOURS_SESSION and 'candidates' in locals() and candidates:
             all_candidates = [{
                 "ts_code": c.get("ts_code", ""),
                 "name": c.get("name", ""),
-                "score": c.get("total_score", 0),
+                "score": int(c.get("score", 0) * 100),
                 "industry": c.get("industry", ""),
                 "pct_chg": c.get("pct_chg", 0)
             } for c in candidates]
+        elif selected_stocks:
+            all_candidates = [{
+                "ts_code": s.get("ts_code", ""),
+                "name": s.get("name", ""),
+                "score": s.get("score", 0),
+                "industry": s.get("industry", ""),
+                "pct_chg": s.get("pct_chg", 0)
+            } for s in selected_stocks]
         
         def default(obj):
-            # 处理 numpy 类型
             if hasattr(obj, '__class__') and obj.__class__.__name__ in ('int64', 'float64', 'int32', 'float32'):
                 return float(obj)
             if isinstance(obj, (int, float)):

@@ -19,10 +19,17 @@ if ROOT_DIR not in sys.path:
 if BACKEND_DIR not in sys.path:
     sys.path.append(BACKEND_DIR)
 
+import tushare as ts
+
 try:
-    from app.core.mootdx_client import mootdx_client as mootdx
+    from scripts.tokens import TOKEN as TUSHARE_TOKEN
 except ImportError:
-    from utils.mootdx_client import mootdx
+    try:
+        from tokens import TOKEN as TUSHARE_TOKEN
+    except ImportError:
+        TUSHARE_TOKEN = os.environ.get("TUSHARE_TOKEN", "")
+
+pro = ts.pro_api(TUSHARE_TOKEN)
 
 DB_PATH  = os.path.join(ROOT_DIR, "db", "stock_daily.db")
 
@@ -55,13 +62,15 @@ def create_daily_index_table(conn):
 
 
 def fetch_index_data(start_date, end_date):
-    """使用 mootdx 拉取上证指数日线数据"""
+    """使用 Tushare 拉取上证指数日线数据"""
     log.info(f"正在拉取 {INDEX_NAME} 数据: {start_date} ~ {end_date}")
     try:
-        df = mootdx.get_index_daily(INDEX_CODE, start_date, end_date)
+        df = pro.index_daily(ts_code=INDEX_CODE, start_date=start_date, end_date=end_date)
         if df is not None and not df.empty:
-            # 计算涨跌幅
-            df['pct_chg'] = df['close'].pct_change() * 100
+            # Tushare 指数成交额 amount 是千元，换算成元
+            df['amount'] = df['amount'] * 1000
+            # 升序排序
+            df = df.sort_values('trade_date').reset_index(drop=True)
             log.info(f"成功拉取 {len(df)} 条数据")
             return df
         return None

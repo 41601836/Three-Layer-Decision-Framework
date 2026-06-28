@@ -1,0 +1,4823 @@
+{
+  "candidates": [
+    {
+      "ts_code": "000592.SZ",
+      "name": "平潭发展",
+      "industry": "林业",
+      "sector_rank": 1,
+      "score": 0.0014128805164501908,
+      "close": 6.95,
+      "pct_chg": -4.0055
+    },
+    {
+      "ts_code": "002679.SZ",
+      "name": "福建金森",
+      "industry": "林业",
+      "sector_rank": 2,
+      "score": 0.000987914159326217,
+      "close": 8.16,
+      "pct_chg": -5.3364
+    },
+    {
+      "ts_code": "000663.SZ",
+      "name": "永安林业",
+      "industry": "林业",
+      "sector_rank": 3,
+      "score": 0.0005775784528415863,
+      "close": 5.34,
+      "pct_chg": -4.6429
+    },
+    {
+      "ts_code": "300857.SZ",
+      "name": "协创数据",
+      "industry": "IT设备",
+      "sector_rank": 1,
+      "score": 0.00031370638261238185,
+      "close": 340.19,
+      "pct_chg": 10.9918
+    },
+    {
+      "ts_code": "920808.BJ",
+      "name": "曙光数创",
+      "industry": "IT设备",
+      "sector_rank": 2,
+      "score": 0.0002469807515921769,
+      "close": 82.96,
+      "pct_chg": 2.5464
+    },
+    {
+      "ts_code": "001339.SZ",
+      "name": "智微智能",
+      "industry": "IT设备",
+      "sector_rank": 3,
+      "score": 0.0002312305894509284,
+      "close": 136.95,
+      "pct_chg": 10.0
+    },
+    {
+      "ts_code": "300249.SZ",
+      "name": "依米康",
+      "industry": "IT设备",
+      "sector_rank": 4,
+      "score": 0.00017396730621329314,
+      "close": 16.92,
+      "pct_chg": -0.3534
+    },
+    {
+      "ts_code": "300042.SZ",
+      "name": "朗科科技",
+      "industry": "IT设备",
+      "sector_rank": 5,
+      "score": 0.0001383019251366968,
+      "close": 72.69,
+      "pct_chg": 2.5102
+    },
+    {
+      "ts_code": "603516.SH",
+      "name": "淳中科技",
+      "industry": "IT设备",
+      "sector_rank": 6,
+      "score": 0.0001193991348007288,
+      "close": 132.5,
+      "pct_chg": -3.1999
+    },
+    {
+      "ts_code": "301042.SZ",
+      "name": "安联锐视",
+      "industry": "IT设备",
+      "sector_rank": 7,
+      "score": 3.332958332272597e-05,
+      "close": 71.17,
+      "pct_chg": -4.3414
+    },
+    {
+      "ts_code": "688775.SH",
+      "name": "影石创新",
+      "industry": "IT设备",
+      "sector_rank": 8,
+      "score": -1.0144848335701291e-06,
+      "close": 137.43,
+      "pct_chg": -0.3697
+    },
+    {
+      "ts_code": "603496.SH",
+      "name": "恒为科技",
+      "industry": "IT设备",
+      "sector_rank": 9,
+      "score": -3.2100562891631493e-05,
+      "close": 25.12,
+      "pct_chg": -3.4218
+    },
+    {
+      "ts_code": "603019.SH",
+      "name": "中科曙光",
+      "industry": "IT设备",
+      "sector_rank": 10,
+      "score": -0.00012875394335359154,
+      "close": 88.93,
+      "pct_chg": 2.1479
+    },
+    {
+      "ts_code": "300368.SZ",
+      "name": "汇金股份",
+      "industry": "IT设备",
+      "sector_rank": 11,
+      "score": -0.0001441417913568355,
+      "close": 8.95,
+      "pct_chg": -6.086
+    },
+    {
+      "ts_code": "002970.SZ",
+      "name": "锐明技术",
+      "industry": "IT设备",
+      "sector_rank": 12,
+      "score": -0.0001585440604298118,
+      "close": 62.33,
+      "pct_chg": -1.6567
+    },
+    {
+      "ts_code": "300302.SZ",
+      "name": "同有科技",
+      "industry": "IT设备",
+      "sector_rank": 13,
+      "score": -0.00016495286290745762,
+      "close": 59.55,
+      "pct_chg": 6.5295
+    },
+    {
+      "ts_code": "301666.SZ",
+      "name": "大普微",
+      "industry": "IT设备",
+      "sector_rank": 14,
+      "score": -0.00016699210354442296,
+      "close": 717.19,
+      "pct_chg": 1.7291
+    },
+    {
+      "ts_code": "001229.SZ",
+      "name": "魅视科技",
+      "industry": "IT设备",
+      "sector_rank": 15,
+      "score": -0.00018376002094359087,
+      "close": 28.52,
+      "pct_chg": 8.8134
+    },
+    {
+      "ts_code": "920395.BJ",
+      "name": "朗鸿科技",
+      "industry": "IT设备",
+      "sector_rank": 16,
+      "score": -0.00020211081968479674,
+      "close": 7.72,
+      "pct_chg": -5.8537
+    },
+    {
+      "ts_code": "000938.SZ",
+      "name": "紫光股份",
+      "industry": "IT设备",
+      "sector_rank": 17,
+      "score": -0.00021613696462278705,
+      "close": 27.66,
+      "pct_chg": 2.7871
+    },
+    {
+      "ts_code": "920036.BJ",
+      "name": "觅睿科技",
+      "industry": "IT设备",
+      "sector_rank": 18,
+      "score": -0.00024827183353734504,
+      "close": 43.18,
+      "pct_chg": 6.5647
+    },
+    {
+      "ts_code": "002415.SZ",
+      "name": "海康威视",
+      "industry": "IT设备",
+      "sector_rank": 19,
+      "score": -0.00028563747074804606,
+      "close": 34.03,
+      "pct_chg": 8.3413
+    },
+    {
+      "ts_code": "000977.SZ",
+      "name": "浪潮信息",
+      "industry": "IT设备",
+      "sector_rank": 20,
+      "score": -0.0003009026991735394,
+      "close": 64.8,
+      "pct_chg": 1.25
+    },
+    {
+      "ts_code": "688208.SH",
+      "name": "道通科技",
+      "industry": "IT设备",
+      "sector_rank": 21,
+      "score": -0.00030774820838069296,
+      "close": 25.68,
+      "pct_chg": 0.117
+    },
+    {
+      "ts_code": "300588.SZ",
+      "name": "熙菱信息",
+      "industry": "IT设备",
+      "sector_rank": 22,
+      "score": -0.0003287985146978342,
+      "close": 22.98,
+      "pct_chg": 1.0554
+    },
+    {
+      "ts_code": "603660.SH",
+      "name": "苏州科达",
+      "industry": "IT设备",
+      "sector_rank": 23,
+      "score": -0.00037195240295527705,
+      "close": 13.36,
+      "pct_chg": -0.4471
+    },
+    {
+      "ts_code": "300386.SZ",
+      "name": "飞天诚信",
+      "industry": "IT设备",
+      "sector_rank": 24,
+      "score": -0.00037643561202473693,
+      "close": 11.53,
+      "pct_chg": -4.7107
+    },
+    {
+      "ts_code": "300743.SZ",
+      "name": "天地数码",
+      "industry": "IT设备",
+      "sector_rank": 25,
+      "score": -0.0003789158510669145,
+      "close": 16.11,
+      "pct_chg": -4.2781
+    },
+    {
+      "ts_code": "002520.SZ",
+      "name": "日发精机",
+      "industry": "机床制造",
+      "sector_rank": 1,
+      "score": -0.00038305393853528026,
+      "close": 7.56,
+      "pct_chg": 10.0437
+    },
+    {
+      "ts_code": "300449.SZ",
+      "name": "汉邦高科",
+      "industry": "IT设备",
+      "sector_rank": 26,
+      "score": -0.0003938259347959403,
+      "close": 8.36,
+      "pct_chg": -2.1077
+    },
+    {
+      "ts_code": "300531.SZ",
+      "name": "优博讯",
+      "industry": "IT设备",
+      "sector_rank": 27,
+      "score": -0.0004017262014592072,
+      "close": 16.07,
+      "pct_chg": 1.5803
+    },
+    {
+      "ts_code": "688475.SH",
+      "name": "萤石网络",
+      "industry": "IT设备",
+      "sector_rank": 28,
+      "score": -0.0004093382193880121,
+      "close": 26.85,
+      "pct_chg": 0.4865
+    },
+    {
+      "ts_code": "300455.SZ",
+      "name": "航天智装",
+      "industry": "IT设备",
+      "sector_rank": 29,
+      "score": -0.0004226182275103331,
+      "close": 21.58,
+      "pct_chg": 2.0814
+    },
+    {
+      "ts_code": "003004.SZ",
+      "name": "声迅股份",
+      "industry": "IT设备",
+      "sector_rank": 30,
+      "score": -0.0004258906177240602,
+      "close": 70.57,
+      "pct_chg": -3.8425
+    },
+    {
+      "ts_code": "301589.SZ",
+      "name": "诺瓦星云",
+      "industry": "IT设备",
+      "sector_rank": 31,
+      "score": -0.00043918760864227347,
+      "close": 145.5,
+      "pct_chg": -1.8682
+    },
+    {
+      "ts_code": "002943.SZ",
+      "name": "宇晶股份",
+      "industry": "机床制造",
+      "sector_rank": 2,
+      "score": -0.00043996522177189757,
+      "close": 52.43,
+      "pct_chg": 10.0084
+    },
+    {
+      "ts_code": "300656.SZ",
+      "name": "民德电子",
+      "industry": "IT设备",
+      "sector_rank": 32,
+      "score": -0.00045329399460878315,
+      "close": 40.77,
+      "pct_chg": 1.2416
+    },
+    {
+      "ts_code": "920183.BJ",
+      "name": "海菲曼",
+      "industry": "IT设备",
+      "sector_rank": 33,
+      "score": -0.00046742421767481885,
+      "close": 32.77,
+      "pct_chg": -0.5765
+    },
+    {
+      "ts_code": "603106.SH",
+      "name": "恒银科技",
+      "industry": "IT设备",
+      "sector_rank": 34,
+      "score": -0.0004755538761086577,
+      "close": 7.79,
+      "pct_chg": -3.7083
+    },
+    {
+      "ts_code": "300130.SZ",
+      "name": "新国都",
+      "industry": "IT设备",
+      "sector_rank": 35,
+      "score": -0.000503376452406965,
+      "close": 22.48,
+      "pct_chg": -4.9471
+    },
+    {
+      "ts_code": "920190.BJ",
+      "name": "雷神科技",
+      "industry": "IT设备",
+      "sector_rank": 36,
+      "score": -0.0005119839078857101,
+      "close": 24.58,
+      "pct_chg": -2.0717
+    },
+    {
+      "ts_code": "300045.SZ",
+      "name": "华力创通",
+      "industry": "IT设备",
+      "sector_rank": 37,
+      "score": -0.0005172517077757393,
+      "close": 17.39,
+      "pct_chg": 0.7532
+    },
+    {
+      "ts_code": "000066.SZ",
+      "name": "中国长城",
+      "industry": "IT设备",
+      "sector_rank": 38,
+      "score": -0.0005178025074281836,
+      "close": 19.0,
+      "pct_chg": 6.9218
+    },
+    {
+      "ts_code": "300270.SZ",
+      "name": "中威电子",
+      "industry": "IT设备",
+      "sector_rank": 39,
+      "score": -0.0005182898004294759,
+      "close": 10.83,
+      "pct_chg": -5.4974
+    },
+    {
+      "ts_code": "002248.SZ",
+      "name": "华东数控",
+      "industry": "机床制造",
+      "sector_rank": 3,
+      "score": -0.0005262912902686007,
+      "close": 9.28,
+      "pct_chg": -3.3333
+    },
+    {
+      "ts_code": "300546.SZ",
+      "name": "雄帝科技",
+      "industry": "IT设备",
+      "sector_rank": 40,
+      "score": -0.0005397365103829283,
+      "close": 16.2,
+      "pct_chg": -4.7059
+    },
+    {
+      "ts_code": "301391.SZ",
+      "name": "卡莱特",
+      "industry": "IT设备",
+      "sector_rank": 41,
+      "score": -0.0005406320851936916,
+      "close": 63.23,
+      "pct_chg": -0.5505
+    },
+    {
+      "ts_code": "300333.SZ",
+      "name": "兆日科技",
+      "industry": "IT设备",
+      "sector_rank": 42,
+      "score": -0.0005645196602058918,
+      "close": 9.55,
+      "pct_chg": -6.2807
+    },
+    {
+      "ts_code": "002351.SZ",
+      "name": "漫步者",
+      "industry": "IT设备",
+      "sector_rank": 43,
+      "score": -0.0005981276062174841,
+      "close": 9.9,
+      "pct_chg": -2.6549
+    },
+    {
+      "ts_code": "002903.SZ",
+      "name": "宇环数控",
+      "industry": "机床制造",
+      "sector_rank": 4,
+      "score": -0.0006057482787474489,
+      "close": 51.0,
+      "pct_chg": 0.0196
+    },
+    {
+      "ts_code": "688288.SH",
+      "name": "鸿泉技术",
+      "industry": "IT设备",
+      "sector_rank": 44,
+      "score": -0.0006076720202547968,
+      "close": 18.95,
+      "pct_chg": -5.1552
+    },
+    {
+      "ts_code": "301189.SZ",
+      "name": "奥尼电子",
+      "industry": "IT设备",
+      "sector_rank": 45,
+      "score": -0.0006124912415312047,
+      "close": 61.75,
+      "pct_chg": -4.1149
+    },
+    {
+      "ts_code": "301578.SZ",
+      "name": "辰奕智能",
+      "industry": "IT设备",
+      "sector_rank": 46,
+      "score": -0.0006243188740370754,
+      "close": 21.82,
+      "pct_chg": -2.9359
+    },
+    {
+      "ts_code": "002577.SZ",
+      "name": "雷柏科技",
+      "industry": "IT设备",
+      "sector_rank": 47,
+      "score": -0.0006796530585088047,
+      "close": 18.63,
+      "pct_chg": -2.0505
+    },
+    {
+      "ts_code": "300941.SZ",
+      "name": "创识科技",
+      "industry": "IT设备",
+      "sector_rank": 48,
+      "score": -0.0006802288862796132,
+      "close": 14.48,
+      "pct_chg": -5.6678
+    },
+    {
+      "ts_code": "002955.SZ",
+      "name": "鸿合科技",
+      "industry": "IT设备",
+      "sector_rank": 49,
+      "score": -0.000682979190134184,
+      "close": 33.9,
+      "pct_chg": -0.7321
+    },
+    {
+      "ts_code": "301491.SZ",
+      "name": "汉桑科技",
+      "industry": "IT设备",
+      "sector_rank": 50,
+      "score": -0.0006836332381937179,
+      "close": 42.28,
+      "pct_chg": -2.2202
+    },
+    {
+      "ts_code": "002866.SZ",
+      "name": "传艺科技",
+      "industry": "IT设备",
+      "sector_rank": 51,
+      "score": -0.0007066600038629128,
+      "close": 17.4,
+      "pct_chg": -1.528
+    },
+    {
+      "ts_code": "301603.SZ",
+      "name": "乔锋智能",
+      "industry": "机床制造",
+      "sector_rank": 5,
+      "score": -0.0007229305487925003,
+      "close": 138.0,
+      "pct_chg": 3.7438
+    },
+    {
+      "ts_code": "000997.SZ",
+      "name": "新大陆",
+      "industry": "IT设备",
+      "sector_rank": 52,
+      "score": -0.0007253307172716587,
+      "close": 18.01,
+      "pct_chg": -1.044
+    },
+    {
+      "ts_code": "688577.SH",
+      "name": "浙海德曼",
+      "industry": "机床制造",
+      "sector_rank": 6,
+      "score": -0.0007620858593515635,
+      "close": 47.2,
+      "pct_chg": -1.2139
+    },
+    {
+      "ts_code": "301339.SZ",
+      "name": "通行宝",
+      "industry": "IT设备",
+      "sector_rank": 53,
+      "score": -0.0007734851721320406,
+      "close": 10.79,
+      "pct_chg": -3.2287
+    },
+    {
+      "ts_code": "300884.SZ",
+      "name": "狄耐克",
+      "industry": "IT设备",
+      "sector_rank": 54,
+      "score": -0.0008296585299046753,
+      "close": 10.18,
+      "pct_chg": -3.8716
+    },
+    {
+      "ts_code": "301503.SZ",
+      "name": "智迪科技",
+      "industry": "IT设备",
+      "sector_rank": 55,
+      "score": -0.0008509816206686796,
+      "close": 28.71,
+      "pct_chg": -2.8755
+    },
+    {
+      "ts_code": "002835.SZ",
+      "name": "同为股份",
+      "industry": "IT设备",
+      "sector_rank": 56,
+      "score": -0.000852135384564255,
+      "close": 12.13,
+      "pct_chg": -3.7302
+    },
+    {
+      "ts_code": "300083.SZ",
+      "name": "创世纪",
+      "industry": "机床制造",
+      "sector_rank": 7,
+      "score": -0.000861849059617624,
+      "close": 12.95,
+      "pct_chg": 15.1111
+    },
+    {
+      "ts_code": "002268.SZ",
+      "name": "电科网安",
+      "industry": "IT设备",
+      "sector_rank": 57,
+      "score": -0.0008838415646177874,
+      "close": 12.98,
+      "pct_chg": -2.6257
+    },
+    {
+      "ts_code": "002912.SZ",
+      "name": "中新赛克",
+      "industry": "IT设备",
+      "sector_rank": 58,
+      "score": -0.0008952154331711107,
+      "close": 19.04,
+      "pct_chg": -3.6925
+    },
+    {
+      "ts_code": "300552.SZ",
+      "name": "万集科技",
+      "industry": "IT设备",
+      "sector_rank": 59,
+      "score": -0.0009145439798030647,
+      "close": 24.38,
+      "pct_chg": -3.5601
+    },
+    {
+      "ts_code": "688305.SH",
+      "name": "科德数控",
+      "industry": "机床制造",
+      "sector_rank": 8,
+      "score": -0.0009175185198144913,
+      "close": 66.21,
+      "pct_chg": -0.211
+    },
+    {
+      "ts_code": "603088.SH",
+      "name": "宁波精达",
+      "industry": "机床制造",
+      "sector_rank": 9,
+      "score": -0.0009242841562643396,
+      "close": 10.35,
+      "pct_chg": 0.0967
+    },
+    {
+      "ts_code": "688697.SH",
+      "name": "纽威数控",
+      "industry": "机床制造",
+      "sector_rank": 10,
+      "score": -0.0009333962056974152,
+      "close": 14.0,
+      "pct_chg": -0.4975
+    },
+    {
+      "ts_code": "002685.SZ",
+      "name": "华东重机",
+      "industry": "机床制造",
+      "sector_rank": 11,
+      "score": -0.0009509152235783556,
+      "close": 6.86,
+      "pct_chg": -0.1456
+    },
+    {
+      "ts_code": "920870.BJ",
+      "name": "恒进感应",
+      "industry": "机床制造",
+      "sector_rank": 12,
+      "score": -0.0009536025571115323,
+      "close": 13.25,
+      "pct_chg": -3.1433
+    },
+    {
+      "ts_code": "603508.SH",
+      "name": "思维列控",
+      "industry": "IT设备",
+      "sector_rank": 60,
+      "score": -0.0009551464807972415,
+      "close": 21.62,
+      "pct_chg": -2.2162
+    },
+    {
+      "ts_code": "002152.SZ",
+      "name": "广电运通",
+      "industry": "IT设备",
+      "sector_rank": 61,
+      "score": -0.000958168073021291,
+      "close": 9.83,
+      "pct_chg": -1.4042
+    },
+    {
+      "ts_code": "301330.SZ",
+      "name": "熵基科技",
+      "industry": "IT设备",
+      "sector_rank": 62,
+      "score": -0.0009660717162037443,
+      "close": 27.66,
+      "pct_chg": 1.0226
+    },
+    {
+      "ts_code": "300161.SZ",
+      "name": "华中数控",
+      "industry": "机床制造",
+      "sector_rank": 13,
+      "score": -0.0009682502216236781,
+      "close": 31.23,
+      "pct_chg": -4.2905
+    },
+    {
+      "ts_code": "920198.BJ",
+      "name": "微创光电",
+      "industry": "IT设备",
+      "sector_rank": 63,
+      "score": -0.0009773897718515208,
+      "close": 7.42,
+      "pct_chg": -3.886
+    },
+    {
+      "ts_code": "300809.SZ",
+      "name": "华辰装备",
+      "industry": "机床制造",
+      "sector_rank": 14,
+      "score": -0.0009962557742188242,
+      "close": 28.44,
+      "pct_chg": -4.4997
+    },
+    {
+      "ts_code": "003025.SZ",
+      "name": "思进智能",
+      "industry": "机床制造",
+      "sector_rank": 15,
+      "score": -0.0011026304885979614,
+      "close": 15.1,
+      "pct_chg": -4.5512
+    },
+    {
+      "ts_code": "002559.SZ",
+      "name": "亚威股份",
+      "industry": "机床制造",
+      "sector_rank": 16,
+      "score": -0.0011114327883022354,
+      "close": 10.88,
+      "pct_chg": 3.2258
+    },
+    {
+      "ts_code": "601882.SH",
+      "name": "海天精工",
+      "industry": "机床制造",
+      "sector_rank": 17,
+      "score": -0.0011193344966818437,
+      "close": 19.75,
+      "pct_chg": -1.2006
+    },
+    {
+      "ts_code": "000410.SZ",
+      "name": "沈阳机床",
+      "industry": "机床制造",
+      "sector_rank": 18,
+      "score": -0.0011235026766159388,
+      "close": 4.84,
+      "pct_chg": -4.3478
+    },
+    {
+      "ts_code": "300659.SZ",
+      "name": "中孚信息",
+      "industry": "IT设备",
+      "sector_rank": 64,
+      "score": -0.0011304183593805377,
+      "close": 10.36,
+      "pct_chg": -5.6466
+    },
+    {
+      "ts_code": "688060.SH",
+      "name": "云涌科技",
+      "industry": "IT设备",
+      "sector_rank": 65,
+      "score": -0.0011414028217565796,
+      "close": 34.67,
+      "pct_chg": -3.8547
+    },
+    {
+      "ts_code": "688489.SH",
+      "name": "三未信安",
+      "industry": "IT设备",
+      "sector_rank": 66,
+      "score": -0.0012031900529596872,
+      "close": 23.72,
+      "pct_chg": -2.9857
+    },
+    {
+      "ts_code": "300079.SZ",
+      "name": "数码视讯",
+      "industry": "IT设备",
+      "sector_rank": 67,
+      "score": -0.0012288033254869777,
+      "close": 4.38,
+      "pct_chg": -3.0973
+    },
+    {
+      "ts_code": "002197.SZ",
+      "name": "证通电子",
+      "industry": "IT设备",
+      "sector_rank": 68,
+      "score": -0.001247458412672443,
+      "close": 6.18,
+      "pct_chg": -3.5881
+    },
+    {
+      "ts_code": "002180.SZ",
+      "name": "奔图科技",
+      "industry": "IT设备",
+      "sector_rank": 69,
+      "score": -0.0012498618274317916,
+      "close": 14.08,
+      "pct_chg": -2.6279
+    },
+    {
+      "ts_code": "301318.SZ",
+      "name": "维海德",
+      "industry": "IT设备",
+      "sector_rank": 70,
+      "score": -0.0012711642354118753,
+      "close": 20.6,
+      "pct_chg": -2.4159
+    },
+    {
+      "ts_code": "600100.SH",
+      "name": "同方股份",
+      "industry": "IT设备",
+      "sector_rank": 71,
+      "score": -0.001332107017725193,
+      "close": 6.86,
+      "pct_chg": -1.7192
+    },
+    {
+      "ts_code": "000837.SZ",
+      "name": "秦川机床",
+      "industry": "机床制造",
+      "sector_rank": 19,
+      "score": -0.0013352850191592864,
+      "close": 11.58,
+      "pct_chg": -2.9338
+    },
+    {
+      "ts_code": "300155.SZ",
+      "name": "安居宝",
+      "industry": "IT设备",
+      "sector_rank": 72,
+      "score": -0.0013524337927237774,
+      "close": 4.06,
+      "pct_chg": -5.5814
+    },
+    {
+      "ts_code": "688558.SH",
+      "name": "国盛智科",
+      "industry": "机床制造",
+      "sector_rank": 20,
+      "score": -0.0013819319966047814,
+      "close": 32.7,
+      "pct_chg": -1.1786
+    },
+    {
+      "ts_code": "002236.SZ",
+      "name": "大华股份",
+      "industry": "IT设备",
+      "sector_rank": 73,
+      "score": -0.0014278176152612153,
+      "close": 16.35,
+      "pct_chg": 2.6365
+    },
+    {
+      "ts_code": "300771.SZ",
+      "name": "智莱科技",
+      "industry": "IT设备",
+      "sector_rank": 74,
+      "score": -0.0014587190854399613,
+      "close": 11.04,
+      "pct_chg": -2.5596
+    },
+    {
+      "ts_code": "300731.SZ",
+      "name": "科创新源",
+      "industry": "橡胶",
+      "sector_rank": 1,
+      "score": -0.0015042131431178126,
+      "close": 60.25,
+      "pct_chg": 3.0796
+    },
+    {
+      "ts_code": "688648.SH",
+      "name": "中邮科技",
+      "industry": "机床制造",
+      "sector_rank": 21,
+      "score": -0.0015373023819912042,
+      "close": 34.6,
+      "pct_chg": -4.0222
+    },
+    {
+      "ts_code": "002376.SZ",
+      "name": "新北洋",
+      "industry": "IT设备",
+      "sector_rank": 75,
+      "score": -0.0015626974601477082,
+      "close": 5.91,
+      "pct_chg": -2.6359
+    },
+    {
+      "ts_code": "300793.SZ",
+      "name": "佳禾智能",
+      "industry": "IT设备",
+      "sector_rank": 76,
+      "score": -0.0015941893491511075,
+      "close": 11.91,
+      "pct_chg": -2.934
+    },
+    {
+      "ts_code": "600185.SH",
+      "name": "珠免集团",
+      "industry": "旅游服务",
+      "sector_rank": 1,
+      "score": -0.0016262953392695535,
+      "close": 4.69,
+      "pct_chg": -2.6971
+    },
+    {
+      "ts_code": "000995.SZ",
+      "name": "皇台酒业",
+      "industry": "白酒",
+      "sector_rank": 1,
+      "score": -0.0017484321147942731,
+      "close": 10.08,
+      "pct_chg": -4.9953
+    },
+    {
+      "ts_code": "000506.SZ",
+      "name": "招金黄金",
+      "industry": "黄金",
+      "sector_rank": 1,
+      "score": -0.001769493000502943,
+      "close": 13.12,
+      "pct_chg": -3.1019
+    },
+    {
+      "ts_code": "300441.SZ",
+      "name": "鲍斯股份",
+      "industry": "机床制造",
+      "sector_rank": 22,
+      "score": -0.001774634290104904,
+      "close": 6.57,
+      "pct_chg": 1.5456
+    },
+    {
+      "ts_code": "002779.SZ",
+      "name": "中坚科技",
+      "industry": "农用机械",
+      "sector_rank": 1,
+      "score": -0.0017906084253223212,
+      "close": 73.3,
+      "pct_chg": -1.8084
+    },
+    {
+      "ts_code": "920247.BJ",
+      "name": "华密新材",
+      "industry": "橡胶",
+      "sector_rank": 2,
+      "score": -0.0018099243000009708,
+      "close": 16.49,
+      "pct_chg": -3.2845
+    },
+    {
+      "ts_code": "000796.SZ",
+      "name": "凯撒旅业",
+      "industry": "旅游服务",
+      "sector_rank": 2,
+      "score": -0.001856970067313392,
+      "close": 3.96,
+      "pct_chg": -4.8077
+    },
+    {
+      "ts_code": "300139.SZ",
+      "name": "晓程科技",
+      "industry": "黄金",
+      "sector_rank": 2,
+      "score": -0.0018669009701806375,
+      "close": 39.75,
+      "pct_chg": -0.5255
+    },
+    {
+      "ts_code": "920855.BJ",
+      "name": "浙江大农",
+      "industry": "机床制造",
+      "sector_rank": 23,
+      "score": -0.0018817201060785322,
+      "close": 12.16,
+      "pct_chg": -5.5167
+    },
+    {
+      "ts_code": "301595.SZ",
+      "name": "太力科技",
+      "industry": "橡胶",
+      "sector_rank": 3,
+      "score": -0.0018964657723827675,
+      "close": 42.17,
+      "pct_chg": -0.8931
+    },
+    {
+      "ts_code": "600132.SH",
+      "name": "重庆啤酒",
+      "industry": "啤酒",
+      "sector_rank": 1,
+      "score": -0.0019081264838261454,
+      "close": 42.54,
+      "pct_chg": -2.543
+    },
+    {
+      "ts_code": "001337.SZ",
+      "name": "四川黄金",
+      "industry": "黄金",
+      "sector_rank": 3,
+      "score": -0.001914412410753403,
+      "close": 39.68,
+      "pct_chg": 0.1767
+    },
+    {
+      "ts_code": "688808.SH",
+      "name": "联讯仪器",
+      "industry": "电器仪表",
+      "sector_rank": 1,
+      "score": -0.0019223677833988657,
+      "close": 2586.03,
+      "pct_chg": 9.5775
+    },
+    {
+      "ts_code": "688766.SH",
+      "name": "普冉股份",
+      "industry": "半导体",
+      "sector_rank": 1,
+      "score": -0.0019438370231720011,
+      "close": 740.0,
+      "pct_chg": 5.2632
+    },
+    {
+      "ts_code": "300604.SZ",
+      "name": "长川科技",
+      "industry": "半导体",
+      "sector_rank": 2,
+      "score": -0.0019514933800980133,
+      "close": 307.35,
+      "pct_chg": 10.0036
+    },
+    {
+      "ts_code": "301611.SZ",
+      "name": "珂玛科技",
+      "industry": "半导体",
+      "sector_rank": 3,
+      "score": -0.001953518776615839,
+      "close": 150.6,
+      "pct_chg": 14.1514
+    },
+    {
+      "ts_code": "688072.SH",
+      "name": "拓荆科技",
+      "industry": "半导体",
+      "sector_rank": 4,
+      "score": -0.001960862057368594,
+      "close": 820.0,
+      "pct_chg": 6.4935
+    },
+    {
+      "ts_code": "301323.SZ",
+      "name": "新莱福",
+      "industry": "橡胶",
+      "sector_rank": 4,
+      "score": -0.0019618662381511707,
+      "close": 88.99,
+      "pct_chg": -5.631
+    },
+    {
+      "ts_code": "300859.SZ",
+      "name": "西域旅游",
+      "industry": "旅游服务",
+      "sector_rank": 3,
+      "score": -0.0019661236347730663,
+      "close": 26.5,
+      "pct_chg": -5.1878
+    },
+    {
+      "ts_code": "300022.SZ",
+      "name": "吉峰科技",
+      "industry": "农用机械",
+      "sector_rank": 2,
+      "score": -0.0019679013961477502,
+      "close": 7.4,
+      "pct_chg": 0.5435
+    },
+    {
+      "ts_code": "002707.SZ",
+      "name": "众信旅游",
+      "industry": "旅游服务",
+      "sector_rank": 4,
+      "score": -0.0019763708695816925,
+      "close": 5.06,
+      "pct_chg": -3.2505
+    },
+    {
+      "ts_code": "600397.SH",
+      "name": "江钨装备",
+      "industry": "专用机械",
+      "sector_rank": 1,
+      "score": -0.0019768578598756805,
+      "close": 25.51,
+      "pct_chg": 4.3781
+    },
+    {
+      "ts_code": "688820.SH",
+      "name": "盛合晶微",
+      "industry": "半导体",
+      "sector_rank": 5,
+      "score": -0.001977102621553533,
+      "close": 213.98,
+      "pct_chg": 6.67
+    },
+    {
+      "ts_code": "002428.SZ",
+      "name": "云南锗业",
+      "industry": "小金属",
+      "sector_rank": 1,
+      "score": -0.0019808357156180807,
+      "close": 123.09,
+      "pct_chg": 10.0
+    },
+    {
+      "ts_code": "688757.SH",
+      "name": "胜科纳米",
+      "industry": "电器仪表",
+      "sector_rank": 2,
+      "score": -0.001981896867449152,
+      "close": 74.8,
+      "pct_chg": 6.0993
+    },
+    {
+      "ts_code": "688037.SH",
+      "name": "芯源微",
+      "industry": "半导体",
+      "sector_rank": 6,
+      "score": -0.001986654252121186,
+      "close": 318.0,
+      "pct_chg": 12.0626
+    },
+    {
+      "ts_code": "688041.SH",
+      "name": "海光信息",
+      "industry": "半导体",
+      "sector_rank": 7,
+      "score": -0.0019870352689227567,
+      "close": 337.1,
+      "pct_chg": 6.3407
+    },
+    {
+      "ts_code": "688361.SH",
+      "name": "中科飞测",
+      "industry": "半导体",
+      "sector_rank": 8,
+      "score": -0.0019922845610340946,
+      "close": 312.34,
+      "pct_chg": 13.2077
+    },
+    {
+      "ts_code": "600791.SH",
+      "name": "京能置业",
+      "industry": "全国地产",
+      "sector_rank": 1,
+      "score": -0.0019925416236041887,
+      "close": 10.55,
+      "pct_chg": -1.4939
+    },
+    {
+      "ts_code": "688818.SH",
+      "name": "电科蓝天",
+      "industry": "航空",
+      "sector_rank": 1,
+      "score": -0.002001709037500107,
+      "close": 64.03,
+      "pct_chg": 5.2952
+    },
+    {
+      "ts_code": "300489.SZ",
+      "name": "光智科技",
+      "industry": "专用机械",
+      "sector_rank": 2,
+      "score": -0.0020036709622503653,
+      "close": 266.0,
+      "pct_chg": 11.2226
+    },
+    {
+      "ts_code": "688449.SH",
+      "name": "联芸科技",
+      "industry": "半导体",
+      "sector_rank": 9,
+      "score": -0.0020064248898879677,
+      "close": 81.4,
+      "pct_chg": 9.0422
+    },
+    {
+      "ts_code": "001309.SZ",
+      "name": "德明利",
+      "industry": "半导体",
+      "sector_rank": 10,
+      "score": -0.0020089120275199723,
+      "close": 810.0,
+      "pct_chg": 7.2833
+    },
+    {
+      "ts_code": "603986.SH",
+      "name": "兆易创新",
+      "industry": "半导体",
+      "sector_rank": 11,
+      "score": -0.0020100795765984262,
+      "close": 705.09,
+      "pct_chg": 10.0002
+    },
+    {
+      "ts_code": "600281.SH",
+      "name": "华阳新材",
+      "industry": "小金属",
+      "sector_rank": 2,
+      "score": -0.002011590146978144,
+      "close": 4.42,
+      "pct_chg": -5.9574
+    },
+    {
+      "ts_code": "688525.SH",
+      "name": "佰维存储",
+      "industry": "半导体",
+      "sector_rank": 12,
+      "score": -0.0020141486026658767,
+      "close": 417.0,
+      "pct_chg": 7.0686
+    },
+    {
+      "ts_code": "688256.SH",
+      "name": "寒武纪",
+      "industry": "半导体",
+      "sector_rank": 13,
+      "score": -0.0020144770248839254,
+      "close": 1453.0,
+      "pct_chg": 2.8309
+    },
+    {
+      "ts_code": "688521.SH",
+      "name": "芯原股份",
+      "industry": "半导体",
+      "sector_rank": 14,
+      "score": -0.0020145062432742906,
+      "close": 300.9,
+      "pct_chg": 5.5789
+    },
+    {
+      "ts_code": "688048.SH",
+      "name": "长光华芯",
+      "industry": "半导体",
+      "sector_rank": 15,
+      "score": -0.002027634250617516,
+      "close": 420.0,
+      "pct_chg": 7.1292
+    },
+    {
+      "ts_code": "688627.SH",
+      "name": "精智达",
+      "industry": "专用机械",
+      "sector_rank": 3,
+      "score": -0.002028865536190979,
+      "close": 638.0,
+      "pct_chg": 16.2113
+    },
+    {
+      "ts_code": "603061.SH",
+      "name": "金海通",
+      "industry": "半导体",
+      "sector_rank": 16,
+      "score": -0.0020307274012963533,
+      "close": 387.09,
+      "pct_chg": 10.0
+    },
+    {
+      "ts_code": "301369.SZ",
+      "name": "联动科技",
+      "industry": "半导体",
+      "sector_rank": 17,
+      "score": -0.002033007262291654,
+      "close": 231.5,
+      "pct_chg": 8.2383
+    },
+    {
+      "ts_code": "688498.SH",
+      "name": "源杰科技",
+      "industry": "半导体",
+      "sector_rank": 18,
+      "score": -0.0020331051725556845,
+      "close": 1838.0,
+      "pct_chg": 1.0834
+    },
+    {
+      "ts_code": "688200.SH",
+      "name": "华峰测控",
+      "industry": "半导体",
+      "sector_rank": 19,
+      "score": -0.0020380201254219157,
+      "close": 439.0,
+      "pct_chg": 3.5011
+    },
+    {
+      "ts_code": "600519.SH",
+      "name": "贵州茅台",
+      "industry": "白酒",
+      "sector_rank": 2,
+      "score": -0.002040134525025477,
+      "close": 1207.68,
+      "pct_chg": -1.2082
+    },
+    {
+      "ts_code": "920047.BJ",
+      "name": "诺思兰德",
+      "industry": "生物制药",
+      "sector_rank": 1,
+      "score": -0.002043393897259774,
+      "close": 20.83,
+      "pct_chg": 2.6614
+    },
+    {
+      "ts_code": "688685.SH",
+      "name": "迈信林",
+      "industry": "航空",
+      "sector_rank": 2,
+      "score": -0.0020438801574940296,
+      "close": 51.96,
+      "pct_chg": 15.4667
+    },
+    {
+      "ts_code": "688141.SH",
+      "name": "杰华特",
+      "industry": "半导体",
+      "sector_rank": 20,
+      "score": -0.0020446891615348,
+      "close": 143.47,
+      "pct_chg": 4.7226
+    },
+    {
+      "ts_code": "300346.SZ",
+      "name": "南大光电",
+      "industry": "半导体",
+      "sector_rank": 21,
+      "score": -0.002044786988059963,
+      "close": 77.0,
+      "pct_chg": 7.7978
+    },
+    {
+      "ts_code": "301013.SZ",
+      "name": "利和兴",
+      "industry": "专用机械",
+      "sector_rank": 4,
+      "score": -0.0020459939058605535,
+      "close": 74.95,
+      "pct_chg": 6.5842
+    },
+    {
+      "ts_code": "688630.SH",
+      "name": "芯碁微装",
+      "industry": "专用机械",
+      "sector_rank": 5,
+      "score": -0.002046635068924077,
+      "close": 513.88,
+      "pct_chg": 11.0156
+    },
+    {
+      "ts_code": "300567.SZ",
+      "name": "精测电子",
+      "industry": "电器仪表",
+      "sector_rank": 3,
+      "score": -0.002048537806978309,
+      "close": 251.13,
+      "pct_chg": 18.1232
+    },
+    {
+      "ts_code": "688702.SH",
+      "name": "盛科通信",
+      "industry": "半导体",
+      "sector_rank": 22,
+      "score": -0.0020493776285687697,
+      "close": 310.63,
+      "pct_chg": 0.8441
+    },
+    {
+      "ts_code": "688082.SH",
+      "name": "盛美上海",
+      "industry": "半导体",
+      "sector_rank": 23,
+      "score": -0.002051714767029019,
+      "close": 402.18,
+      "pct_chg": 0.5928
+    },
+    {
+      "ts_code": "688809.SH",
+      "name": "强一股份",
+      "industry": "半导体",
+      "sector_rank": 24,
+      "score": -0.0020567101438168844,
+      "close": 623.0,
+      "pct_chg": 1.1331
+    },
+    {
+      "ts_code": "688362.SH",
+      "name": "甬矽电子",
+      "industry": "半导体",
+      "sector_rank": 25,
+      "score": -0.0020586096053249727,
+      "close": 76.98,
+      "pct_chg": 11.5976
+    },
+    {
+      "ts_code": "603663.SH",
+      "name": "三祥新材",
+      "industry": "小金属",
+      "sector_rank": 3,
+      "score": -0.0020593660397022293,
+      "close": 103.81,
+      "pct_chg": 2.711
+    },
+    {
+      "ts_code": "688729.SH",
+      "name": "屹唐股份",
+      "industry": "半导体",
+      "sector_rank": 26,
+      "score": -0.0020620284433592335,
+      "close": 40.48,
+      "pct_chg": 6.0241
+    },
+    {
+      "ts_code": "688368.SH",
+      "name": "晶丰明源",
+      "industry": "半导体",
+      "sector_rank": 27,
+      "score": -0.002062077985463806,
+      "close": 222.1,
+      "pct_chg": 7.1084
+    },
+    {
+      "ts_code": "603256.SH",
+      "name": "宏和科技",
+      "industry": "玻璃",
+      "sector_rank": 1,
+      "score": -0.002068248895435531,
+      "close": 267.98,
+      "pct_chg": 8.1
+    },
+    {
+      "ts_code": "688233.SH",
+      "name": "神工股份",
+      "industry": "半导体",
+      "sector_rank": 28,
+      "score": -0.0020696643992231187,
+      "close": 141.9,
+      "pct_chg": 13.5836
+    },
+    {
+      "ts_code": "688019.SH",
+      "name": "安集科技",
+      "industry": "半导体",
+      "sector_rank": 29,
+      "score": -0.00207003090902248,
+      "close": 264.3,
+      "pct_chg": 7.3954
+    },
+    {
+      "ts_code": "002297.SZ",
+      "name": "博云新材",
+      "industry": "航空",
+      "sector_rank": 3,
+      "score": -0.002072122471003238,
+      "close": 33.66,
+      "pct_chg": 2.5594
+    },
+    {
+      "ts_code": "600593.SH",
+      "name": "大连圣亚",
+      "industry": "旅游景点",
+      "sector_rank": 1,
+      "score": -0.0020722723958724134,
+      "close": 37.48,
+      "pct_chg": -6.6733
+    },
+    {
+      "ts_code": "000688.SZ",
+      "name": "国城矿业",
+      "industry": "铅锌",
+      "sector_rank": 1,
+      "score": -0.0020735641281519144,
+      "close": 35.98,
+      "pct_chg": 3.9284
+    },
+    {
+      "ts_code": "688523.SH",
+      "name": "航天环宇",
+      "industry": "航空",
+      "sector_rank": 4,
+      "score": -0.0020736700689714047,
+      "close": 50.95,
+      "pct_chg": 1.1314
+    },
+    {
+      "ts_code": "688347.SH",
+      "name": "华虹宏力",
+      "industry": "半导体",
+      "sector_rank": 30,
+      "score": -0.002073900551780889,
+      "close": 316.01,
+      "pct_chg": 8.193
+    },
+    {
+      "ts_code": "688785.SH",
+      "name": "恒运昌",
+      "industry": "半导体",
+      "sector_rank": 31,
+      "score": -0.002076723412192319,
+      "close": 453.85,
+      "pct_chg": 7.578
+    },
+    {
+      "ts_code": "301536.SZ",
+      "name": "星宸科技",
+      "industry": "半导体",
+      "sector_rank": 32,
+      "score": -0.00207685403155261,
+      "close": 121.58,
+      "pct_chg": 8.3987
+    },
+    {
+      "ts_code": "688147.SH",
+      "name": "微导纳米",
+      "industry": "专用机械",
+      "sector_rank": 6,
+      "score": -0.0020791277249873116,
+      "close": 125.68,
+      "pct_chg": 6.2384
+    },
+    {
+      "ts_code": "688012.SH",
+      "name": "中微公司",
+      "industry": "半导体",
+      "sector_rank": 33,
+      "score": -0.0020794098630596784,
+      "close": 383.0,
+      "pct_chg": 3.0345
+    },
+    {
+      "ts_code": "688090.SH",
+      "name": "瑞松科技",
+      "industry": "专用机械",
+      "sector_rank": 7,
+      "score": -0.0020795837693981163,
+      "close": 146.6,
+      "pct_chg": 16.0453
+    },
+    {
+      "ts_code": "688813.SH",
+      "name": "泰金新能",
+      "industry": "专用机械",
+      "sector_rank": 8,
+      "score": -0.002080944473576445,
+      "close": 222.2,
+      "pct_chg": 12.1656
+    },
+    {
+      "ts_code": "301308.SZ",
+      "name": "江波龙",
+      "industry": "半导体",
+      "sector_rank": 34,
+      "score": -0.0020818683226294715,
+      "close": 619.98,
+      "pct_chg": 4.0217
+    },
+    {
+      "ts_code": "301377.SZ",
+      "name": "鼎泰高科",
+      "industry": "机械基件",
+      "sector_rank": 1,
+      "score": -0.0020827614605269406,
+      "close": 620.0,
+      "pct_chg": 3.3333
+    },
+    {
+      "ts_code": "002378.SZ",
+      "name": "章源钨业",
+      "industry": "小金属",
+      "sector_rank": 4,
+      "score": -0.0020829238597594776,
+      "close": 37.01,
+      "pct_chg": 1.4807
+    },
+    {
+      "ts_code": "688260.SH",
+      "name": "昀冢科技",
+      "industry": "元器件",
+      "sector_rank": 1,
+      "score": -0.00208299220343428,
+      "close": 128.81,
+      "pct_chg": 4.2152
+    },
+    {
+      "ts_code": "301021.SZ",
+      "name": "英诺激光",
+      "industry": "专用机械",
+      "sector_rank": 9,
+      "score": -0.0020845408054372245,
+      "close": 128.7,
+      "pct_chg": 8.7361
+    },
+    {
+      "ts_code": "300720.SZ",
+      "name": "海川智能",
+      "industry": "电器仪表",
+      "sector_rank": 4,
+      "score": -0.002085078577444551,
+      "close": 82.7,
+      "pct_chg": 1.6595
+    },
+    {
+      "ts_code": "688807.SH",
+      "name": "优迅股份",
+      "industry": "半导体",
+      "sector_rank": 35,
+      "score": -0.002085154376435335,
+      "close": 428.0,
+      "pct_chg": -2.5057
+    },
+    {
+      "ts_code": "688266.SH",
+      "name": "泽璟制药",
+      "industry": "生物制药",
+      "sector_rank": 2,
+      "score": -0.0020852410303553157,
+      "close": 99.58,
+      "pct_chg": 11.0021
+    },
+    {
+      "ts_code": "600118.SH",
+      "name": "中国卫星",
+      "industry": "航空",
+      "sector_rank": 5,
+      "score": -0.00208597219537368,
+      "close": 71.8,
+      "pct_chg": 0.3214
+    },
+    {
+      "ts_code": "688062.SH",
+      "name": "迈威生物",
+      "industry": "生物制药",
+      "sector_rank": 3,
+      "score": -0.0020859902769711563,
+      "close": 27.68,
+      "pct_chg": 0.3626
+    },
+    {
+      "ts_code": "688107.SH",
+      "name": "安路科技",
+      "industry": "半导体",
+      "sector_rank": 36,
+      "score": -0.002086016516764743,
+      "close": 44.7,
+      "pct_chg": 4.782
+    },
+    {
+      "ts_code": "301629.SZ",
+      "name": "矽电股份",
+      "industry": "半导体",
+      "sector_rank": 37,
+      "score": -0.002087467492125911,
+      "close": 404.0,
+      "pct_chg": 5.0579
+    },
+    {
+      "ts_code": "688409.SH",
+      "name": "富创精密",
+      "industry": "半导体",
+      "sector_rank": 38,
+      "score": -0.0020875130493334597,
+      "close": 221.32,
+      "pct_chg": 7.9715
+    },
+    {
+      "ts_code": "920178.BJ",
+      "name": "锐翔智能",
+      "industry": "专用机械",
+      "sector_rank": 10,
+      "score": -0.0020886206182771654,
+      "close": 169.0,
+      "pct_chg": 15.4766
+    },
+    {
+      "ts_code": "301269.SZ",
+      "name": "华大九天",
+      "industry": "半导体",
+      "sector_rank": 39,
+      "score": -0.002090828046617978,
+      "close": 107.85,
+      "pct_chg": 6.4659
+    },
+    {
+      "ts_code": "000566.SZ",
+      "name": "海南海药",
+      "industry": "化学制药",
+      "sector_rank": 1,
+      "score": -0.0020909255606018154,
+      "close": 4.49,
+      "pct_chg": 10.049
+    },
+    {
+      "ts_code": "688796.SH",
+      "name": "百奥赛图",
+      "industry": "生物制药",
+      "sector_rank": 4,
+      "score": -0.002091222841569112,
+      "close": 98.47,
+      "pct_chg": 6.8584
+    },
+    {
+      "ts_code": "300757.SZ",
+      "name": "罗博特科",
+      "industry": "专用机械",
+      "sector_rank": 11,
+      "score": -0.0020912840477145976,
+      "close": 602.5,
+      "pct_chg": 4.2027
+    },
+    {
+      "ts_code": "688520.SH",
+      "name": "神州细胞",
+      "industry": "生物制药",
+      "sector_rank": 5,
+      "score": -0.002091954745824279,
+      "close": 34.7,
+      "pct_chg": 1.462
+    },
+    {
+      "ts_code": "300666.SZ",
+      "name": "江丰电子",
+      "industry": "半导体",
+      "sector_rank": 40,
+      "score": -0.0020961239649714184,
+      "close": 304.04,
+      "pct_chg": 3.8282
+    },
+    {
+      "ts_code": "920211.BJ",
+      "name": "新睿电子",
+      "industry": "专用机械",
+      "sector_rank": 12,
+      "score": -0.002096209970781529,
+      "close": 151.5,
+      "pct_chg": 3.8525
+    },
+    {
+      "ts_code": "300197.SZ",
+      "name": "节能铁汉",
+      "industry": "环境保护",
+      "sector_rank": 1,
+      "score": -0.0020975022166125033,
+      "close": 2.03,
+      "pct_chg": -7.3059
+    },
+    {
+      "ts_code": "688795.SH",
+      "name": "摩尔线程",
+      "industry": "半导体",
+      "sector_rank": 41,
+      "score": -0.002097690208549605,
+      "close": 704.8,
+      "pct_chg": 0.1094
+    },
+    {
+      "ts_code": "002837.SZ",
+      "name": "英维克",
+      "industry": "专用机械",
+      "sector_rank": 13,
+      "score": -0.0020982554665273825,
+      "close": 82.86,
+      "pct_chg": 1.6937
+    },
+    {
+      "ts_code": "688727.SH",
+      "name": "恒坤新材",
+      "industry": "半导体",
+      "sector_rank": 42,
+      "score": -0.0020995360352366165,
+      "close": 62.13,
+      "pct_chg": 5.4839
+    },
+    {
+      "ts_code": "002213.SZ",
+      "name": "大为股份",
+      "industry": "半导体",
+      "sector_rank": 43,
+      "score": -0.00209956978772082,
+      "close": 39.34,
+      "pct_chg": -1.0812
+    },
+    {
+      "ts_code": "688593.SH",
+      "name": "新相微",
+      "industry": "半导体",
+      "sector_rank": 44,
+      "score": -0.0021012542290787858,
+      "close": 35.78,
+      "pct_chg": 19.9866
+    },
+    {
+      "ts_code": "603895.SH",
+      "name": "天永智能",
+      "industry": "专用机械",
+      "sector_rank": 14,
+      "score": -0.0021053499746114847,
+      "close": 31.0,
+      "pct_chg": -4.9954
+    },
+    {
+      "ts_code": "002155.SZ",
+      "name": "湖南黄金",
+      "industry": "黄金",
+      "sector_rank": 4,
+      "score": -0.002105973413329369,
+      "close": 26.06,
+      "pct_chg": -0.686
+    },
+    {
+      "ts_code": "001270.SZ",
+      "name": "铖昌科技",
+      "industry": "半导体",
+      "sector_rank": 45,
+      "score": -0.002108155325495183,
+      "close": 124.56,
+      "pct_chg": 1.7647
+    },
+    {
+      "ts_code": "002868.SZ",
+      "name": "绿康生化",
+      "industry": "农业综合",
+      "sector_rank": 1,
+      "score": -0.0021082105078670797,
+      "close": 24.23,
+      "pct_chg": -3.2735
+    },
+    {
+      "ts_code": "688120.SH",
+      "name": "华海清科",
+      "industry": "半导体",
+      "sector_rank": 46,
+      "score": -0.0021112133001208798,
+      "close": 242.49,
+      "pct_chg": 4.9695
+    },
+    {
+      "ts_code": "688110.SH",
+      "name": "东芯股份",
+      "industry": "半导体",
+      "sector_rank": 47,
+      "score": -0.002111921217761138,
+      "close": 171.73,
+      "pct_chg": 6.1438
+    },
+    {
+      "ts_code": "300436.SZ",
+      "name": "广生堂",
+      "industry": "化学制药",
+      "sector_rank": 2,
+      "score": -0.00211335818779825,
+      "close": 88.64,
+      "pct_chg": -4.7599
+    },
+    {
+      "ts_code": "603203.SH",
+      "name": "快克智能",
+      "industry": "专用机械",
+      "sector_rank": 15,
+      "score": -0.0021136503639065662,
+      "close": 70.14,
+      "pct_chg": 10.0063
+    },
+    {
+      "ts_code": "688652.SH",
+      "name": "京仪装备",
+      "industry": "半导体",
+      "sector_rank": 48,
+      "score": -0.0021143279885198624,
+      "close": 161.4,
+      "pct_chg": 6.2541
+    },
+    {
+      "ts_code": "688802.SH",
+      "name": "沐曦股份",
+      "industry": "半导体",
+      "sector_rank": 49,
+      "score": -0.0021147740248710248,
+      "close": 770.19,
+      "pct_chg": 0.1574
+    },
+    {
+      "ts_code": "600206.SH",
+      "name": "有研新材",
+      "industry": "半导体",
+      "sector_rank": 50,
+      "score": -0.0021161056230981795,
+      "close": 51.76,
+      "pct_chg": 7.0527
+    },
+    {
+      "ts_code": "688331.SH",
+      "name": "荣昌生物",
+      "industry": "生物制药",
+      "sector_rank": 6,
+      "score": -0.0021166909317587757,
+      "close": 117.55,
+      "pct_chg": 4.4518
+    },
+    {
+      "ts_code": "605376.SH",
+      "name": "博迁新材",
+      "industry": "小金属",
+      "sector_rank": 5,
+      "score": -0.0021177225109676842,
+      "close": 224.5,
+      "pct_chg": 0.2232
+    },
+    {
+      "ts_code": "600671.SH",
+      "name": "天目药业",
+      "industry": "中成药",
+      "sector_rank": 1,
+      "score": -0.002119131690260375,
+      "close": 16.75,
+      "pct_chg": -6.1099
+    },
+    {
+      "ts_code": "600405.SH",
+      "name": "动力源",
+      "industry": "电气设备",
+      "sector_rank": 1,
+      "score": -0.0021196902648002672,
+      "close": 4.71,
+      "pct_chg": 6.0811
+    },
+    {
+      "ts_code": "688535.SH",
+      "name": "华海诚科",
+      "industry": "半导体",
+      "sector_rank": 51,
+      "score": -0.002120567467420566,
+      "close": 147.47,
+      "pct_chg": 6.7927
+    },
+    {
+      "ts_code": "301306.SZ",
+      "name": "西测测试",
+      "industry": "航空",
+      "sector_rank": 6,
+      "score": -0.0021216990992369623,
+      "close": 160.27,
+      "pct_chg": 4.9368
+    },
+    {
+      "ts_code": "301338.SZ",
+      "name": "凯格精机",
+      "industry": "专用机械",
+      "sector_rank": 16,
+      "score": -0.002121965068887486,
+      "close": 167.9,
+      "pct_chg": 7.9743
+    },
+    {
+      "ts_code": "920188.BJ",
+      "name": "悦龙科技",
+      "industry": "橡胶",
+      "sector_rank": 5,
+      "score": -0.002125245187706508,
+      "close": 28.57,
+      "pct_chg": 7.8113
+    },
+    {
+      "ts_code": "688234.SH",
+      "name": "天岳先进",
+      "industry": "半导体",
+      "sector_rank": 52,
+      "score": -0.0021256755357656324,
+      "close": 175.69,
+      "pct_chg": 7.5412
+    },
+    {
+      "ts_code": "002409.SZ",
+      "name": "雅克科技",
+      "industry": "半导体",
+      "sector_rank": 53,
+      "score": -0.0021260012480684935,
+      "close": 173.05,
+      "pct_chg": 9.9987
+    },
+    {
+      "ts_code": "000657.SZ",
+      "name": "中钨高新",
+      "industry": "小金属",
+      "sector_rank": 6,
+      "score": -0.002126928621324305,
+      "close": 100.08,
+      "pct_chg": -2.361
+    },
+    {
+      "ts_code": "688123.SH",
+      "name": "聚辰股份",
+      "industry": "半导体",
+      "sector_rank": 54,
+      "score": -0.0021277716199059084,
+      "close": 165.88,
+      "pct_chg": 20.0029
+    },
+    {
+      "ts_code": "002653.SZ",
+      "name": "海思科",
+      "industry": "化学制药",
+      "sector_rank": 3,
+      "score": -0.0021282710330550966,
+      "close": 58.01,
+      "pct_chg": 9.0209
+    },
+    {
+      "ts_code": "688433.SH",
+      "name": "华曙高科",
+      "industry": "专用机械",
+      "sector_rank": 17,
+      "score": -0.0021296043046713717,
+      "close": 103.89,
+      "pct_chg": -3.1148
+    },
+    {
+      "ts_code": "688401.SH",
+      "name": "路维光电",
+      "industry": "半导体",
+      "sector_rank": 55,
+      "score": -0.002131279835364712,
+      "close": 84.41,
+      "pct_chg": 11.9496
+    },
+    {
+      "ts_code": "688319.SH",
+      "name": "欧林生物",
+      "industry": "生物制药",
+      "sector_rank": 7,
+      "score": -0.0021323706211923794,
+      "close": 39.52,
+      "pct_chg": 1.8819
+    },
+    {
+      "ts_code": "688530.SH",
+      "name": "欧莱新材",
+      "industry": "半导体",
+      "sector_rank": 56,
+      "score": -0.002132966582995324,
+      "close": 80.99,
+      "pct_chg": 2.1956
+    },
+    {
+      "ts_code": "002121.SZ",
+      "name": "科陆电子",
+      "industry": "电器仪表",
+      "sector_rank": 5,
+      "score": -0.0021334009915652506,
+      "close": 5.57,
+      "pct_chg": -2.4518
+    },
+    {
+      "ts_code": "300220.SZ",
+      "name": "金运激光",
+      "industry": "专用机械",
+      "sector_rank": 18,
+      "score": -0.0021345225080798085,
+      "close": 11.11,
+      "pct_chg": -4.6352
+    },
+    {
+      "ts_code": "300672.SZ",
+      "name": "国科微",
+      "industry": "半导体",
+      "sector_rank": 57,
+      "score": -0.002136299674696711,
+      "close": 307.15,
+      "pct_chg": 1.2393
+    },
+    {
+      "ts_code": "300661.SZ",
+      "name": "圣邦股份",
+      "industry": "半导体",
+      "sector_rank": 58,
+      "score": -0.002136383450096781,
+      "close": 137.48,
+      "pct_chg": 0.2333
+    },
+    {
+      "ts_code": "688605.SH",
+      "name": "先锋精科",
+      "industry": "半导体",
+      "sector_rank": 59,
+      "score": -0.0021377109520555656,
+      "close": 90.64,
+      "pct_chg": 4.3638
+    },
+    {
+      "ts_code": "688047.SH",
+      "name": "龙芯中科",
+      "industry": "半导体",
+      "sector_rank": 60,
+      "score": -0.0021378426683072984,
+      "close": 146.51,
+      "pct_chg": 3.1107
+    },
+    {
+      "ts_code": "920125.BJ",
+      "name": "鸿仕达",
+      "industry": "专用机械",
+      "sector_rank": 19,
+      "score": -0.0021407226891320716,
+      "close": 219.6,
+      "pct_chg": 0.7339
+    },
+    {
+      "ts_code": "603893.SH",
+      "name": "瑞芯微",
+      "industry": "半导体",
+      "sector_rank": 61,
+      "score": -0.002142421680840874,
+      "close": 185.39,
+      "pct_chg": 2.9087
+    },
+    {
+      "ts_code": "603800.SH",
+      "name": "洪田股份",
+      "industry": "专用机械",
+      "sector_rank": 20,
+      "score": -0.0021433661514385204,
+      "close": 77.23,
+      "pct_chg": 3.7898
+    },
+    {
+      "ts_code": "688403.SH",
+      "name": "汇成股份",
+      "industry": "半导体",
+      "sector_rank": 62,
+      "score": -0.0021433811955674604,
+      "close": 36.2,
+      "pct_chg": 19.9867
+    },
+    {
+      "ts_code": "688001.SH",
+      "name": "华兴源创",
+      "industry": "专用机械",
+      "sector_rank": 21,
+      "score": -0.0021449155730750803,
+      "close": 89.99,
+      "pct_chg": 9.7707
+    },
+    {
+      "ts_code": "603078.SH",
+      "name": "江化微",
+      "industry": "半导体",
+      "sector_rank": 63,
+      "score": -0.0021452680443899523,
+      "close": 46.15,
+      "pct_chg": 4.1761
+    },
+    {
+      "ts_code": "002980.SZ",
+      "name": "华盛昌",
+      "industry": "电器仪表",
+      "sector_rank": 6,
+      "score": -0.002145546792500993,
+      "close": 112.57,
+      "pct_chg": -1.2111
+    },
+    {
+      "ts_code": "003026.SZ",
+      "name": "中晶科技",
+      "industry": "半导体",
+      "sector_rank": 64,
+      "score": -0.0021463121638399868,
+      "close": 38.1,
+      "pct_chg": 4.2408
+    },
+    {
+      "ts_code": "301319.SZ",
+      "name": "唯特偶",
+      "industry": "元器件",
+      "sector_rank": 2,
+      "score": -0.002147202225935399,
+      "close": 200.5,
+      "pct_chg": 11.0742
+    },
+    {
+      "ts_code": "002786.SZ",
+      "name": "银宝山新",
+      "industry": "专用机械",
+      "sector_rank": 22,
+      "score": -0.0021478402727786693,
+      "close": 7.63,
+      "pct_chg": -5.5693
+    },
+    {
+      "ts_code": "688206.SH",
+      "name": "概伦电子",
+      "industry": "半导体",
+      "sector_rank": 65,
+      "score": -0.002147906611720039,
+      "close": 39.78,
+      "pct_chg": 7.6008
+    },
+    {
+      "ts_code": "688691.SH",
+      "name": "灿芯股份",
+      "industry": "半导体",
+      "sector_rank": 66,
+      "score": -0.002148003935887997,
+      "close": 107.62,
+      "pct_chg": 5.9774
+    },
+    {
+      "ts_code": "002371.SZ",
+      "name": "北方华创",
+      "industry": "半导体",
+      "sector_rank": 67,
+      "score": -0.002149026539592922,
+      "close": 770.07,
+      "pct_chg": 3.0208
+    },
+    {
+      "ts_code": "688662.SH",
+      "name": "富信科技",
+      "industry": "元器件",
+      "sector_rank": 3,
+      "score": -0.002149329675363068,
+      "close": 187.1,
+      "pct_chg": 7.1899
+    },
+    {
+      "ts_code": "002890.SZ",
+      "name": "弘宇股份",
+      "industry": "农用机械",
+      "sector_rank": 3,
+      "score": -0.002149442623740855,
+      "close": 14.26,
+      "pct_chg": -3.7137
+    },
+    {
+      "ts_code": "002848.SZ",
+      "name": "高斯贝尔",
+      "industry": "家用电器",
+      "sector_rank": 1,
+      "score": -0.0021495106003540133,
+      "close": 14.11,
+      "pct_chg": 3.9028
+    },
+    {
+      "ts_code": "000571.SZ",
+      "name": "新大洲A",
+      "industry": "煤炭开采",
+      "sector_rank": 1,
+      "score": -0.002149693886062791,
+      "close": 6.26,
+      "pct_chg": -2.3401
+    },
+    {
+      "ts_code": "300461.SZ",
+      "name": "田中精机",
+      "industry": "专用机械",
+      "sector_rank": 23,
+      "score": -0.0021535999669863052,
+      "close": 41.28,
+      "pct_chg": -10.1632
+    },
+    {
+      "ts_code": "688506.SH",
+      "name": "百利天恒",
+      "industry": "化学制药",
+      "sector_rank": 4,
+      "score": -0.0021549109561992937,
+      "close": 247.71,
+      "pct_chg": -1.8698
+    },
+    {
+      "ts_code": "301526.SZ",
+      "name": "国际复材",
+      "industry": "玻璃",
+      "sector_rank": 2,
+      "score": -0.0021549570988905233,
+      "close": 44.98,
+      "pct_chg": 17.5948
+    },
+    {
+      "ts_code": "300458.SZ",
+      "name": "全志科技",
+      "industry": "半导体",
+      "sector_rank": 68,
+      "score": -0.00215503007245565,
+      "close": 37.54,
+      "pct_chg": 4.6557
+    },
+    {
+      "ts_code": "688416.SH",
+      "name": "恒烁股份",
+      "industry": "半导体",
+      "sector_rank": 69,
+      "score": -0.0021550924423474516,
+      "close": 127.75,
+      "pct_chg": 13.1733
+    },
+    {
+      "ts_code": "688783.SH",
+      "name": "西安奕材",
+      "industry": "半导体",
+      "sector_rank": 70,
+      "score": -0.0021551407257272464,
+      "close": 48.36,
+      "pct_chg": -0.0826
+    },
+    {
+      "ts_code": "688177.SH",
+      "name": "百奥泰",
+      "industry": "生物制药",
+      "sector_rank": 8,
+      "score": -0.002155372659769671,
+      "close": 17.12,
+      "pct_chg": -0.2331
+    },
+    {
+      "ts_code": "688811.SH",
+      "name": "有研复材",
+      "industry": "小金属",
+      "sector_rank": 7,
+      "score": -0.002155719307122851,
+      "close": 30.09,
+      "pct_chg": -1.7309
+    },
+    {
+      "ts_code": "920895.BJ",
+      "name": "花溪科技",
+      "industry": "农用机械",
+      "sector_rank": 4,
+      "score": -0.002156118723332625,
+      "close": 12.82,
+      "pct_chg": -4.3284
+    },
+    {
+      "ts_code": "688003.SH",
+      "name": "天准科技",
+      "industry": "专用机械",
+      "sector_rank": 24,
+      "score": -0.002156324486249487,
+      "close": 120.19,
+      "pct_chg": 6.7881
+    },
+    {
+      "ts_code": "688008.SH",
+      "name": "澜起科技",
+      "industry": "半导体",
+      "sector_rank": 71,
+      "score": -0.002157496187393162,
+      "close": 266.49,
+      "pct_chg": 3.2907
+    },
+    {
+      "ts_code": "300671.SZ",
+      "name": "富满微",
+      "industry": "半导体",
+      "sector_rank": 72,
+      "score": -0.002158035500808153,
+      "close": 73.25,
+      "pct_chg": 15.4816
+    },
+    {
+      "ts_code": "688515.SH",
+      "name": "裕太微",
+      "industry": "半导体",
+      "sector_rank": 73,
+      "score": -0.0021586448346476925,
+      "close": 266.63,
+      "pct_chg": 1.5115
+    },
+    {
+      "ts_code": "301392.SZ",
+      "name": "汇成真空",
+      "industry": "专用机械",
+      "sector_rank": 25,
+      "score": -0.002158706857385427,
+      "close": 200.0,
+      "pct_chg": -0.1149
+    },
+    {
+      "ts_code": "301669.SZ",
+      "name": "C高特电子",
+      "industry": "电气设备",
+      "sector_rank": 2,
+      "score": -0.0021590506834373094,
+      "close": 45.2,
+      "pct_chg": 19.9894
+    },
+    {
+      "ts_code": "920225.BJ",
+      "name": "利通科技",
+      "industry": "橡胶",
+      "sector_rank": 6,
+      "score": -0.0021604074442577227,
+      "close": 20.09,
+      "pct_chg": -2.0
+    },
+    {
+      "ts_code": "000670.SZ",
+      "name": "盈方微",
+      "industry": "元器件",
+      "sector_rank": 4,
+      "score": -0.0021605509441153556,
+      "close": 7.77,
+      "pct_chg": -2.9963
+    },
+    {
+      "ts_code": "688502.SH",
+      "name": "茂莱光学",
+      "industry": "元器件",
+      "sector_rank": 5,
+      "score": -0.002160909235537918,
+      "close": 570.0,
+      "pct_chg": 13.7339
+    },
+    {
+      "ts_code": "301228.SZ",
+      "name": "实朴检测",
+      "industry": "电器仪表",
+      "sector_rank": 7,
+      "score": -0.002162237676193257,
+      "close": 75.87,
+      "pct_chg": 1.0253
+    },
+    {
+      "ts_code": "603629.SH",
+      "name": "利通电子",
+      "industry": "元器件",
+      "sector_rank": 6,
+      "score": -0.0021624880530741555,
+      "close": 219.0,
+      "pct_chg": 8.4534
+    },
+    {
+      "ts_code": "301312.SZ",
+      "name": "智立方",
+      "industry": "专用机械",
+      "sector_rank": 26,
+      "score": -0.0021648040142221193,
+      "close": 113.02,
+      "pct_chg": 5.6262
+    },
+    {
+      "ts_code": "300814.SZ",
+      "name": "中富电路",
+      "industry": "元器件",
+      "sector_rank": 7,
+      "score": -0.0021656196728016826,
+      "close": 203.7,
+      "pct_chg": 11.8002
+    },
+    {
+      "ts_code": "002629.SZ",
+      "name": "仁智股份",
+      "industry": "石油开采",
+      "sector_rank": 1,
+      "score": -0.0021662553728357585,
+      "close": 4.4,
+      "pct_chg": -6.383
+    },
+    {
+      "ts_code": "301005.SZ",
+      "name": "超捷股份",
+      "industry": "汽车配件",
+      "sector_rank": 1,
+      "score": -0.0021679363230998664,
+      "close": 107.0,
+      "pct_chg": 12.0419
+    },
+    {
+      "ts_code": "300255.SZ",
+      "name": "常山药业",
+      "industry": "生物制药",
+      "sector_rank": 9,
+      "score": -0.0021683284879259915,
+      "close": 25.68,
+      "pct_chg": -4.0359
+    },
+    {
+      "ts_code": "603045.SH",
+      "name": "福达合金",
+      "industry": "小金属",
+      "sector_rank": 8,
+      "score": -0.002170889795551864,
+      "close": 93.12,
+      "pct_chg": 10.0059
+    },
+    {
+      "ts_code": "000980.SZ",
+      "name": "众泰汽车",
+      "industry": "汽车配件",
+      "sector_rank": 2,
+      "score": -0.0021722741865048295,
+      "close": 2.1,
+      "pct_chg": -3.2258
+    },
+    {
+      "ts_code": "301599.SZ",
+      "name": "理奇智能",
+      "industry": "专用机械",
+      "sector_rank": 27,
+      "score": -0.0021733792435208285,
+      "close": 49.41,
+      "pct_chg": 5.5769
+    },
+    {
+      "ts_code": "301018.SZ",
+      "name": "申菱环境",
+      "industry": "专用机械",
+      "sector_rank": 28,
+      "score": -0.002174105068740442,
+      "close": 112.9,
+      "pct_chg": 2.1442
+    },
+    {
+      "ts_code": "300199.SZ",
+      "name": "翰宇药业",
+      "industry": "化学制药",
+      "sector_rank": 5,
+      "score": -0.002174155427883186,
+      "close": 21.89,
+      "pct_chg": -1.7504
+    },
+    {
+      "ts_code": "300268.SZ",
+      "name": "佳沃食品",
+      "industry": "农业综合",
+      "sector_rank": 2,
+      "score": -0.0021768594284529512,
+      "close": 10.98,
+      "pct_chg": -4.5217
+    },
+    {
+      "ts_code": "603778.SH",
+      "name": "国晟科技",
+      "industry": "电气设备",
+      "sector_rank": 3,
+      "score": -0.00217834035427384,
+      "close": 13.47,
+      "pct_chg": -2.3205
+    },
+    {
+      "ts_code": "300260.SZ",
+      "name": "新莱应材",
+      "industry": "机械基件",
+      "sector_rank": 2,
+      "score": -0.00217877557338556,
+      "close": 83.85,
+      "pct_chg": 6.3546
+    },
+    {
+      "ts_code": "920438.BJ",
+      "name": "戈碧迦",
+      "industry": "元器件",
+      "sector_rank": 8,
+      "score": -0.0021798233694310457,
+      "close": 140.8,
+      "pct_chg": 25.1556
+    },
+    {
+      "ts_code": "603773.SH",
+      "name": "沃格光电",
+      "industry": "元器件",
+      "sector_rank": 9,
+      "score": -0.002180520270371086,
+      "close": 167.37,
+      "pct_chg": -2.7766
+    },
+    {
+      "ts_code": "300765.SZ",
+      "name": "新诺威",
+      "industry": "食品",
+      "sector_rank": 1,
+      "score": -0.0021825977029753044,
+      "close": 26.03,
+      "pct_chg": 5.856
+    },
+    {
+      "ts_code": "000721.SZ",
+      "name": "西安饮食",
+      "industry": "酒店餐饮",
+      "sector_rank": 1,
+      "score": -0.0021831992155858498,
+      "close": 6.02,
+      "pct_chg": -3.9872
+    },
+    {
+      "ts_code": "600877.SH",
+      "name": "电科芯片",
+      "industry": "半导体",
+      "sector_rank": 74,
+      "score": -0.0021840129747705502,
+      "close": 16.2,
+      "pct_chg": 9.9796
+    },
+    {
+      "ts_code": "300464.SZ",
+      "name": "星徽股份",
+      "industry": "机械基件",
+      "sector_rank": 3,
+      "score": -0.002185408640937946,
+      "close": 8.32,
+      "pct_chg": 2.0859
+    },
+    {
+      "ts_code": "601069.SH",
+      "name": "西部黄金",
+      "industry": "黄金",
+      "sector_rank": 5,
+      "score": -0.002185591261965281,
+      "close": 24.23,
+      "pct_chg": 0.0413
+    },
+    {
+      "ts_code": "600683.SH",
+      "name": "京投发展",
+      "industry": "区域地产",
+      "sector_rank": 1,
+      "score": -0.0021863563291044373,
+      "close": 12.96,
+      "pct_chg": 0.9346
+    },
+    {
+      "ts_code": "688383.SH",
+      "name": "新益昌",
+      "industry": "专用机械",
+      "sector_rank": 29,
+      "score": -0.0021870316759105093,
+      "close": 192.92,
+      "pct_chg": 3.6703
+    },
+    {
+      "ts_code": "300722.SZ",
+      "name": "新余国科",
+      "industry": "航空",
+      "sector_rank": 7,
+      "score": -0.0021880025133869893,
+      "close": 22.35,
+      "pct_chg": -1.7582
+    },
+    {
+      "ts_code": "920576.BJ",
+      "name": "天力复合",
+      "industry": "小金属",
+      "sector_rank": 9,
+      "score": -0.002189166984609457,
+      "close": 58.57,
+      "pct_chg": 2.4309
+    },
+    {
+      "ts_code": "000509.SZ",
+      "name": "华塑控股",
+      "industry": "元器件",
+      "sector_rank": 10,
+      "score": -0.002190515476617995,
+      "close": 3.9,
+      "pct_chg": -4.4118
+    },
+    {
+      "ts_code": "301200.SZ",
+      "name": "大族数控",
+      "industry": "专用机械",
+      "sector_rank": 30,
+      "score": -0.0021914633407331386,
+      "close": 357.46,
+      "pct_chg": 3.1809
+    },
+    {
+      "ts_code": "688373.SH",
+      "name": "盟科药业",
+      "industry": "化学制药",
+      "sector_rank": 6,
+      "score": -0.00219269015482197,
+      "close": 4.5,
+      "pct_chg": -2.8078
+    },
+    {
+      "ts_code": "600520.SH",
+      "name": "三佳科技",
+      "industry": "半导体",
+      "sector_rank": 75,
+      "score": -0.0021929022765256947,
+      "close": 32.76,
+      "pct_chg": 0.0917
+    },
+    {
+      "ts_code": "002552.SZ",
+      "name": "宝鼎科技",
+      "industry": "元器件",
+      "sector_rank": 11,
+      "score": -0.0021935459183864267,
+      "close": 75.99,
+      "pct_chg": 10.0029
+    },
+    {
+      "ts_code": "688981.SH",
+      "name": "中芯国际",
+      "industry": "半导体",
+      "sector_rank": 76,
+      "score": -0.002193571243651786,
+      "close": 151.53,
+      "pct_chg": 6.9372
+    },
+    {
+      "ts_code": "002524.SZ",
+      "name": "光正眼科",
+      "industry": "医疗保健",
+      "sector_rank": 1,
+      "score": -0.002193932032178355,
+      "close": 3.51,
+      "pct_chg": -2.7701
+    },
+    {
+      "ts_code": "688720.SH",
+      "name": "艾森股份",
+      "industry": "半导体",
+      "sector_rank": 77,
+      "score": -0.0021942711317085666,
+      "close": 85.9,
+      "pct_chg": 3.3073
+    },
+    {
+      "ts_code": "002655.SZ",
+      "name": "共达电声",
+      "industry": "元器件",
+      "sector_rank": 12,
+      "score": -0.00219440114584289,
+      "close": 50.2,
+      "pct_chg": 7.2879
+    },
+    {
+      "ts_code": "600186.SH",
+      "name": "莲花控股",
+      "industry": "食品",
+      "sector_rank": 2,
+      "score": -0.0021947498448512603,
+      "close": 14.18,
+      "pct_chg": -1.3222
+    },
+    {
+      "ts_code": "002290.SZ",
+      "name": "禾盛新材",
+      "industry": "家用电器",
+      "sector_rank": 2,
+      "score": -0.00219741910231638,
+      "close": 88.19,
+      "pct_chg": 2.19
+    },
+    {
+      "ts_code": "300938.SZ",
+      "name": "信测标准",
+      "industry": "电器仪表",
+      "sector_rank": 8,
+      "score": -0.0021976794135184093,
+      "close": 48.23,
+      "pct_chg": 8.6261
+    },
+    {
+      "ts_code": "603880.SH",
+      "name": "南卫股份",
+      "industry": "医疗保健",
+      "sector_rank": 2,
+      "score": -0.0021977631167966654,
+      "close": 7.18,
+      "pct_chg": -6.8742
+    },
+    {
+      "ts_code": "920509.BJ",
+      "name": "同惠电子",
+      "industry": "电器仪表",
+      "sector_rank": 9,
+      "score": -0.002197864076592487,
+      "close": 34.25,
+      "pct_chg": 5.7099
+    },
+    {
+      "ts_code": "688610.SH",
+      "name": "埃科光电",
+      "industry": "电器仪表",
+      "sector_rank": 10,
+      "score": -0.0021987528492153573,
+      "close": 226.47,
+      "pct_chg": -0.6841
+    },
+    {
+      "ts_code": "301489.SZ",
+      "name": "思泉新材",
+      "industry": "元器件",
+      "sector_rank": 13,
+      "score": -0.0021990157395838554,
+      "close": 173.05,
+      "pct_chg": 4.5935
+    },
+    {
+      "ts_code": "300157.SZ",
+      "name": "新锦动力",
+      "industry": "专用机械",
+      "sector_rank": 31,
+      "score": -0.002199210244370508,
+      "close": 3.9,
+      "pct_chg": -4.4118
+    },
+    {
+      "ts_code": "300530.SZ",
+      "name": "领湃科技",
+      "industry": "电气设备",
+      "sector_rank": 4,
+      "score": -0.0021994807363893733,
+      "close": 17.85,
+      "pct_chg": -3.7736
+    },
+    {
+      "ts_code": "002636.SZ",
+      "name": "金安国纪",
+      "industry": "元器件",
+      "sector_rank": 14,
+      "score": -0.002199649452047249,
+      "close": 115.81,
+      "pct_chg": 6.5998
+    },
+    {
+      "ts_code": "300340.SZ",
+      "name": "科恒股份",
+      "industry": "电气设备",
+      "sector_rank": 5,
+      "score": -0.002201439290253654,
+      "close": 9.6,
+      "pct_chg": -5.4187
+    },
+    {
+      "ts_code": "301128.SZ",
+      "name": "强瑞技术",
+      "industry": "专用机械",
+      "sector_rank": 32,
+      "score": -0.0022021797703775,
+      "close": 153.48,
+      "pct_chg": -2.0424
+    },
+    {
+      "ts_code": "300189.SZ",
+      "name": "神农种业",
+      "industry": "种植业",
+      "sector_rank": 1,
+      "score": -0.0022027941932770746,
+      "close": 4.58,
+      "pct_chg": -4.1841
+    },
+    {
+      "ts_code": "688192.SH",
+      "name": "迪哲医药",
+      "industry": "生物制药",
+      "sector_rank": 10,
+      "score": -0.00220346591684398,
+      "close": 39.81,
+      "pct_chg": 3.5909
+    },
+    {
+      "ts_code": "000962.SZ",
+      "name": "东方钽业",
+      "industry": "小金属",
+      "sector_rank": 10,
+      "score": -0.0022036404750921134,
+      "close": 76.38,
+      "pct_chg": 4.9176
+    },
+    {
+      "ts_code": "300204.SZ",
+      "name": "舒泰神",
+      "industry": "生物制药",
+      "sector_rank": 11,
+      "score": -0.0022040838361489868,
+      "close": 21.2,
+      "pct_chg": -6.1947
+    },
+    {
+      "ts_code": "000701.SZ",
+      "name": "厦门信达",
+      "industry": "商贸代理",
+      "sector_rank": 1,
+      "score": -0.0022064313443351403,
+      "close": 4.73,
+      "pct_chg": -5.7769
+    },
+    {
+      "ts_code": "002513.SZ",
+      "name": "蓝丰生化",
+      "industry": "新型电力",
+      "sector_rank": 1,
+      "score": -0.002206440566398583,
+      "close": 5.0,
+      "pct_chg": -5.1233
+    },
+    {
+      "ts_code": "002348.SZ",
+      "name": "高乐股份",
+      "industry": "文教休闲",
+      "sector_rank": 1,
+      "score": -0.00220656626317097,
+      "close": 11.12,
+      "pct_chg": 1.5525
+    },
+    {
+      "ts_code": "300499.SZ",
+      "name": "高澜股份",
+      "industry": "专用机械",
+      "sector_rank": 33,
+      "score": -0.0022071169823252206,
+      "close": 42.47,
+      "pct_chg": 3.7372
+    },
+    {
+      "ts_code": "688549.SH",
+      "name": "中巨芯",
+      "industry": "元器件",
+      "sector_rank": 15,
+      "score": -0.0022087681531646262,
+      "close": 33.12,
+      "pct_chg": 5.984
+    },
+    {
+      "ts_code": "920152.BJ",
+      "name": "昆工科技",
+      "industry": "小金属",
+      "sector_rank": 11,
+      "score": -0.0022087710149596785,
+      "close": 17.79,
+      "pct_chg": -5.7733
+    },
+    {
+      "ts_code": "300836.SZ",
+      "name": "佰奥智能",
+      "industry": "专用机械",
+      "sector_rank": 34,
+      "score": -0.0022091265400851164,
+      "close": 75.51,
+      "pct_chg": 5.1086
+    },
+    {
+      "ts_code": "688711.SH",
+      "name": "宏微科技",
+      "industry": "半导体",
+      "sector_rank": 78,
+      "score": -0.002209266643835034,
+      "close": 42.42,
+      "pct_chg": -3.4812
+    },
+    {
+      "ts_code": "300328.SZ",
+      "name": "宜安科技",
+      "industry": "小金属",
+      "sector_rank": 12,
+      "score": -0.002209962210916205,
+      "close": 17.97,
+      "pct_chg": -2.6016
+    },
+    {
+      "ts_code": "301626.SZ",
+      "name": "苏州天脉",
+      "industry": "元器件",
+      "sector_rank": 16,
+      "score": -0.0022103996381220483,
+      "close": 344.37,
+      "pct_chg": 6.7814
+    },
+    {
+      "ts_code": "600353.SH",
+      "name": "旭光电子",
+      "industry": "元器件",
+      "sector_rank": 17,
+      "score": -0.0022106132462282845,
+      "close": 52.9,
+      "pct_chg": 8.4016
+    },
+    {
+      "ts_code": "688179.SH",
+      "name": "阿拉丁",
+      "industry": "化学制药",
+      "sector_rank": 7,
+      "score": -0.002211301895260748,
+      "close": 26.01,
+      "pct_chg": -3.3445
+    },
+    {
+      "ts_code": "300236.SZ",
+      "name": "上海新阳",
+      "industry": "半导体",
+      "sector_rank": 79,
+      "score": -0.0022115883645622,
+      "close": 114.41,
+      "pct_chg": 8.2403
+    },
+    {
+      "ts_code": "688195.SH",
+      "name": "腾景科技",
+      "industry": "元器件",
+      "sector_rank": 18,
+      "score": -0.002212141931938265,
+      "close": 207.81,
+      "pct_chg": 4.5322
+    },
+    {
+      "ts_code": "688160.SH",
+      "name": "步科股份",
+      "industry": "电器仪表",
+      "sector_rank": 11,
+      "score": -0.0022129880336262645,
+      "close": 114.84,
+      "pct_chg": 5.6875
+    },
+    {
+      "ts_code": "688017.SH",
+      "name": "绿的谐波",
+      "industry": "机械基件",
+      "sector_rank": 4,
+      "score": -0.0022138240842274606,
+      "close": 383.18,
+      "pct_chg": 1.2284
+    },
+    {
+      "ts_code": "300655.SZ",
+      "name": "晶瑞电材",
+      "industry": "半导体",
+      "sector_rank": 80,
+      "score": -0.0022139520727787153,
+      "close": 18.08,
+      "pct_chg": 5.3613
+    },
+    {
+      "ts_code": "300364.SZ",
+      "name": "中文在线",
+      "industry": "出版业",
+      "sector_rank": 1,
+      "score": -0.002214425597708026,
+      "close": 25.74,
+      "pct_chg": 0.3118
+    },
+    {
+      "ts_code": "688312.SH",
+      "name": "燕麦科技",
+      "industry": "专用机械",
+      "sector_rank": 35,
+      "score": -0.002215015240831976,
+      "close": 96.95,
+      "pct_chg": 6.1187
+    },
+    {
+      "ts_code": "688025.SH",
+      "name": "杰普特",
+      "industry": "专用机械",
+      "sector_rank": 36,
+      "score": -0.002215066565122929,
+      "close": 418.94,
+      "pct_chg": -0.5366
+    },
+    {
+      "ts_code": "002625.SZ",
+      "name": "光启技术",
+      "industry": "航空",
+      "sector_rank": 8,
+      "score": -0.0022153056535865836,
+      "close": 31.63,
+      "pct_chg": 0.4446
+    },
+    {
+      "ts_code": "603011.SH",
+      "name": "合锻智能",
+      "industry": "专用机械",
+      "sector_rank": 37,
+      "score": -0.0022155660239066965,
+      "close": 33.32,
+      "pct_chg": -5.4215
+    },
+    {
+      "ts_code": "300201.SZ",
+      "name": "海伦哲",
+      "industry": "工程机械",
+      "sector_rank": 1,
+      "score": -0.00221606356904472,
+      "close": 18.95,
+      "pct_chg": -4.4859
+    },
+    {
+      "ts_code": "301568.SZ",
+      "name": "思泰克",
+      "industry": "专用机械",
+      "sector_rank": 38,
+      "score": -0.0022183057324457935,
+      "close": 120.81,
+      "pct_chg": 6.1133
+    },
+    {
+      "ts_code": "300819.SZ",
+      "name": "聚杰微纤",
+      "industry": "纺织",
+      "sector_rank": 1,
+      "score": -0.0022185183339101812,
+      "close": 70.18,
+      "pct_chg": 2.8731
+    },
+    {
+      "ts_code": "688628.SH",
+      "name": "优利德",
+      "industry": "电器仪表",
+      "sector_rank": 12,
+      "score": -0.0022190327715807963,
+      "close": 103.49,
+      "pct_chg": 3.6455
+    },
+    {
+      "ts_code": "002975.SZ",
+      "name": "博杰股份",
+      "industry": "专用机械",
+      "sector_rank": 39,
+      "score": -0.0022192937044425405,
+      "close": 151.32,
+      "pct_chg": 4.6473
+    },
+    {
+      "ts_code": "300903.SZ",
+      "name": "科翔股份",
+      "industry": "元器件",
+      "sector_rank": 19,
+      "score": -0.002219382328092579,
+      "close": 110.65,
+      "pct_chg": 0.4722
+    },
+    {
+      "ts_code": "301217.SZ",
+      "name": "铜冠铜箔",
+      "industry": "元器件",
+      "sector_rank": 20,
+      "score": -0.0022195049638688434,
+      "close": 186.69,
+      "pct_chg": 8.6607
+    },
+    {
+      "ts_code": "002167.SZ",
+      "name": "东方锆业",
+      "industry": "小金属",
+      "sector_rank": 13,
+      "score": -0.0022202024781559173,
+      "close": 21.46,
+      "pct_chg": 9.9949
+    },
+    {
+      "ts_code": "688786.SH",
+      "name": "悦安新材",
+      "industry": "小金属",
+      "sector_rank": 14,
+      "score": -0.0022221481475468334,
+      "close": 47.82,
+      "pct_chg": -0.7884
+    },
+    {
+      "ts_code": "300410.SZ",
+      "name": "正业科技",
+      "industry": "专用机械",
+      "sector_rank": 40,
+      "score": -0.0022232059661547853,
+      "close": 12.17,
+      "pct_chg": -1.8548
+    },
+    {
+      "ts_code": "688700.SH",
+      "name": "东威科技",
+      "industry": "专用机械",
+      "sector_rank": 41,
+      "score": -0.002223517183497913,
+      "close": 91.9,
+      "pct_chg": 2.2247
+    },
+    {
+      "ts_code": "300097.SZ",
+      "name": "智云股份",
+      "industry": "专用机械",
+      "sector_rank": 42,
+      "score": -0.0022235991632633205,
+      "close": 9.14,
+      "pct_chg": 0.2193
+    },
+    {
+      "ts_code": "002842.SZ",
+      "name": "翔鹭钨业",
+      "industry": "小金属",
+      "sector_rank": 15,
+      "score": -0.002224763795625277,
+      "close": 46.74,
+      "pct_chg": -3.3898
+    },
+    {
+      "ts_code": "688183.SH",
+      "name": "生益电子",
+      "industry": "元器件",
+      "sector_rank": 21,
+      "score": -0.0022257272210526005,
+      "close": 136.61,
+      "pct_chg": 7.7196
+    },
+    {
+      "ts_code": "688419.SH",
+      "name": "耐科装备",
+      "industry": "半导体",
+      "sector_rank": 81,
+      "score": -0.0022261138349204826,
+      "close": 74.69,
+      "pct_chg": 3.0207
+    },
+    {
+      "ts_code": "688519.SH",
+      "name": "南亚新材",
+      "industry": "元器件",
+      "sector_rank": 22,
+      "score": -0.002227438365075397,
+      "close": 361.88,
+      "pct_chg": 8.6727
+    },
+    {
+      "ts_code": "002052.SZ",
+      "name": "同洲电子",
+      "industry": "家用电器",
+      "sector_rank": 3,
+      "score": -0.0022279940974171825,
+      "close": 8.27,
+      "pct_chg": 0.8537
+    },
+    {
+      "ts_code": "300990.SZ",
+      "name": "同飞股份",
+      "industry": "专用机械",
+      "sector_rank": 43,
+      "score": -0.0022280569103292572,
+      "close": 111.0,
+      "pct_chg": 9.3596
+    },
+    {
+      "ts_code": "603399.SH",
+      "name": "永杉锂业",
+      "industry": "小金属",
+      "sector_rank": 16,
+      "score": -0.002228220685601024,
+      "close": 22.62,
+      "pct_chg": 10.0195
+    },
+    {
+      "ts_code": "301095.SZ",
+      "name": "广立微",
+      "industry": "半导体",
+      "sector_rank": 82,
+      "score": -0.002228731184308089,
+      "close": 104.86,
+      "pct_chg": 8.2593
+    },
+    {
+      "ts_code": "300553.SZ",
+      "name": "集智股份",
+      "industry": "电器仪表",
+      "sector_rank": 13,
+      "score": -0.002229267785107154,
+      "close": 78.53,
+      "pct_chg": -0.0509
+    },
+    {
+      "ts_code": "000811.SZ",
+      "name": "冰轮环境",
+      "industry": "工程机械",
+      "sector_rank": 2,
+      "score": -0.0022294933369839407,
+      "close": 48.75,
+      "pct_chg": 8.4056
+    },
+    {
+      "ts_code": "300843.SZ",
+      "name": "胜蓝股份",
+      "industry": "元器件",
+      "sector_rank": 23,
+      "score": -0.0022298765530098293,
+      "close": 144.25,
+      "pct_chg": 9.4461
+    },
+    {
+      "ts_code": "688323.SH",
+      "name": "瑞华泰",
+      "industry": "塑料",
+      "sector_rank": 1,
+      "score": -0.002230227520037102,
+      "close": 65.98,
+      "pct_chg": 10.6304
+    },
+    {
+      "ts_code": "300131.SZ",
+      "name": "英唐智控",
+      "industry": "元器件",
+      "sector_rank": 24,
+      "score": -0.0022318447649423254,
+      "close": 21.37,
+      "pct_chg": 9.142
+    },
+    {
+      "ts_code": "603005.SH",
+      "name": "晶方科技",
+      "industry": "半导体",
+      "sector_rank": 83,
+      "score": -0.002231913343208653,
+      "close": 49.63,
+      "pct_chg": 4.926
+    },
+    {
+      "ts_code": "000953.SZ",
+      "name": "中哲精化",
+      "industry": "化学制药",
+      "sector_rank": 8,
+      "score": -0.002231976259193405,
+      "close": 5.48,
+      "pct_chg": -4.5296
+    },
+    {
+      "ts_code": "300806.SZ",
+      "name": "斯迪克",
+      "industry": "塑料",
+      "sector_rank": 2,
+      "score": -0.002232928234574849,
+      "close": 100.09,
+      "pct_chg": 6.9909
+    },
+    {
+      "ts_code": "600961.SH",
+      "name": "株冶集团",
+      "industry": "铅锌",
+      "sector_rank": 2,
+      "score": -0.0022329684228044704,
+      "close": 35.71,
+      "pct_chg": 7.8852
+    },
+    {
+      "ts_code": "300706.SZ",
+      "name": "阿石创",
+      "industry": "元器件",
+      "sector_rank": 25,
+      "score": -0.002233309139098742,
+      "close": 72.74,
+      "pct_chg": 1.7485
+    },
+    {
+      "ts_code": "300480.SZ",
+      "name": "光力科技",
+      "industry": "专用机械",
+      "sector_rank": 44,
+      "score": -0.0022337355057937725,
+      "close": 38.5,
+      "pct_chg": 10.6322
+    },
+    {
+      "ts_code": "920510.BJ",
+      "name": "丰光精密",
+      "industry": "机械基件",
+      "sector_rank": 5,
+      "score": -0.0022342753179270375,
+      "close": 24.4,
+      "pct_chg": 16.1905
+    },
+    {
+      "ts_code": "300478.SZ",
+      "name": "杭州高新",
+      "industry": "塑料",
+      "sector_rank": 3,
+      "score": -0.002235082158940911,
+      "close": 38.72,
+      "pct_chg": -1.4508
+    },
+    {
+      "ts_code": "300373.SZ",
+      "name": "扬杰科技",
+      "industry": "半导体",
+      "sector_rank": 84,
+      "score": -0.002235344641771994,
+      "close": 132.99,
+      "pct_chg": 0.0226
+    },
+    {
+      "ts_code": "000831.SZ",
+      "name": "中国稀土",
+      "industry": "小金属",
+      "sector_rank": 17,
+      "score": -0.0022365456674061372,
+      "close": 58.28,
+      "pct_chg": -2.3295
+    },
+    {
+      "ts_code": "688629.SH",
+      "name": "华丰科技",
+      "industry": "元器件",
+      "sector_rank": 26,
+      "score": -0.0022369125509859255,
+      "close": 148.91,
+      "pct_chg": 3.2806
+    },
+    {
+      "ts_code": "300269.SZ",
+      "name": "联建光电",
+      "industry": "元器件",
+      "sector_rank": 27,
+      "score": -0.0022378145790214483,
+      "close": 4.89,
+      "pct_chg": -2.9762
+    },
+    {
+      "ts_code": "002364.SZ",
+      "name": "中恒电气",
+      "industry": "电气设备",
+      "sector_rank": 6,
+      "score": -0.0022396615229169515,
+      "close": 55.18,
+      "pct_chg": 10.008
+    },
+    {
+      "ts_code": "600869.SH",
+      "name": "远东股份",
+      "industry": "电气设备",
+      "sector_rank": 7,
+      "score": -0.0022411616026221087,
+      "close": 37.77,
+      "pct_chg": 4.684
+    },
+    {
+      "ts_code": "000799.SZ",
+      "name": "酒鬼酒",
+      "industry": "白酒",
+      "sector_rank": 3,
+      "score": -0.0022418946745501305,
+      "close": 39.98,
+      "pct_chg": -3.4533
+    },
+    {
+      "ts_code": "301086.SZ",
+      "name": "鸿富瀚",
+      "industry": "元器件",
+      "sector_rank": 28,
+      "score": -0.00224217247244554,
+      "close": 216.59,
+      "pct_chg": 7.9012
+    },
+    {
+      "ts_code": "300151.SZ",
+      "name": "昌红科技",
+      "industry": "专用机械",
+      "sector_rank": 45,
+      "score": -0.002242526491272154,
+      "close": 24.3,
+      "pct_chg": 8.6762
+    },
+    {
+      "ts_code": "605198.SH",
+      "name": "安德利",
+      "industry": "软饮料",
+      "sector_rank": 1,
+      "score": -0.002245078988047064,
+      "close": 69.67,
+      "pct_chg": -3.4105
+    },
+    {
+      "ts_code": "688385.SH",
+      "name": "复旦微电",
+      "industry": "半导体",
+      "sector_rank": 85,
+      "score": -0.002245301715518733,
+      "close": 60.81,
+      "pct_chg": 4.359
+    },
+    {
+      "ts_code": "301169.SZ",
+      "name": "零点有数",
+      "industry": "文教休闲",
+      "sector_rank": 2,
+      "score": -0.0022457937664894247,
+      "close": 76.29,
+      "pct_chg": 2.0739
+    },
+    {
+      "ts_code": "301313.SZ",
+      "name": "凡拓数创",
+      "industry": "文教休闲",
+      "sector_rank": 3,
+      "score": -0.002247845355718812,
+      "close": 59.22,
+      "pct_chg": 5.7878
+    },
+    {
+      "ts_code": "002119.SZ",
+      "name": "康强电子",
+      "industry": "半导体",
+      "sector_rank": 86,
+      "score": -0.0022479912563477134,
+      "close": 32.53,
+      "pct_chg": 0.7121
+    },
+    {
+      "ts_code": "002156.SZ",
+      "name": "通富微电",
+      "industry": "半导体",
+      "sector_rank": 87,
+      "score": -0.0022482541401589854,
+      "close": 74.64,
+      "pct_chg": 9.0909
+    },
+    {
+      "ts_code": "688167.SH",
+      "name": "炬光科技",
+      "industry": "元器件",
+      "sector_rank": 29,
+      "score": -0.002249178568676848,
+      "close": 375.0,
+      "pct_chg": 4.62
+    },
+    {
+      "ts_code": "600183.SH",
+      "name": "生益科技",
+      "industry": "元器件",
+      "sector_rank": 30,
+      "score": -0.002250127070372143,
+      "close": 177.3,
+      "pct_chg": 5.6174
+    },
+    {
+      "ts_code": "000633.SZ",
+      "name": "合金投资",
+      "industry": "小金属",
+      "sector_rank": 18,
+      "score": -0.0022509325186705325,
+      "close": 4.99,
+      "pct_chg": -5.3131
+    },
+    {
+      "ts_code": "688583.SH",
+      "name": "思看科技",
+      "industry": "电器仪表",
+      "sector_rank": 14,
+      "score": -0.0022511964577756976,
+      "close": 133.9,
+      "pct_chg": -1.4572
+    },
+    {
+      "ts_code": "300503.SZ",
+      "name": "昊志机电",
+      "industry": "机械基件",
+      "sector_rank": 6,
+      "score": -0.0022513225170617333,
+      "close": 78.71,
+      "pct_chg": -2.8631
+    },
+    {
+      "ts_code": "300475.SZ",
+      "name": "香农芯创",
+      "industry": "元器件",
+      "sector_rank": 31,
+      "score": -0.0022515078948648543,
+      "close": 289.6,
+      "pct_chg": 2.1481
+    },
+    {
+      "ts_code": "300853.SZ",
+      "name": "申昊科技",
+      "industry": "专用机械",
+      "sector_rank": 46,
+      "score": -0.0022518826238723997,
+      "close": 32.85,
+      "pct_chg": -1.203
+    },
+    {
+      "ts_code": "688661.SH",
+      "name": "和林微纳",
+      "industry": "元器件",
+      "sector_rank": 32,
+      "score": -0.0022519285761290597,
+      "close": 150.68,
+      "pct_chg": 2.9094
+    },
+    {
+      "ts_code": "300209.SZ",
+      "name": "行云科技",
+      "industry": "互联网",
+      "sector_rank": 1,
+      "score": -0.002254298527423821,
+      "close": 31.96,
+      "pct_chg": 6.1441
+    },
+    {
+      "ts_code": "002931.SZ",
+      "name": "锋龙股份",
+      "industry": "机械基件",
+      "sector_rank": 7,
+      "score": -0.002254832854440973,
+      "close": 74.38,
+      "pct_chg": 3.363
+    },
+    {
+      "ts_code": "688235.SH",
+      "name": "百济神州",
+      "industry": "生物制药",
+      "sector_rank": 12,
+      "score": -0.0022551285602285392,
+      "close": 236.79,
+      "pct_chg": 3.8553
+    },
+    {
+      "ts_code": "301285.SZ",
+      "name": "鸿日达",
+      "industry": "元器件",
+      "sector_rank": 33,
+      "score": -0.0022561599704468633,
+      "close": 124.45,
+      "pct_chg": -0.5832
+    },
+    {
+      "ts_code": "603115.SH",
+      "name": "海星股份",
+      "industry": "铝",
+      "sector_rank": 1,
+      "score": -0.00225665202867808,
+      "close": 119.39,
+      "pct_chg": 8.3689
+    },
+    {
+      "ts_code": "300136.SZ",
+      "name": "信维通信",
+      "industry": "元器件",
+      "sector_rank": 34,
+      "score": -0.002257620074494729,
+      "close": 103.12,
+      "pct_chg": 8.0017
+    },
+    {
+      "ts_code": "301055.SZ",
+      "name": "张小泉",
+      "industry": "家居用品",
+      "sector_rank": 1,
+      "score": -0.002258221589468516,
+      "close": 47.5,
+      "pct_chg": 8.9699
+    },
+    {
+      "ts_code": "600988.SH",
+      "name": "赤峰黄金",
+      "industry": "黄金",
+      "sector_rank": 6,
+      "score": -0.0022589650520152688,
+      "close": 28.19,
+      "pct_chg": 0.7505
+    },
+    {
+      "ts_code": "301183.SZ",
+      "name": "东田微",
+      "industry": "元器件",
+      "sector_rank": 35,
+      "score": -0.0022594261993118766,
+      "close": 258.9,
+      "pct_chg": 4.139
+    },
+    {
+      "ts_code": "688545.SH",
+      "name": "兴福电子",
+      "industry": "元器件",
+      "sector_rank": 36,
+      "score": -0.0022609918352895796,
+      "close": 110.25,
+      "pct_chg": 5.2004
+    },
+    {
+      "ts_code": "301297.SZ",
+      "name": "富乐德",
+      "industry": "半导体",
+      "sector_rank": 88,
+      "score": -0.002261210803522164,
+      "close": 54.74,
+      "pct_chg": 4.227
+    },
+    {
+      "ts_code": "300210.SZ",
+      "name": "森远股份",
+      "industry": "专用机械",
+      "sector_rank": 47,
+      "score": -0.0022613377247458436,
+      "close": 9.25,
+      "pct_chg": -2.9381
+    },
+    {
+      "ts_code": "000988.SZ",
+      "name": "华工科技",
+      "industry": "专用机械",
+      "sector_rank": 48,
+      "score": -0.002261905277055173,
+      "close": 167.89,
+      "pct_chg": 2.5846
+    },
+    {
+      "ts_code": "300751.SZ",
+      "name": "迈为股份",
+      "industry": "专用机械",
+      "sector_rank": 49,
+      "score": -0.0022628575676107384,
+      "close": 227.75,
+      "pct_chg": 9.3322
+    },
+    {
+      "ts_code": "600172.SH",
+      "name": "黄河旋风",
+      "industry": "矿物制品",
+      "sector_rank": 1,
+      "score": -0.002263284662530896,
+      "close": 17.1,
+      "pct_chg": 0.885
+    },
+    {
+      "ts_code": "300331.SZ",
+      "name": "苏大维格",
+      "industry": "元器件",
+      "sector_rank": 37,
+      "score": -0.002263422187677896,
+      "close": 68.82,
+      "pct_chg": 6.1546
+    },
+    {
+      "ts_code": "300400.SZ",
+      "name": "劲拓股份",
+      "industry": "专用机械",
+      "sector_rank": 50,
+      "score": -0.002264054138981409,
+      "close": 41.12,
+      "pct_chg": -0.9395
+    },
+    {
+      "ts_code": "300169.SZ",
+      "name": "天晟新材",
+      "industry": "塑料",
+      "sector_rank": 4,
+      "score": -0.0022640875024975194,
+      "close": 5.02,
+      "pct_chg": -5.9925
+    },
+    {
+      "ts_code": "603186.SH",
+      "name": "华正新材",
+      "industry": "元器件",
+      "sector_rank": 38,
+      "score": -0.0022654196158246732,
+      "close": 250.44,
+      "pct_chg": 8.1347
+    },
+    {
+      "ts_code": "002008.SZ",
+      "name": "大族激光",
+      "industry": "专用机械",
+      "sector_rank": 51,
+      "score": -0.0022667868198605386,
+      "close": 152.23,
+      "pct_chg": 4.9066
+    },
+    {
+      "ts_code": "605111.SH",
+      "name": "新洁能",
+      "industry": "半导体",
+      "sector_rank": 89,
+      "score": -0.002267721444752116,
+      "close": 79.49,
+      "pct_chg": -0.5256
+    },
+    {
+      "ts_code": "600540.SH",
+      "name": "新赛股份",
+      "industry": "种植业",
+      "sector_rank": 2,
+      "score": -0.002268100810033039,
+      "close": 3.54,
+      "pct_chg": -5.6
+    },
+    {
+      "ts_code": "688392.SH",
+      "name": "骄成超声",
+      "industry": "专用机械",
+      "sector_rank": 52,
+      "score": -0.00226814740439702,
+      "close": 175.2,
+      "pct_chg": 1.6831
+    },
+    {
+      "ts_code": "300051.SZ",
+      "name": "琏升科技",
+      "industry": "综合类",
+      "sector_rank": 1,
+      "score": -0.002268770404842714,
+      "close": 9.42,
+      "pct_chg": -5.0403
+    },
+    {
+      "ts_code": "688777.SH",
+      "name": "中控技术",
+      "industry": "专用机械",
+      "sector_rank": 53,
+      "score": -0.0022695315100040472,
+      "close": 121.49,
+      "pct_chg": 1.1826
+    },
+    {
+      "ts_code": "002222.SZ",
+      "name": "福晶科技",
+      "industry": "元器件",
+      "sector_rank": 39,
+      "score": -0.0022698138500252436,
+      "close": 95.02,
+      "pct_chg": 2.172
+    },
+    {
+      "ts_code": "603435.SH",
+      "name": "嘉德利",
+      "industry": "元器件",
+      "sector_rank": 40,
+      "score": -0.0022698806160482954,
+      "close": 65.71,
+      "pct_chg": 1.0923
+    },
+    {
+      "ts_code": "300521.SZ",
+      "name": "爱司凯",
+      "industry": "专用机械",
+      "sector_rank": 54,
+      "score": -0.0022701096025747516,
+      "close": 27.34,
+      "pct_chg": 4.1524
+    },
+    {
+      "ts_code": "301696.SZ",
+      "name": "三瑞智能",
+      "industry": "电气设备",
+      "sector_rank": 8,
+      "score": -0.0022703938801725506,
+      "close": 111.06,
+      "pct_chg": 0.3161
+    },
+    {
+      "ts_code": "300868.SZ",
+      "name": "杰美特",
+      "industry": "元器件",
+      "sector_rank": 41,
+      "score": -0.0022707910817194982,
+      "close": 156.96,
+      "pct_chg": -0.3682
+    },
+    {
+      "ts_code": "301510.SZ",
+      "name": "固高科技",
+      "industry": "电器仪表",
+      "sector_rank": 15,
+      "score": -0.0022708218452656,
+      "close": 34.08,
+      "pct_chg": 1.853
+    },
+    {
+      "ts_code": "600259.SH",
+      "name": "中稀有色",
+      "industry": "小金属",
+      "sector_rank": 19,
+      "score": -0.002272202693699981,
+      "close": 104.77,
+      "pct_chg": -1.8916
+    },
+    {
+      "ts_code": "600343.SH",
+      "name": "航天动力",
+      "industry": "机械基件",
+      "sector_rank": 8,
+      "score": -0.0022723937770793086,
+      "close": 24.61,
+      "pct_chg": 4.2355
+    },
+    {
+      "ts_code": "300426.SZ",
+      "name": "华智数媒",
+      "industry": "影视音像",
+      "sector_rank": 1,
+      "score": -0.002272597350248468,
+      "close": 5.28,
+      "pct_chg": -6.7138
+    },
+    {
+      "ts_code": "688536.SH",
+      "name": "思瑞浦",
+      "industry": "半导体",
+      "sector_rank": 90,
+      "score": -0.0022731634604281,
+      "close": 356.0,
+      "pct_chg": 2.6144
+    },
+    {
+      "ts_code": "301182.SZ",
+      "name": "凯旺科技",
+      "industry": "元器件",
+      "sector_rank": 42,
+      "score": -0.0022735430730205625,
+      "close": 96.71,
+      "pct_chg": 2.3928
+    },
+    {
+      "ts_code": "002775.SZ",
+      "name": "文科股份",
+      "industry": "建筑工程",
+      "sector_rank": 1,
+      "score": -0.002274508492955363,
+      "close": 3.75,
+      "pct_chg": -2.5974
+    },
+    {
+      "ts_code": "002141.SZ",
+      "name": "贤丰控股",
+      "industry": "农业综合",
+      "sector_rank": 3,
+      "score": -0.0022745855956392935,
+      "close": 4.76,
+      "pct_chg": -3.8384
+    },
+    {
+      "ts_code": "300395.SZ",
+      "name": "菲利华",
+      "industry": "玻璃",
+      "sector_rank": 3,
+      "score": -0.0022754522122969164,
+      "close": 133.48,
+      "pct_chg": 4.8135
+    },
+    {
+      "ts_code": "300776.SZ",
+      "name": "帝尔激光",
+      "industry": "专用机械",
+      "sector_rank": 55,
+      "score": -0.002275643658642532,
+      "close": 165.11,
+      "pct_chg": -0.6618
+    },
+    {
+      "ts_code": "301511.SZ",
+      "name": "德福科技",
+      "industry": "电气设备",
+      "sector_rank": 9,
+      "score": -0.0022763636405702357,
+      "close": 144.0,
+      "pct_chg": 2.7984
+    },
+    {
+      "ts_code": "300492.SZ",
+      "name": "华图山鼎",
+      "industry": "文教休闲",
+      "sector_rank": 4,
+      "score": -0.002276669395003937,
+      "close": 35.95,
+      "pct_chg": -1.8028
+    },
+    {
+      "ts_code": "920096.BJ",
+      "name": "嘉晨智能",
+      "industry": "电器仪表",
+      "sector_rank": 16,
+      "score": -0.00227723084566319,
+      "close": 53.7,
+      "pct_chg": -3.504
+    },
+    {
+      "ts_code": "688693.SH",
+      "name": "锴威特",
+      "industry": "半导体",
+      "sector_rank": 91,
+      "score": -0.0022775438984845276,
+      "close": 102.46,
+      "pct_chg": -1.0048
+    },
+    {
+      "ts_code": "688478.SH",
+      "name": "晶升股份",
+      "industry": "半导体",
+      "sector_rank": 92,
+      "score": -0.002278232263966226,
+      "close": 89.07,
+      "pct_chg": 1.4465
+    },
+    {
+      "ts_code": "688172.SH",
+      "name": "燕东微",
+      "industry": "半导体",
+      "sector_rank": 93,
+      "score": -0.0022783644853140664,
+      "close": 84.26,
+      "pct_chg": 14.0344
+    },
+    {
+      "ts_code": "600584.SH",
+      "name": "长电科技",
+      "industry": "半导体",
+      "sector_rank": 94,
+      "score": -0.002278380150982879,
+      "close": 94.7,
+      "pct_chg": 10.0012
+    },
+    {
+      "ts_code": "003043.SZ",
+      "name": "华亚智能",
+      "industry": "半导体",
+      "sector_rank": 95,
+      "score": -0.00227919823238745,
+      "close": 87.3,
+      "pct_chg": 10.005
+    },
+    {
+      "ts_code": "688297.SH",
+      "name": "中无人机",
+      "industry": "航空",
+      "sector_rank": 9,
+      "score": -0.00227946812819885,
+      "close": 44.61,
+      "pct_chg": 2.387
+    },
+    {
+      "ts_code": "300870.SZ",
+      "name": "欧陆通",
+      "industry": "电气设备",
+      "sector_rank": 10,
+      "score": -0.0022802553460899502,
+      "close": 355.8,
+      "pct_chg": -0.1964
+    },
+    {
+      "ts_code": "002189.SZ",
+      "name": "中光学",
+      "industry": "元器件",
+      "sector_rank": 43,
+      "score": -0.0022814458949059245,
+      "close": 20.56,
+      "pct_chg": 5.0588
+    },
+    {
+      "ts_code": "300179.SZ",
+      "name": "四方达",
+      "industry": "矿物制品",
+      "sector_rank": 2,
+      "score": -0.0022814714929631666,
+      "close": 59.6,
+      "pct_chg": 4.5798
+    },
+    {
+      "ts_code": "600530.SH",
+      "name": "交大昂立",
+      "industry": "医疗保健",
+      "sector_rank": 3,
+      "score": -0.002282482596257557,
+      "close": 5.55,
+      "pct_chg": -3.8128
+    },
+    {
+      "ts_code": "002046.SZ",
+      "name": "国机精工",
+      "industry": "机械基件",
+      "sector_rank": 9,
+      "score": -0.0022827362199268437,
+      "close": 69.95,
+      "pct_chg": 10.0016
+    },
+    {
+      "ts_code": "300077.SZ",
+      "name": "国民技术",
+      "industry": "半导体",
+      "sector_rank": 96,
+      "score": -0.0022834993550799286,
+      "close": 25.78,
+      "pct_chg": -3.5541
+    },
+    {
+      "ts_code": "300900.SZ",
+      "name": "广联航空",
+      "industry": "航空",
+      "sector_rank": 10,
+      "score": -0.0022836775541323455,
+      "close": 34.29,
+      "pct_chg": 8.8917
+    },
+    {
+      "ts_code": "002338.SZ",
+      "name": "奥普光电",
+      "industry": "电器仪表",
+      "sector_rank": 17,
+      "score": -0.002284090723492693,
+      "close": 54.15,
+      "pct_chg": 2.9076
+    },
+    {
+      "ts_code": "688328.SH",
+      "name": "深科达",
+      "industry": "专用机械",
+      "sector_rank": 56,
+      "score": -0.0022845144656115325,
+      "close": 81.66,
+      "pct_chg": 3.4981
+    },
+    {
+      "ts_code": "688262.SH",
+      "name": "国芯科技",
+      "industry": "半导体",
+      "sector_rank": 97,
+      "score": -0.0022848753113197495,
+      "close": 41.26,
+      "pct_chg": 6.2033
+    },
+    {
+      "ts_code": "300128.SZ",
+      "name": "锦富技术",
+      "industry": "元器件",
+      "sector_rank": 44,
+      "score": -0.0022848911655516213,
+      "close": 6.1,
+      "pct_chg": -0.3268
+    },
+    {
+      "ts_code": "000679.SZ",
+      "name": "大连友谊",
+      "industry": "百货",
+      "sector_rank": 1,
+      "score": -0.0022854765477044623,
+      "close": 6.88,
+      "pct_chg": -6.7751
+    },
+    {
+      "ts_code": "300223.SZ",
+      "name": "北京君正",
+      "industry": "半导体",
+      "sector_rank": 98,
+      "score": -0.002285529538248164,
+      "close": 197.8,
+      "pct_chg": 1.9588
+    },
+    {
+      "ts_code": "003018.SZ",
+      "name": "金富科技",
+      "industry": "塑料",
+      "sector_rank": 5,
+      "score": -0.002285989667594691,
+      "close": 74.11,
+      "pct_chg": 10.0045
+    },
+    {
+      "ts_code": "688257.SH",
+      "name": "新锐股份",
+      "industry": "机械基件",
+      "sector_rank": 10,
+      "score": -0.0022860261832049044,
+      "close": 103.6,
+      "pct_chg": 1.9886
+    },
+    {
+      "ts_code": "688307.SH",
+      "name": "中润光学",
+      "industry": "元器件",
+      "sector_rank": 45,
+      "score": -0.0022867044399007257,
+      "close": 79.0,
+      "pct_chg": 13.5057
+    },
+    {
+      "ts_code": "600460.SH",
+      "name": "士兰微",
+      "industry": "半导体",
+      "sector_rank": 99,
+      "score": -0.0022873309412535293,
+      "close": 50.01,
+      "pct_chg": 6.3138
+    },
+    {
+      "ts_code": "002172.SZ",
+      "name": "澳洋健康",
+      "industry": "医疗保健",
+      "sector_rank": 4,
+      "score": -0.0022892525382471433,
+      "close": 2.97,
+      "pct_chg": -4.1935
+    },
+    {
+      "ts_code": "603459.SH",
+      "name": "红板科技",
+      "industry": "元器件",
+      "sector_rank": 46,
+      "score": -0.0022902078122930985,
+      "close": 86.33,
+      "pct_chg": -1.8977
+    },
+    {
+      "ts_code": "600547.SH",
+      "name": "山东黄金",
+      "industry": "黄金",
+      "sector_rank": 7,
+      "score": -0.0022902947807919762,
+      "close": 24.76,
+      "pct_chg": -0.4023
+    },
+    {
+      "ts_code": "688020.SH",
+      "name": "方邦股份",
+      "industry": "元器件",
+      "sector_rank": 47,
+      "score": -0.0022903415831058063,
+      "close": 229.44,
+      "pct_chg": -0.074
+    },
+    {
+      "ts_code": "688056.SH",
+      "name": "莱伯泰科",
+      "industry": "电器仪表",
+      "sector_rank": 18,
+      "score": -0.002290832700256458,
+      "close": 73.5,
+      "pct_chg": 10.0299
+    },
+    {
+      "ts_code": "300767.SZ",
+      "name": "震安科技",
+      "industry": "橡胶",
+      "sector_rank": 7,
+      "score": -0.0022928958210270884,
+      "close": 23.66,
+      "pct_chg": -0.337
+    },
+    {
+      "ts_code": "301232.SZ",
+      "name": "飞沃科技",
+      "industry": "机械基件",
+      "sector_rank": 11,
+      "score": -0.002293462104051056,
+      "close": 145.13,
+      "pct_chg": 2.2042
+    },
+    {
+      "ts_code": "600301.SH",
+      "name": "华锡有色",
+      "industry": "小金属",
+      "sector_rank": 20,
+      "score": -0.0022936197787126935,
+      "close": 62.83,
+      "pct_chg": -2.2253
+    },
+    {
+      "ts_code": "000518.SZ",
+      "name": "四环生物",
+      "industry": "生物制药",
+      "sector_rank": 13,
+      "score": -0.002294798683354843,
+      "close": 3.34,
+      "pct_chg": 0.0
+    },
+    {
+      "ts_code": "603226.SH",
+      "name": "菲林格尔",
+      "industry": "家居用品",
+      "sector_rank": 2,
+      "score": -0.002295008698198964,
+      "close": 54.21,
+      "pct_chg": 0.3331
+    },
+    {
+      "ts_code": "300972.SZ",
+      "name": "万辰集团",
+      "industry": "食品",
+      "sector_rank": 3,
+      "score": -0.0022970503071289023,
+      "close": 174.01,
+      "pct_chg": -0.5202
+    },
+    {
+      "ts_code": "603669.SH",
+      "name": "灵康药业",
+      "industry": "化学制药",
+      "sector_rank": 9,
+      "score": -0.0022970591841244255,
+      "close": 5.74,
+      "pct_chg": 3.2374
+    },
+    {
+      "ts_code": "605389.SH",
+      "name": "长龄液压",
+      "industry": "机械基件",
+      "sector_rank": 12,
+      "score": -0.0022971871633609814,
+      "close": 99.77,
+      "pct_chg": 5.5544
+    },
+    {
+      "ts_code": "600550.SH",
+      "name": "保变电气",
+      "industry": "电气设备",
+      "sector_rank": 11,
+      "score": -0.002298067475443457,
+      "close": 12.4,
+      "pct_chg": -1.8211
+    },
+    {
+      "ts_code": "688322.SH",
+      "name": "奥比中光",
+      "industry": "元器件",
+      "sector_rank": 48,
+      "score": -0.002298267896587031,
+      "close": 125.8,
+      "pct_chg": 2.3763
+    },
+    {
+      "ts_code": "301075.SZ",
+      "name": "多瑞医药",
+      "industry": "化学制药",
+      "sector_rank": 10,
+      "score": -0.002298503846430968,
+      "close": 63.02,
+      "pct_chg": -5.176
+    },
+    {
+      "ts_code": "920186.BJ",
+      "name": "中科仪",
+      "industry": "机械基件",
+      "sector_rank": 13,
+      "score": -0.0022992172278817205,
+      "close": 104.38,
+      "pct_chg": 9.4474
+    },
+    {
+      "ts_code": "300370.SZ",
+      "name": "安控科技",
+      "industry": "电器仪表",
+      "sector_rank": 19,
+      "score": -0.002300950826125334,
+      "close": 2.1,
+      "pct_chg": -4.1096
+    },
+    {
+      "ts_code": "002484.SZ",
+      "name": "江海股份",
+      "industry": "元器件",
+      "sector_rank": 49,
+      "score": -0.0023014639939685903,
+      "close": 100.93,
+      "pct_chg": 6.8042
+    },
+    {
+      "ts_code": "002436.SZ",
+      "name": "兴森科技",
+      "industry": "元器件",
+      "sector_rank": 50,
+      "score": -0.002302105979032256,
+      "close": 50.23,
+      "pct_chg": 3.567
+    },
+    {
+      "ts_code": "300688.SZ",
+      "name": "创业黑马",
+      "industry": "文教休闲",
+      "sector_rank": 5,
+      "score": -0.002302759979739002,
+      "close": 28.62,
+      "pct_chg": 1.1307
+    },
+    {
+      "ts_code": "688759.SH",
+      "name": "必贝特",
+      "industry": "生物制药",
+      "sector_rank": 14,
+      "score": -0.002303357332916526,
+      "close": 32.39,
+      "pct_chg": 1.3772
+    },
+    {
+      "ts_code": "301326.SZ",
+      "name": "捷邦科技",
+      "industry": "元器件",
+      "sector_rank": 51,
+      "score": -0.0023035498673982598,
+      "close": 150.45,
+      "pct_chg": 6.5057
+    },
+    {
+      "ts_code": "000890.SZ",
+      "name": "法尔胜",
+      "industry": "环境保护",
+      "sector_rank": 2,
+      "score": -0.0023036400308488864,
+      "close": 8.46,
+      "pct_chg": -5.0505
+    },
+    {
+      "ts_code": "600226.SH",
+      "name": "亨通股份",
+      "industry": "供气供热",
+      "sector_rank": 1,
+      "score": -0.00230380227523953,
+      "close": 11.41,
+      "pct_chg": 10.0289
+    },
+    {
+      "ts_code": "603618.SH",
+      "name": "杭电股份",
+      "industry": "电气设备",
+      "sector_rank": 12,
+      "score": -0.0023049334358655454,
+      "close": 54.48,
+      "pct_chg": 3.1623
+    },
+    {
+      "ts_code": "300342.SZ",
+      "name": "天银机电",
+      "industry": "家用电器",
+      "sector_rank": 4,
+      "score": -0.0023051522792057345,
+      "close": 42.75,
+      "pct_chg": 2.1017
+    },
+    {
+      "ts_code": "300046.SZ",
+      "name": "台基股份",
+      "industry": "半导体",
+      "sector_rank": 100,
+      "score": -0.0023052131952478396,
+      "close": 33.3,
+      "pct_chg": -3.785
+    },
+    {
+      "ts_code": "302132.SZ",
+      "name": "中航成飞",
+      "industry": "航空",
+      "sector_rank": 11,
+      "score": -0.002305246632724973,
+      "close": 57.95,
+      "pct_chg": -0.7875
+    },
+    {
+      "ts_code": "600667.SH",
+      "name": "太极实业",
+      "industry": "半导体",
+      "sector_rank": 101,
+      "score": -0.0023053841148240966,
+      "close": 23.01,
+      "pct_chg": 9.9904
+    },
+    {
+      "ts_code": "301053.SZ",
+      "name": "远信工业",
+      "industry": "专用机械",
+      "sector_rank": 57,
+      "score": -0.002305408461129459,
+      "close": 45.08,
+      "pct_chg": 3.1107
+    },
+    {
+      "ts_code": "301123.SZ",
+      "name": "奕东电子",
+      "industry": "元器件",
+      "sector_rank": 52,
+      "score": -0.0023055784028188013,
+      "close": 121.33,
+      "pct_chg": 7.8681
+    },
+    {
+      "ts_code": "920181.BJ",
+      "name": "赛英电子",
+      "industry": "元器件",
+      "sector_rank": 53,
+      "score": -0.002305856608774338,
+      "close": 117.4,
+      "pct_chg": 5.7658
+    },
+    {
+      "ts_code": "300747.SZ",
+      "name": "锐科激光",
+      "industry": "专用机械",
+      "sector_rank": 58,
+      "score": -0.0023066737296683604,
+      "close": 52.83,
+      "pct_chg": -3.348
+    },
+    {
+      "ts_code": "600962.SH",
+      "name": "国投中鲁",
+      "industry": "软饮料",
+      "sector_rank": 2,
+      "score": -0.0023070698804180177,
+      "close": 23.96,
+      "pct_chg": -4.3895
+    },
+    {
+      "ts_code": "688300.SH",
+      "name": "联瑞新材",
+      "industry": "矿物制品",
+      "sector_rank": 3,
+      "score": -0.002308076089505185,
+      "close": 246.56,
+      "pct_chg": 3.1934
+    },
+    {
+      "ts_code": "688127.SH",
+      "name": "蓝特光学",
+      "industry": "元器件",
+      "sector_rank": 54,
+      "score": -0.0023082913067724226,
+      "close": 88.04,
+      "pct_chg": 4.3746
+    },
+    {
+      "ts_code": "002607.SZ",
+      "name": "中公教育",
+      "industry": "文教休闲",
+      "sector_rank": 6,
+      "score": -0.0023089109314544014,
+      "close": 1.86,
+      "pct_chg": -3.125
+    },
+    {
+      "ts_code": "002192.SZ",
+      "name": "融捷股份",
+      "industry": "小金属",
+      "sector_rank": 21,
+      "score": -0.002310029687387151,
+      "close": 93.39,
+      "pct_chg": 10.0
+    },
+    {
+      "ts_code": "002414.SZ",
+      "name": "高德红外",
+      "industry": "电器仪表",
+      "sector_rank": 20,
+      "score": -0.0023102540004800256,
+      "close": 13.9,
+      "pct_chg": 3.7313
+    },
+    {
+      "ts_code": "688239.SH",
+      "name": "航宇科技",
+      "industry": "航空",
+      "sector_rank": 12,
+      "score": -0.0023107076035642263,
+      "close": 58.36,
+      "pct_chg": 3.567
+    },
+    {
+      "ts_code": "688677.SH",
+      "name": "海泰新光",
+      "industry": "医疗保健",
+      "sector_rank": 5,
+      "score": -0.0023108485345935993,
+      "close": 112.76,
+      "pct_chg": -4.7313
+    },
+    {
+      "ts_code": "688469.SH",
+      "name": "芯联集成",
+      "industry": "半导体",
+      "sector_rank": 102,
+      "score": -0.0023113408228819894,
+      "close": 10.01,
+      "pct_chg": 6.3762
+    },
+    {
+      "ts_code": "688112.SH",
+      "name": "鼎阳科技",
+      "industry": "电器仪表",
+      "sector_rank": 21,
+      "score": -0.0023119489651874897,
+      "close": 71.13,
+      "pct_chg": 2.7
+    },
+    {
+      "ts_code": "301093.SZ",
+      "name": "华兰股份",
+      "industry": "医疗保健",
+      "sector_rank": 6,
+      "score": -0.0023119768581944243,
+      "close": 123.83,
+      "pct_chg": -4.0821
+    },
+    {
+      "ts_code": "603316.SH",
+      "name": "诚邦股份",
+      "industry": "建筑工程",
+      "sector_rank": 2,
+      "score": -0.0023121913984379358,
+      "close": 23.32,
+      "pct_chg": 7.0707
+    },
+    {
+      "ts_code": "002747.SZ",
+      "name": "埃斯顿",
+      "industry": "机械基件",
+      "sector_rank": 14,
+      "score": -0.0023122210341714536,
+      "close": 37.62,
+      "pct_chg": -1.6471
+    },
+    {
+      "ts_code": "300266.SZ",
+      "name": "兴源环境",
+      "industry": "环境保护",
+      "sector_rank": 3,
+      "score": -0.0023125987875680437,
+      "close": 1.85,
+      "pct_chg": -4.6392
+    },
+    {
+      "ts_code": "688709.SH",
+      "name": "成都华微",
+      "industry": "半导体",
+      "sector_rank": 103,
+      "score": -0.0023128158152450583,
+      "close": 36.0,
+      "pct_chg": 1.9253
+    },
+    {
+      "ts_code": "603306.SH",
+      "name": "华懋科技",
+      "industry": "汽车配件",
+      "sector_rank": 3,
+      "score": -0.002313308768850338,
+      "close": 116.12,
+      "pct_chg": 6.6397
+    },
+    {
+      "ts_code": "002176.SZ",
+      "name": "江特电机",
+      "industry": "小金属",
+      "sector_rank": 22,
+      "score": -0.0023136165592032368,
+      "close": 11.18,
+      "pct_chg": 2.5688
+    },
+    {
+      "ts_code": "301070.SZ",
+      "name": "开勒股份",
+      "industry": "机械基件",
+      "sector_rank": 15,
+      "score": -0.0023143966900756206,
+      "close": 86.93,
+      "pct_chg": 0.1498
+    },
+    {
+      "ts_code": "002855.SZ",
+      "name": "捷荣技术",
+      "industry": "元器件",
+      "sector_rank": 55,
+      "score": -0.002315148038143614,
+      "close": 10.0,
+      "pct_chg": -4.0307
+    },
+    {
+      "ts_code": "002506.SZ",
+      "name": "协鑫集成",
+      "industry": "电气设备",
+      "sector_rank": 13,
+      "score": -0.002315169401290341,
+      "close": 3.02,
+      "pct_chg": -0.33
+    },
+    {
+      "ts_code": "688079.SH",
+      "name": "美迪凯",
+      "industry": "元器件",
+      "sector_rank": 56,
+      "score": -0.0023152846229401026,
+      "close": 29.1,
+      "pct_chg": 1.0768
+    },
+    {
+      "ts_code": "688372.SH",
+      "name": "伟测科技",
+      "industry": "半导体",
+      "sector_rank": 104,
+      "score": -0.0023168370813403043,
+      "close": 164.88,
+      "pct_chg": 4.1632
+    },
+    {
+      "ts_code": "301678.SZ",
+      "name": "新恒汇",
+      "industry": "半导体",
+      "sector_rank": 105,
+      "score": -0.0023174741916636037,
+      "close": 60.25,
+      "pct_chg": -0.9046
+    },
+    {
+      "ts_code": "002896.SZ",
+      "name": "中大力德",
+      "industry": "机械基件",
+      "sector_rank": 16,
+      "score": -0.0023178946503328896,
+      "close": 76.87,
+      "pct_chg": -3.0521
+    },
+    {
+      "ts_code": "002527.SZ",
+      "name": "新时达",
+      "industry": "电器仪表",
+      "sector_rank": 22,
+      "score": -0.0023184313434968405,
+      "close": 13.89,
+      "pct_chg": 0.2888
+    },
+    {
+      "ts_code": "688595.SH",
+      "name": "芯海科技",
+      "industry": "半导体",
+      "sector_rank": 106,
+      "score": -0.002318556756692668,
+      "close": 40.3,
+      "pct_chg": -0.3955
+    },
+    {
+      "ts_code": "688248.SH",
+      "name": "南网科技",
+      "industry": "电气设备",
+      "sector_rank": 14,
+      "score": -0.0023193962103016407,
+      "close": 61.16,
+      "pct_chg": 5.303
+    },
+    {
+      "ts_code": "000504.SZ",
+      "name": "南华生物",
+      "industry": "医疗保健",
+      "sector_rank": 7,
+      "score": -0.002319545341765544,
+      "close": 7.89,
+      "pct_chg": -4.2476
+    },
+    {
+      "ts_code": "300657.SZ",
+      "name": "弘信电子",
+      "industry": "元器件",
+      "sector_rank": 57,
+      "score": -0.0023197316431765704,
+      "close": 44.26,
+      "pct_chg": 2.7629
+    }
+  ],
+  "core_stocks": [
+    {
+      "ts_code": "000592.SZ",
+      "name": "平潭发展",
+      "industry": "林业",
+      "industry_rank": "未上榜",
+      "score": 0.0014128805164501908,
+      "close": 6.95,
+      "pct_chg": -4.0055,
+      "ret_5d": -9.387222946544977,
+      "ma5_position": "下方",
+      "drawdown_20d": NaN,
+      "avg_amount_wan": 0
+    },
+    {
+      "ts_code": "002679.SZ",
+      "name": "福建金森",
+      "industry": "林业",
+      "industry_rank": "未上榜",
+      "score": 0.000987914159326217,
+      "close": 8.16,
+      "pct_chg": -5.3364,
+      "ret_5d": -5.664739884393065,
+      "ma5_position": "下方",
+      "drawdown_20d": NaN,
+      "avg_amount_wan": 0
+    },
+    {
+      "ts_code": "000663.SZ",
+      "name": "永安林业",
+      "industry": "林业",
+      "industry_rank": "未上榜",
+      "score": 0.0005775784528415863,
+      "close": 5.34,
+      "pct_chg": -4.6429,
+      "ret_5d": -4.982206405693955,
+      "ma5_position": "下方",
+      "drawdown_20d": NaN,
+      "avg_amount_wan": 0
+    },
+    {
+      "ts_code": "300857.SZ",
+      "name": "协创数据",
+      "industry": "IT设备",
+      "industry_rank": "第6名",
+      "score": 0.00031370638261238185,
+      "close": 340.19,
+      "pct_chg": 10.9918,
+      "ret_5d": 43.2378947368421,
+      "ma5_position": "上方",
+      "drawdown_20d": NaN,
+      "avg_amount_wan": 0
+    },
+    {
+      "ts_code": "920808.BJ",
+      "name": "曙光数创",
+      "industry": "IT设备",
+      "industry_rank": "第6名",
+      "score": 0.0002469807515921769,
+      "close": 82.96,
+      "pct_chg": 2.5464,
+      "ret_5d": 10.805396019767583,
+      "ma5_position": "上方",
+      "drawdown_20d": NaN,
+      "avg_amount_wan": 0
+    }
+  ]
+}

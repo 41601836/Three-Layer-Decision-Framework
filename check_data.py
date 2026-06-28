@@ -1,25 +1,18 @@
-import sqlite3
-conn = sqlite3.connect("db/stock_daily.db")
+# -*- coding: utf-8 -*-
+"""检查数据情况"""
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-print("=== 检查数据库表数据 ===")
-print("\n1. 600519.SH daily_basic 表（近3条）")
-for row in conn.execute("SELECT trade_date, circ_mv FROM daily_basic WHERE ts_code='600519.SH' ORDER BY trade_date DESC LIMIT 3"):
-    print(row)
+from win_rate_hunter.backtest_executor import BacktestExecutor
 
-print("\n2. 600519.SH daily_prices 最新收盘价")
-row = conn.execute("SELECT trade_date, close FROM daily_prices WHERE ts_code='600519.SH' ORDER BY trade_date DESC LIMIT 1").fetchone()
-print(row)
+executor = BacktestExecutor('20260101', '20260625')
+daily = executor.load_data()
 
-print("\n3. 600519.SH bak_basic 表（流通股本）")
-for row in conn.execute("SELECT trade_date, float_share FROM bak_basic WHERE ts_code='600519.SH' ORDER BY trade_date DESC LIMIT 1"):
-    print(row)
-
-print("\n4. industry_rank 表（前5条）")
-for row in conn.execute("SELECT * FROM industry_rank LIMIT 5"):
-    print(row)
-
-print("\n5. stock_list 表 600519.SH 的行业")
-row = conn.execute("SELECT industry FROM stock_list WHERE ts_code='600519.SH'").fetchone()
-print(row)
-
-conn.close()
+print('数据时间范围:', daily['trade_date'].min(), '到', daily['trade_date'].max())
+print('数据列:', daily.columns.tolist())
+print('样本数:', len(daily))
+print('\n数据前5行:')
+print(daily.head())
+print('\nwinner_rate统计:')
+print(daily['winner_rate'].describe())

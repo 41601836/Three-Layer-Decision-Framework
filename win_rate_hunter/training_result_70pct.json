@@ -1,0 +1,79 @@
+{
+  "target_win_rate": 0.7,
+  "achieved_win_rate": 0.75,
+  "best_strategy": {
+    "name": "Strategy_0119",
+    "factors": [
+      "pb",
+      "ret_20d",
+      "circ_mv_yi",
+      "winner_rate"
+    ],
+    "weights": [
+      0.6089287255077933,
+      1.4769087849926712,
+      0.6094302400212867,
+      0.9683650928247821
+    ],
+    "thresholds": {
+      "pb": 0.65,
+      "ret_20d": 0.60,
+      "circ_mv_yi": 0.42,
+      "winner_rate": 0.28
+    },
+    "hold_days": 10,
+    "generation": 0
+  },
+  "backtest_result": {
+    "win_rate": 0.75,
+    "total_return": 0.20000277284220047,
+    "max_drawdown": 0.049824678653824894,
+    "signal_count": 73,
+    "trade_count": 12,
+    "execution_time": 0.48025083541870117,
+    "status": "success"
+  },
+  "training_history": [
+    {
+      "generation": 1,
+      "win_rate": 0.44751381215469616,
+      "total_return": -0.2953885477979431,
+      "max_drawdown": 0.9987080419053099,
+      "signal_count": 1620,
+      "trade_count": 543
+    },
+    {
+      "generation": 2,
+      "win_rate": 0.45,
+      "total_return": -0.051879642463517284,
+      "max_drawdown": 0.2533065757564399,
+      "signal_count": 155,
+      "trade_count": 20
+    },
+    {
+      "generation": 3,
+      "win_rate": 0.5,
+      "total_return": 0.027877750124137846,
+      "max_drawdown": 0.023681510993790233,
+      "signal_count": 31,
+      "trade_count": 6
+    },
+    {
+      "generation": 4,
+      "win_rate": 0.6923076923076923,
+      "total_return": 0.14470573295350997,
+      "max_drawdown": 0.04982467865382478,
+      "signal_count": 80,
+      "trade_count": 13
+    },
+    {
+      "generation": 5,
+      "win_rate": 0.75,
+      "total_return": 0.20000277284220047,
+      "max_drawdown": 0.049824678653824894,
+      "signal_count": 73,
+      "trade_count": 12
+    }
+  ],
+  "timestamp": "2026-06-27 09:40:48"
+}

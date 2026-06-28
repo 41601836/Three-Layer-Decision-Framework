@@ -1,0 +1,108 @@
+{
+  "strategy_type": "stage_based",
+  "skip_stage3": true,
+  "stage1_strategy": {
+    "name": "Strategy_0019",
+    "factors": [
+      "net_main_intensity",
+      "pb",
+      "roe"
+    ],
+    "weights": [
+      1.8122779779355322,
+      1.9712459102877844,
+      0.9783541665043058
+    ],
+    "thresholds": {
+      "net_main_intensity": 0.4857067717681688,
+      "pb": 0.769544372114973,
+      "roe": 0.5925966566263771
+    },
+    "hold_days": 12,
+    "generation": 0
+  },
+  "stage2_strategy": {
+    "name": "Strategy_0012",
+    "factors": [
+      "vol_ratio_5d",
+      "roe",
+      "pb"
+    ],
+    "weights": [
+      0.9043390621174796,
+      0.7519513739789295,
+      1.0733073940364974
+    ],
+    "thresholds": {
+      "vol_ratio_5d": 0.6572912011629712,
+      "roe": 0.45982938377235055,
+      "pb": 0.21715739382375493
+    },
+    "hold_days": 11,
+    "generation": 0
+  },
+  "stage3_strategy": {
+    "name": "Strategy_0026",
+    "factors": [
+      "pct_chg",
+      "winner_rate",
+      "ret_20d",
+      "roe",
+      "circ_mv_yi"
+    ],
+    "weights": [
+      1.7886752797300391,
+      0.8732107068657426,
+      1.0980776121326477,
+      1.5491257765392108,
+      1.100549460526649
+    ],
+    "thresholds": {
+      "pct_chg": 0.4567787986500613,
+      "winner_rate": 0.592123986907196,
+      "ret_20d": 0.7483210388707908,
+      "roe": 0.48039942861772567,
+      "circ_mv_yi": 0.6559198024645545
+    },
+    "hold_days": 11,
+    "generation": 0
+  },
+  "backtest_result": {
+    "win_rate": 0.6756756756756757,
+    "total_return": 1.5972555868862193,
+    "max_drawdown": 0.1591797526296056,
+    "signal_count": 1021.0,
+    "trade_count": 74,
+    "status": "success"
+  },
+  "stage_results": {
+    "stage1": {
+      "win_rate": 0.6712328767123288,
+      "total_return": 1.4284808556084143,
+      "max_drawdown": 0.1591797526296056,
+      "signal_count": 1020,
+      "trade_count": 73,
+      "execution_time": 0.18488001823425293,
+      "status": "success"
+    },
+    "stage2": {
+      "win_rate": 1.0,
+      "total_return": 0.06949806949806958,
+      "max_drawdown": 0.0,
+      "signal_count": 1,
+      "trade_count": 1,
+      "execution_time": 0.38947582244873047,
+      "status": "success"
+    },
+    "stage3": {
+      "win_rate": 0.5333333333333333,
+      "total_return": -0.2883223204813139,
+      "max_drawdown": 0.24687380599639108,
+      "signal_count": 111,
+      "trade_count": 15,
+      "execution_time": 0.2812230587005615,
+      "status": "success"
+    }
+  },
+  "timestamp": "2026-06-27 14:59:14"
+}

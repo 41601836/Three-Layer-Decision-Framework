@@ -53,19 +53,26 @@ StockAI Funnel 是一个运行在本地的 A 股智能分析系统，核心设�
 
 ```
 StockAI/
-├── main.py                  # 三层漏斗主程序（v4.0）
-├── filter_engine.py         # 第一层：Python 硬过滤 + 评分引擎
-├── web_server.py            # FastAPI Web 控制台后端
+├── main.py                  # 漏斗系统旧版主调度程序
+├── filter_engine.py         # 旧版评分与筛选引擎
+├── web_server.py            # FastAPI Web 控制台后端（调用新决策框架）
 ├── config.py                # 全局参数配置
 ├── create_indexes.py        # 数据库索引初始化（首次运行必须执行）
-├── analyze_stock.py         # 单股深度分析工具
+├── analyze_stock.py         # 单股深度分析与 AI 信心诊断工具
+├── trade_plan.py            # 交易计划生成模块 (止损、仓位及买入区间)
 ├── start.bat                # 一键启动脚本（Windows）
 ├── requirements.txt         # Python 依赖
 │
+├── decision_framework/      # ★ 三层决策新框架（系统主力推荐核心）
+│   ├── workflow_total.py    # 顶层全流程总调度入口 (TotalWorkflow)
+│   ├── macro_*.py           # 第一层：宏观环境诊断打分、盘中修正与否决
+│   ├── board_*.py           # 第二层：板块强弱、主线风格、轮动与虹吸风控
+│   └── stock_*.py           # 第三层：个股技术过滤、量化评分与交易执行
+│
 ├── scripts/
 │   ├── scheduler.py         # 定时调度器（4个交易日时间点）
-│   ├── ai_report.py         # 第二层：Ollama AI 报告生成
-│   ├── feishu_bot.py        # 第三层：飞书交互卡片推送（v3.0）
+│   ├── ai_report.py         # Ollama AI 报告生成
+│   ├── feishu_bot.py        # 飞书交互卡片推送
 │   ├── scanner.py           # 全市场扫描引擎
 │   ├── fetch_daily.py       # Tushare 数据拉取
 │   ├── tokens.example.py    # API 密钥模板（复制为 tokens.py 后填写）
@@ -77,6 +84,11 @@ StockAI/
 └── db/                      # SQLite 数据库（本地，已 gitignore）
     └── stock_daily.db
 ```
+
+### 💡 架构设计与系统入口说明
+项目目前支持两套核心流转调度逻辑，开发者和使用者可根据需求选择：
+1.  **三层决策新框架（推荐）**：以 `decision_framework/workflow_total.py` 为总入口，严密串联了「宏观诊断 -> 板块轮动 -> 个股执行」的深度决策链。此框架作为最新的顶层调度，已深度整合至 `web_server.py` 的 Web API 中。
+2.  **漏斗式旧系统**：以根目录的 `main.py` 为入口，采用最原始的硬打分漏斗逻辑，只进行“过滤-评分-Ollama AI 分析”链路，主要用于进行轻量级的个股硬筛选。
 
 ---
 

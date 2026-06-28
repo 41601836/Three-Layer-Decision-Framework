@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>量化决策系统 - ML策略(v4.0)</title>
+    <!-- 外部CDN资源 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <!-- SheetJS Excel 导出库 -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+    <!-- 本地公共样式 -->
+    <link rel="stylesheet" href="css/common.css">
+    <style>
+        .signal-badge-ml {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            display: inline-block;
+        }
+        .signal-badge-ml.active {
+            background-color: rgba(14, 165, 233, 0.2);
+            color: #38bdf8;
+            border: 1px solid rgba(14, 165, 233, 0.4);
+        }
+        .signal-badge-ml.inactive {
+            background-color: rgba(255, 255, 255, 0.05);
+            color: #64748b;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .prob-bar-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .prob-bar {
+            height: 6px;
+            background: linear-gradient(90deg, #0ea5e9 0%, #38bdf8 100%);
+            border-radius: 3px;
+        }
+        .prob-bar.high {
+            background: linear-gradient(90deg, #10b981 0%, #34d399 100%);
+        }
+        .prob-bar.low {
+            background: linear-gradient(90deg, #ef4444 0%, #f87171 100%);
+        }
+        .trend-chart-box {
+            background-color: #1e293b;
+            border-radius: 8px;
+            border: 1px solid #334155;
+            padding: 16px;
+        }
+    </style>
+</head>
+<body>
+<!-- 左侧固定侧边栏 -->
+<div class="sidebar">
+    <h4 class="text-center text-white mb-4 pt-2">量化决策系统</h4>
+    <nav class="nav flex-column">
+        <a href="index.html" class="nav-link">📊 总控仪表盘</a>
+        <a href="macro.html" class="nav-link">📈 宏观诊断</a>
+        <a href="board.html" class="nav-link">🏷️ 板块分析</a>
+        <a href="stock.html" class="nav-link">📋 个股交易</a>
+        <a href="ml_strategy.html" class="nav-link">🧠 ML策略(v4.0)</a>
+        <a href="backtest.html" class="nav-link">📈 策略回测</a>
+        <a href="system.html" class="nav-link">⚙️ 系统设置</a>
+    </nav>
+</div>
+
+<!-- 顶部状态栏 -->
+<div class="top-bar">
+    <div class="system-info">
+        <span>系统状态：<span class="text-success">运行正常</span></span>
+        <span class="ms-4">选股引擎：<span class="text-info">集成二分类集成模型 (LGBM+RF+GBDT+LR)</span></span>
+    </div>
+    <div class="operate-group">
+        <button id="runMLScanBtn" class="btn btn-primary">🧠 执行 ML 选股扫描</button>
+        <span id="loadingTip" class="text-warning ms-2 d-none"></span>
+    </div>
+</div>
+
+<!-- 右侧主内容区 -->
+<div class="main-content">
+    <div class="row g-4">
+        <!-- 模块1：今日策略选股候选池 -->
+        <div class="col-lg-8">
+            <div class="card h-100 mb-0">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span>🧠 v4.0 机器学习选股候选池 (今日推荐)</span>
+                    <button id="exportMLTableBtn" class="btn btn-sm btn-outline-success" disabled>📥 导出Excel</button>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-dark table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th>股票代码</th>
+                                    <th>股票名称</th>
+                                    <th>二分类预测概率 (Score)</th>
+                                    <th>左侧信号</th>
+                                    <th>右侧确认</th>
+                                    <th>信号状态</th>
+                                    <th>更新时间</th>
+                                </tr>
+                            </thead>
+                            <tbody id="mlTableBody">
+                                <tr>
+                                    <td colspan="7" class="text-center">点击右上角【执行 ML 选股扫描】拉取最新模型决策数据</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 模块2：个股机器学习诊断组件 -->
+        <div class="col-lg-4">
+            <div class="card h-100 mb-0">
+                <div class="card-header">🔍 个股多维机器学习诊断</div>
+                <div class="card-body">
+                    <div class="input-group mb-3">
+                        <input type="text" id="diagTsCode" class="form-control bg-dark text-white border-secondary" placeholder="示例: 300127.SZ" value="300127.SZ">
+                        <button class="btn btn-outline-primary" type="button" id="diagBtn">开始诊断</button>
+                    </div>
+
+                    <div id="diagResultBox" class="d-none">
+                        <div class="mb-4">
+                            <h5 id="diagStockName" class="text-white mb-1">--</h5>
+                            <span id="diagStockCode" class="text-muted-weak font-mono">--</span>
+                        </div>
+                        
+                        <!-- 得分雷达仪表盘 -->
+                        <div class="mb-3">
+                            <label class="text-muted font-weight-500 mb-2">模型综合概率评分</label>
+                            <div class="prob-bar-container">
+                                <div class="flex-grow-1 bg-dark" style="height: 6px; border-radius:3px; overflow:hidden;">
+                                    <div id="diagScoreBar" class="prob-bar" style="width: 0%"></div>
+                                </div>
+                                <span id="diagScoreVal" class="text-white font-weight-700">0.00%</span>
+                            </div>
+                        </div>
+
+                        <!-- 信号详情 -->
+                        <div class="row g-2 mb-4">
+                            <div class="col-6">
+                                <div class="p-3 bg-dark rounded border border-secondary text-center">
+                                    <div class="text-muted mb-1" style="font-size:12px;">左侧抄底信号</div>
+                                    <span id="diagLeftSignal" class="signal-badge-ml inactive">未触发</span>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="p-3 bg-dark rounded border border-secondary text-center">
+                                    <div class="text-muted mb-1" style="font-size:12px;">右侧趋势确认</div>
+                                    <span id="diagRightSignal" class="signal-badge-ml inactive">未触发</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="text-muted font-weight-500 mb-2">30交易日模型评分走势</label>
+                            <div id="diagTrendChart" style="height: 180px;"></div>
+                        </div>
+
+                        <div class="alert alert-dark border-secondary mb-0" role="alert">
+                            <h6 class="alert-heading text-warning">🤖 量化诊断决策</h6>
+                            <p id="diagDecisionTip" class="mb-0 text-muted-weak" style="font-size:13px; line-height: 1.5;"></p>
+                        </div>
+                    </div>
+                    <div id="diagEmptyTip" class="text-center py-5 text-muted">
+                        请输入股票代码并点击【开始诊断】
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 引入公共脚本 -->
+<script src="js/api.js"></script>
+<script src="js/common.js"></script>
+
+<script>
+    let trendChart = null;
+
+    $(function () {
+        // 导航自动高亮
+        try { if(window.activateNav) activateNav(); } catch(e){}
+
+        // 选股扫描点击
+        $('#runMLScanBtn').on('click', function () {
+            runScan();
+        });
+
+        // 诊断按钮点击
+        $('#diagBtn').on('click', function () {
+            runDiag();
+        });
+
+        // 导出 Excel
+        $('#exportMLTableBtn').on('click', function () {
+            exportMLTableToExcel();
+        });
+
+        // 窗口尺寸自适应
+        window.addEventListener('resize', function () {
+            if (trendChart) trendChart.resize();
+        });
+    });
+
+    /**
+     * 运行机器学习扫描
+     */
+    function runScan() {
+        $('#loadingTip').removeClass('d-none').text('正在拉取最新的 ML 选股数据...');
+        $('#runMLScanBtn').prop('disabled', true);
+        
+        api.runMLScan(function (res) {
+            $('#loadingTip').addClass('d-none').text('');
+            $('#runMLScanBtn').prop('disabled', false);
+
+            if (!res) {
+                showTip('接口无返回内容', 'error');
+                return;
+            }
+            if (res.status !== 'success') {
+                showTip('选股执行失败: ' + (res.detail || '未知错误'), 'error');
+                return;
+            }
+
+            renderMLTable(res.candidates || []);
+            showTip(`✅ 成功筛选出 ${res.count || 0} 只强特征标的`, 'success');
+        });
+    }
+
+    /**
+     * 渲染今日推荐选股表格
+     */
+    function renderMLTable(candidates) {
+        let html = '';
+        if (candidates.length === 0) {
+            html = '<tr><td colspan="7" class="text-center text-warning">今日未筛选出符合强特征指标的标的</td></tr>';
+            $('#exportMLTableBtn').prop('disabled', true);
+        } else {
+            candidates.forEach(c => {
+                const leftBadge = c.left_signal ? '<span class="signal-badge-ml active">触发</span>' : '<span class="signal-badge-ml inactive">未触发</span>';
+                const rightBadge = c.right_signal ? '<span class="signal-badge-ml active">确认</span>' : '<span class="signal-badge-ml inactive">未触发</span>';
+                const signalText = c.signal_type === 'none' ? '无信号' : c.signal_type;
+                const scorePercent = (c.score * 100).toFixed(2) + '%';
+                
+                // 判断颜色
+                let scoreClass = 'low';
+                if(c.score >= 0.55) scoreClass = 'high';
+                
+                html += `
+                <tr>
+                    <td class="font-mono text-info" style="cursor:pointer;" onclick="diagCode('${c.ts_code}')">${c.ts_code}</td>
+                    <td class="font-bold">${c.name || '--'}</td>
+                    <td>
+                        <div class="prob-bar-container">
+                            <div class="flex-grow-1 bg-dark" style="height: 6px; border-radius:3px; overflow:hidden;">
+                                <div class="prob-bar ${scoreClass}" style="width: ${c.score * 100}%"></div>
+                            </div>
+                            <span class="font-weight-700 text-white">${scorePercent}</span>
+                        </div>
+                    </td>
+                    <td>${leftBadge}</td>
+                    <td>${rightBadge}</td>
+                    <td><span class="badge ${c.score >= 0.55 ? 'bg-success' : 'bg-secondary'}">${signalText}</span></td>
+                    <td class="font-mono text-muted">${c.created_at || '--'}</td>
+                </tr>
+                `;
+            });
+            $('#exportMLTableBtn').prop('disabled', false);
+        }
+        $('#mlTableBody').html(html);
+    }
+
+    /**
+     * 在表格中点击代码直接开始诊断
+     */
+    function diagCode(code) {
+        $('#diagTsCode').val(code);
+        runDiag();
+    }
+
+    /**
+     * 对个股进行深度诊断
+     */
+    function runDiag() {
+        const code = $('#diagTsCode').val().trim().toUpperCase();
+        if (!code) {
+            showTip('请输入正确的股票代码', 'warning');
+            return;
+        }
+
+        // 统一后缀支持，允许输入300127等
+        let formattedCode = code;
+        if (!formattedCode.includes('.')) {
+            if (formattedCode.startsWith('60') || formattedCode.startsWith('68')) {
+                formattedCode += '.SH';
+            } else {
+                formattedCode += '.SZ';
+            }
+        }
+
+        $('#diagEmptyTip').text('正在深入分析个股的多维指标与ML模型共振状态...');
+        
+        api.getMLSignal(formattedCode, function (res) {
+            if (!res || res.code !== 200) {
+                $('#diagEmptyTip').text('获取个股模型预测信号失败: ' + ((res && res.msg) || '未知错误'));
+                $('#diagResultBox').addClass('d-none');
+                return;
+            }
+
+            const data = res.data || {};
+            const history = data.history || [];
+            
+            if (history.length === 0) {
+                $('#diagEmptyTip').text(`个股 ${formattedCode} 近期没有模型特征评分记录，可能不属于策略监控池或数据不全。`);
+                $('#diagResultBox').addClass('d-none');
+                return;
+            }
+
+            // 成功拉取，开始渲染
+            $('#diagEmptyTip').addClass('d-none');
+            $('#diagResultBox').removeClass('d-none');
+
+            const latest = history[0];
+            $('#diagStockName').text(data.name || '未知');
+            $('#diagStockCode').text(latest.ts_code);
+
+            const scorePercent = (latest.score * 100).toFixed(2);
+            $('#diagScoreVal').text(scorePercent + '%');
+            
+            const bar = $('#diagScoreBar');
+            bar.css('width', scorePercent + '%');
+            bar.removeClass('high low');
+            if (latest.score >= 0.55) {
+                bar.addClass('high');
+            } else {
+                bar.addClass('low');
+            }
+
+            // 左右侧信号
+            const leftEl = $('#diagLeftSignal');
+            leftEl.removeClass('active inactive');
+            if (latest.left_signal) {
+                leftEl.addClass('active').text('触发');
+            } else {
+                leftEl.addClass('inactive').text('未触发');
+            }
+
+            const rightEl = $('#diagRightSignal');
+            rightEl.removeClass('active inactive');
+            if (latest.right_signal) {
+                rightEl.addClass('active').text('确认');
+            } else {
+                rightEl.addClass('inactive').text('未触发');
+            }
+
+            // 投资决策判断
+            let tip = '';
+            if (latest.score >= 0.55) {
+                tip = `当前个股模型多因子打分为 <strong>${scorePercent}%</strong>，处于强势多头区域。`;
+                if (latest.right_signal) {
+                    tip += '同时<strong>右侧趋势买入确认信号已触发</strong>，属高胜率介入点。建议配合 ATR 自适应止损控制在阻力下方。';
+                } else if (latest.left_signal) {
+                    tip += '<strong>左侧超跌机会信号触发</strong>，可作为防御性打底仓位。';
+                } else {
+                    tip += '当前尚未产生具体买入指令信号，可放入自选跟踪。';
+                }
+            } else {
+                tip = `当前个股模型多因子打分为 <strong>${scorePercent}%</strong>（低于买入阈值 55.0%），共振强度较弱。`;
+                tip += ' 触发<strong>【弱信号，过滤】</strong>决策，处于安全防御区间，不建议盲目介入。';
+            }
+            $('#diagDecisionTip').html(tip);
+
+            // 渲染走势图表
+            renderTrendChart(history);
+        });
+    }
+
+    /**
+     * 绘制模型评分 30 天走势图
+     */
+    function renderTrendChart(history) {
+        if (!trendChart) {
+            trendChart = echarts.init(document.getElementById('diagTrendChart'));
+        }
+
+        const dates = [];
+        const scores = [];
+
+        // 倒序排列历史数据以从左向右画图
+        const reversedHistory = [...history].reverse();
+        reversedHistory.forEach(h => {
+            dates.push(h.trade_date.slice(4, 6) + '-' + h.trade_date.slice(6, 8)); // 转换为 MM-DD
+            scores.push((h.score * 100).toFixed(2));
+        });
+
+        const option = {
+            grid: {
+                top: 20,
+                bottom: 25,
+                left: 45,
+                right: 15
+            },
+            tooltip: {
+                trigger: 'axis',
+                formatter: '{b}: {c}%',
+                backgroundColor: '#1e293b',
+                borderColor: '#334155',
+                textStyle: { color: '#e2e8f0' }
+            },
+            xAxis: {
+                type: 'category',
+                data: dates,
+                axisLine: { lineStyle: { color: '#475569' } },
+                axisLabel: { color: '#94a3b8', fontSize: 10 }
+            },
+            yAxis: {
+                type: 'value',
+                min: 0,
+                max: 100,
+                axisLine: { lineStyle: { color: '#475569' } },
+                axisLabel: { formatter: '{value}%', color: '#94a3b8', fontSize: 9 },
+                splitLine: { lineStyle: { color: 'rgba(255,255,255,0.03)' } }
+            },
+            series: [{
+                data: scores,
+                type: 'line',
+                smooth: true,
+                symbol: 'circle',
+                symbolSize: 6,
+                itemStyle: { color: '#0ea5e9' },
+                lineStyle: { width: 2.5, color: '#0ea5e9' },
+                areaStyle: {
+                    color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                        { offset: 0, color: 'rgba(14, 165, 233, 0.25)' },
+                        { offset: 1, color: 'rgba(14, 165, 233, 0)' }
+                    ])
+                },
+                markLine: {
+                    symbol: ['none', 'none'],
+                    label: {
+                        formatter: '买入线(55%)',
+                        position: 'insideEndTop',
+                        color: 'rgba(239, 68, 68, 0.6)',
+                        fontSize: 9
+                    },
+                    lineStyle: {
+                        color: 'rgba(239, 68, 68, 0.4)',
+                        type: 'dashed'
+                    },
+                    data: [{ yAxis: 55 }]
+                }
+            }]
+        };
+
+        trendChart.setOption(option);
+    }
+
+    /**
+     * 将选股表格导出至 Excel
+     */
+    function exportMLTableToExcel() {
+        const rows = [];
+        const headers = ['股票代码', '股票名称', '模型预测概率', '左侧信号', '右侧确认', '信号状态', '扫描时间'];
+        
+        $('#mlTableBody tr').each(function () {
+            const cells = $(this).find('td');
+            if (cells.length === 7) {
+                rows.push([
+                    cells.eq(0).text().trim(),
+                    cells.eq(1).text().trim(),
+                    cells.eq(2).find('.font-weight-700').text().trim(),
+                    cells.eq(3).text().trim(),
+                    cells.eq(4).text().trim(),
+                    cells.eq(5).text().trim(),
+                    cells.eq(6).text().trim()
+                ]);
+            }
+        });
+
+        if (rows.length === 0) {
+            showTip('暂无数据可导出', 'warning');
+            return;
+        }
+
+        try {
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+            ws['!cols'] = [{ wch: 12 }, { wch: 12 }, { wch: 15 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 18 }];
+            XLSX.utils.book_append_sheet(wb, ws, 'ML策略推荐');
+            
+            const today = new Date();
+            const dateStr = today.getFullYear() + 
+                            String(today.getMonth() + 1).padStart(2, '0') + 
+                            String(today.getDate()).padStart(2, '0');
+            const filename = `${dateStr.slice(0, 4)}-${dateStr.slice(4, 6)}-${dateStr.slice(6, 8)}_v4.0机器学习推荐股票.xlsx`;
+            XLSX.writeFile(wb, filename);
+            
+            showTip('导出成功：' + filename, 'success');
+        } catch (e) {
+            showTip('导出失败：' + e.message, 'error');
+        }
+    }
+</script>
+</body>
+</html>

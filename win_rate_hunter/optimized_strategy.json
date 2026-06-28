@@ -1,0 +1,27 @@
+{
+  "name": "Opt_Strategy",
+  "factors": [
+    "pb",
+    "ret_20d",
+    "circ_mv_yi",
+    "winner_rate"
+  ],
+  "weights": [
+    1.0,
+    1.0,
+    1.0,
+    1.0
+  ],
+  "thresholds": {
+    "pb": 0.6784690676150711,
+    "ret_20d": 0.6664327174629221,
+    "circ_mv_yi": 0.4313466942033246,
+    "winner_rate": 0.23735679428337217
+  },
+  "hold_days": 10,
+  "generation": 0,
+  "backtest_result": {
+    "win_rate": 0.43217665615141954,
+    "total_return": -0.7377901647681908,
+    "max_drawdown": 0.8954308387987541,
+    "signal_count": 

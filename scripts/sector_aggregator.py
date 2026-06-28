@@ -40,7 +40,9 @@ def sync_concept_mapping():
         config_path = os.path.join(ROOT_DIR, "config.json")
         with open(config_path, "r", encoding="utf-8") as f:
             cfg = json.load(f)
-        ts.set_token(cfg.get("tushare_token", ""))
+        # 从 api 子对象中获取 token
+        tushare_token = cfg.get("api", {}).get("tushare_token", "")
+        ts.set_token(tushare_token)
         pro = ts.pro_api()
 
         df_concept = pro.concept()
@@ -95,7 +97,44 @@ def aggregate_sector_daily(trade_date: str):
     finally:
         conn.close()
 
+def parse_args():
+    import argparse
+    parser = argparse.ArgumentParser(description="板块聚合器")
+    parser.add_argument("--date", default=datetime.now().strftime("%Y%m%d"), help="交易日期 YYYYMMDD")
+    return parser.parse_args()
+
 if __name__ == "__main__":
-    sync_concept_mapping()
-    # 聚合当天的例子
-    # aggregate_sector_daily("20260617")
+    args = parse_args()
+    trade_date = args.date
+    
+    # 跳过概念分类同步（Tushare 接口问题），直接使用行业分类进行聚合
+    log.info(f"跳过概念分类同步，直接聚合 {trade_date} 的行业数据...")
+    
+    # 使用行业分类进行聚合
+    conn = get_db_conn()
+    try:
+        sql = """
+        INSERT OR REPLACE INTO industry_rank
+        (calc_date, industry, composite_score, net_mf_amount, stock_count, avg_pct_chg, tier)
+        SELECT 
+            d.trade_date as calc_date,
+            s.industry,
+            AVG(d.pct_chg) as composite_score,
+            SUM(COALESCE(m.net_mf_amount, 0)) / 10000.0 as net_mf_amount,
+            COUNT(DISTINCT d.ts_code) as stock_count,
+            AVG(d.pct_chg) as avg_pct_chg,
+            'main' as tier
+        FROM stock_list s
+        JOIN daily_prices d ON s.ts_code = d.ts_code
+        LEFT JOIN moneyflow m ON d.ts_code = m.ts_code AND d.trade_date = m.trade_date
+        WHERE d.trade_date = ? AND s.industry IS NOT NULL AND s.industry != ''
+        GROUP BY d.trade_date, s.industry
+        ORDER BY avg_pct_chg DESC
+        """
+        conn.execute(sql, (trade_date,))
+        conn.commit()
+        log.info(f"✅ {trade_date} 行业聚合计算完成，已入库。")
+    except Exception as e:
+        log.error(f"行业聚合失败: {e}")
+    finally:
+        conn.close()

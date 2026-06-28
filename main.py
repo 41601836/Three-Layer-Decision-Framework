@@ -133,6 +133,9 @@ def check_ollama(exit_on_fail: bool = True) -> bool:
 
     check_url = f"{OLLAMA_HOST}/api/tags"
     _cprint(_BOLD, f"[健康检查] 正在 ping Ollama ({check_url})...")
+    
+    # 在 try 块之前定义 target_model，避免异常时未定义
+    target_model = AI_CONFIG.get("model", "qwen2.5:1.5b")
 
     try:
         resp = requests.get(check_url, timeout=2)
@@ -141,7 +144,6 @@ def check_ollama(exit_on_fail: bool = True) -> bool:
 
         # 检查模型是否已加载（/api/tags 返回 {"models": [...]}）
         models = [m.get("name", "") for m in data.get("models", [])]
-        target_model = AI_CONFIG.get("model", "qwen2.5:1.5b")
 
         if not models:
             _cprint(_YELLOW, f"  ⚠️  Ollama 已启动但尚未加载任何模型")
@@ -661,9 +663,23 @@ def push_to_feishu(
         try:
             from scripts.feishu_bot import send_market_summary_card, send_sector_summary_card
             
-            # 大盘指数（由于缺少 daily_index 表，计算全市场总成交额）
+            # 大盘指数（从数据库获取上证指数数据）
             sh_index = 3000.0
             sh_pct = 0.0
+            
+            # 尝试从 daily_prices 获取上证指数数据（000001.SH）
+            sh_row = conn.execute(f"SELECT close, pct_chg FROM daily_prices WHERE ts_code='000001.SH' AND trade_date='{trade_date}'").fetchone()
+            if sh_row and sh_row[0]:
+                sh_index = sh_row[0]
+                sh_pct = sh_row[1] if sh_row[1] else 0.0
+            else:
+                # 尝试获取最新可用的上证指数数据
+                sh_row = conn.execute("SELECT close, pct_chg, trade_date FROM daily_prices WHERE ts_code='000001.SH' ORDER BY trade_date DESC LIMIT 1").fetchone()
+                if sh_row and sh_row[0]:
+                    sh_index = sh_row[0]
+                    sh_pct = sh_row[1] if sh_row[1] else 0.0
+                    log.warning(f"⚠️ 上证指数 {trade_date} 数据缺失，使用最新可用数据 {sh_row[2]}")
+            
             total_amount_row = conn.execute(f"SELECT SUM(amount) FROM daily_prices WHERE trade_date='{trade_date}'").fetchone()
             turnover = (total_amount_row[0] / 100000) if total_amount_row and total_amount_row[0] else 0.0
             
@@ -675,12 +691,44 @@ def push_to_feishu(
             limit_up_count = counts[3] if counts and counts[3] else 0
             limit_down_count = counts[4] if counts and counts[4] else 0
             
-            # 板块排行
+            # 板块排行（包含5日/10日/20日涨幅）
             try:
-                sectors = conn.execute("SELECT industry, composite_score FROM industry_rank WHERE tier='main' ORDER BY composite_score DESC LIMIT 3").fetchall()
-            except Exception:
-                sectors = []
-            main_sectors = [{"name": s[0], "current": s[1], "sum_5": 0, "sum_10": 0, "sum_20": 0} for s in sectors]
+                # 获取当日行业数据
+                today_sectors = conn.execute("SELECT industry, avg_pct_chg, net_mf_amount, stock_count FROM industry_rank WHERE calc_date=? ORDER BY avg_pct_chg DESC", (trade_date,)).fetchall()
+                
+                main_sectors = []
+                for industry, current, net_mf, stock_count in today_sectors[:3]:
+                    # 计算5日涨幅
+                    sum_5 = conn.execute("""
+                        SELECT AVG(avg_pct_chg) FROM industry_rank 
+                        WHERE industry=? AND calc_date >= ? 
+                        ORDER BY calc_date DESC LIMIT 5
+                    """, (industry, trade_date)).fetchone()[0] or 0
+                    
+                    # 计算10日涨幅
+                    sum_10 = conn.execute("""
+                        SELECT AVG(avg_pct_chg) FROM industry_rank 
+                        WHERE industry=? AND calc_date >= ? 
+                        ORDER BY calc_date DESC LIMIT 10
+                    """, (industry, trade_date)).fetchone()[0] or 0
+                    
+                    # 计算20日涨幅
+                    sum_20 = conn.execute("""
+                        SELECT AVG(avg_pct_chg) FROM industry_rank 
+                        WHERE industry=? AND calc_date >= ? 
+                        ORDER BY calc_date DESC LIMIT 20
+                    """, (industry, trade_date)).fetchone()[0] or 0
+                    
+                    main_sectors.append({
+                        "name": industry,
+                        "current": current,
+                        "sum_5": sum_5,
+                        "sum_10": sum_10,
+                        "sum_20": sum_20
+                    })
+            except Exception as e:
+                log.error(f"获取板块数据失败: {e}")
+                main_sectors = []
             
             send_market_summary_card(
                 trade_date=trade_date,
@@ -697,7 +745,24 @@ def push_to_feishu(
             )
             time.sleep(0.5)
             
-            sector_data = [{"name": s[0], "limit_up_count": 0, "consecutive_count": 0, "signal_count": 0, "money_flow": s[1]} for s in sectors]
+            # 板块热力图数据
+            sector_data = []
+            for industry, current, net_mf, stock_count in today_sectors[:10]:
+                # 计算该行业的涨停数
+                limit_up_count = conn.execute("""
+                    SELECT COUNT(*) FROM daily_prices d
+                    JOIN stock_list s ON d.ts_code = s.ts_code
+                    WHERE s.industry=? AND d.trade_date=? AND d.pct_chg >= 9.5
+                """, (industry, trade_date)).fetchone()[0] or 0
+                
+                sector_data.append({
+                    "name": industry,
+                    "limit_up_count": limit_up_count,
+                    "consecutive_count": 0,
+                    "signal_count": stock_count,
+                    "money_flow": net_mf
+                })
+            
             if sector_data:
                 send_sector_summary_card(sectors=sector_data, trade_date=trade_date)
                 time.sleep(0.5)
@@ -871,25 +936,28 @@ def main(
             # exit_on_fail=True：Ollama 未启动时直接 sys.exit(1)，避免空转
             check_ollama(exit_on_fail=True)
             _cprint(_GREEN, "  ✅ Ollama 就绪\n")
+
+            # ──────────────────────────────────────────────────────────────────────────
+            # 步骤 4：AI 并发分析
+            # ──────────────────────────────────────────────────────────────────────────
+            _cprint(_BOLD, f"[步骤 4] AI 深度分析（门槛 ≥{AI_TRIGGER_SCORE}分，并发 {MAX_CONCURRENT}）...")
+            ai_results, skipped_count = run_ai_analysis_parallel(
+                candidates=scored_stocks,
+                market_volume_status=market_volume_status,
+                sector_risk=sector_risk,
+            )
+
+            # 强制推送前5名，不允许零推送
+            sorted_results = sorted(ai_results, key=lambda x: x.get("total_score", 0), reverse=True)
+            push_candidates = sorted_results[:5]  # 强制取前5名
+            _cprint(_GREEN,
+                    f"  AI \u5206\u6790\u5b8c\u6210\uff1a{above_threshold} \u53ea\u8fdb\u5165\u5206\u6790 \u2192 "
+                    f"{len(push_candidates)} \u53ea\u6765\u81ea\u6700\u9AD8\u5206\u6392\u540D\n")
         else:
-            _cprint(_YELLOW, f"[步骤 3] 无股票达到 AI 门槛（≥{AI_TRIGGER_SCORE}分），跳过 Ollama 检查\n")
-
-        # ──────────────────────────────────────────────────────────────────────────
-        # 步骤 4：AI 并发分析
-        # ──────────────────────────────────────────────────────────────────────────
-        _cprint(_BOLD, f"[步骤 4] AI 深度分析（门槛 ≥{AI_TRIGGER_SCORE}分，并发 {MAX_CONCURRENT}）...")
-        ai_results, skipped_count = run_ai_analysis_parallel(
-            candidates=scored_stocks,
-            market_volume_status=market_volume_status,
-            sector_risk=sector_risk,
-        )
-
-        # 强制推送前5名，不允许零推送
-        sorted_results = sorted(ai_results, key=lambda x: x.get("total_score", 0), reverse=True)
-        push_candidates = sorted_results[:5]  # 强制取前5名
-        _cprint(_GREEN,
-                f"  AI \u5206\u6790\u5b8c\u6210\uff1a{above_threshold} \u53ea\u8fdb\u5165\u5206\u6790 \u2192 "
-                f"{len(push_candidates)} \u53ea\u6765\u81ea\u6700\u9AD8\u5206\u6392\u540D\n")
+            _cprint(_YELLOW, f"[步骤 3/4] 无股票达到 AI 门槛（≥{AI_TRIGGER_SCORE}分），跳过 Ollama 检查和 AI 分析\n")
+            # 直接使用 Python 评分结果作为推送候选
+            push_candidates = scored_stocks[:5]
+            ai_results = []  # 初始化空列表，供后续推送使用
 
     # ── v4.0 新增：将精选结果暴露为模块级变量，供 scheduler 步骤4读取 ─────────
     global _last_selected_candidates
